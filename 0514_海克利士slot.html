@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- 針對手機端優化的 Viewport 設定，禁止使用者手動縮放網頁 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Elemental Cascade</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            /* 1. 將背景設定為純黑色，作為遮幅顏色 */
+            background-color: #000000; 
+            /* 2. 使用 fixed 徹底鎖定畫面，防止手機瀏覽器上下滾動或網址列干擾 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; 
+            touch-action: none; 
+        }
+        #game-container {
+            /* 3. 使用絕對定位加上 margin 負值的經典置中法，這能保證 100% 不會被擠扁 */
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 1280px;
+            height: 720px;
+            margin-left: -640px; /* 寬度的一半 */
+            margin-top: -360px;  /* 高度的一半 */
+            background-color: #1e293b;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            overflow: hidden;
+            transform-origin: center center;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* 全螢幕按鈕樣式 */
+        #fsBtn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #cbd5e1;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 0;
+        }
+        #fsBtn:hover {
+            background-color: #38bdf8;
+            color: #fff;
+            border-color: #0284c7;
+        }
+        #statsBtn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 45px;
+            height: 45px;
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #cbd5e1;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 0;
+        }
+        #statsBtn:hover { background-color: #38bdf8; color: #fff; border-color: #0284c7; }
+        #statsBtn.active { border-color: #38bdf8; color: #38bdf8; }
+
+        #infoPanel {
+            display: none;
+            position: absolute;
+            left: 50px; top: 50px;
+            width: 1180px; height: 610px;
+            background: rgba(8, 15, 30, 0.97);
+            border: 2px solid #334155;
+            border-radius: 16px;
+            z-index: 200;
+            overflow-y: auto;
+            padding: 28px 36px 28px 36px;
+            box-sizing: border-box;
+            color: #e2e8f0;
+            font-size: 14px;
+            line-height: 1.6;
+            scrollbar-width: thin;
+            scrollbar-color: #334155 transparent;
+        }
+        #infoPanel.visible { display: block; }
+        #infoPanel h2 {
+            margin: 0 0 6px 0;
+            font-size: 20px;
+            color: #38bdf8;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 6px;
+        }
+        #infoPanel h3 {
+            margin: 16px 0 6px 0;
+            font-size: 15px;
+            color: #94a3b8;
+            letter-spacing: 1px;
+        }
+        #infoPanel p { margin: 4px 0; }
+        #infoPanel .grid2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 36px;
+        }
+        #infoPanel .grid3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0 24px;
+        }
+        #infoPanel table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 6px 0 10px 0;
+        }
+        #infoPanel th {
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 3px 7px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: normal;
+        }
+        #infoPanel td {
+            padding: 3px 7px;
+            border-top: 1px solid #1e293b;
+            font-size: 11px;
+        }
+        #infoPanel .card-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 4px 0;
+        }
+        #infoPanel .card-tag {
+            background: #1e293b;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        #infoPanel .lv1 { border-left: 3px solid #64748b; }
+        #infoPanel .lv2 { border-left: 3px solid #b45309; }
+        #infoPanel .lv3 { border-left: 3px solid #94a3b8; }
+        #infoPanel .lv4 { border-left: 3px solid #ca8a04; }
+        #infoPanel .lv5 { border-left: 3px solid #c084fc; }
+        #infoPanelClose {
+            position: absolute; top: 16px; right: 20px;
+            background: #1e293b; border: 1px solid #475569;
+            border-radius: 8px; color: #cbd5e1;
+            font-size: 18px; cursor: pointer;
+            width: 34px; height: 34px; line-height: 34px;
+            text-align: center; padding: 0;
+            transition: all 0.2s;
+        }
+        #infoPanelClose:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <button id="fsBtn" title="全螢幕 (Fullscreen)">⛶</button>
+    <button id="statsBtn" class="active" title="測試面板">📊</button>
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+    <div id="infoPanel">
+        <button id="infoPanelClose">✕</button>
+        <h2>📖 遊戲說明 — Elemental Cascade</h2>
+
+        <div class="grid2">
+            <div>
+                <h3>▌ 基本規則</h3>
+                <p>• 盤面 <b>7 × 5</b>，共 6 種元素寶石</p>
+                <p>• 直線或橫線 <b>3 個以上</b>相同元素即可消除</p>
+                <p>• L 形視為兩組獨立直線，各自計算</p>
+                <p>• 消除後觸發對應屬性卡片攻擊，補入新寶石後繼續判定（連爆）</p>
+                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，不重複屬性</p>
+                <p>• 有消除該屬性 → 觸發卡片；消除 N 組 → 攻擊 <b>N 次</b></p>
+
+                <h3>▌ 怪物血量</h3>
+                <table>
+                    <tr><th>怪物</th><th>屬性</th><th>血量</th><th>獎池</th></tr>
+                    <tr><td>⚡ 宙斯</td><td>⭐ 光</td><td>20 格</td><td>JP</td></tr>
+                    <tr><td>👑 赫拉</td><td>🌙 暗</td><td>20 格</td><td>JP</td></tr>
+                    <tr><td>小怪 ×4</td><td>隨機</td><td>5 ~ 10 格</td><td>固定獎勵</td></tr>
+                </table>
+
+                <h3>▌ 卡片等級倍率</h3>
+                <table>
+                    <tr><th>等級</th><th>邊框色</th><th>攻擊倍率</th></tr>
+                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>× 1</td></tr>
+                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>× 1.5</td></tr>
+                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>× 2</td></tr>
+                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>× 3</td></tr>
+                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>× 4</td></tr>
+                </table>
+            </div>
+
+            <div>
+                <h3>▌ 消除傷害對照（格）</h3>
+                <table>
+                    <tr><th>消除顆數</th><th>Lv.1 ×1</th><th>Lv.2 ×1.5</th><th>Lv.3 ×2</th><th>Lv.4 ×3</th><th>Lv.5 ×4</th></tr>
+                    <tr><td>3 顆</td><td>1</td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+                    <tr><td>4 顆</td><td>2</td><td>3</td><td>4</td><td>6</td><td>8</td></tr>
+                    <tr><td>5 顆</td><td>3</td><td>4</td><td>6</td><td>9</td><td>12</td></tr>
+                    <tr><td>6 顆</td><td>4</td><td>6</td><td>8</td><td>12</td><td>16</td></tr>
+                    <tr><td>7 顆+</td><td>5</td><td>7</td><td>10</td><td>15</td><td>20</td></tr>
+                </table>
+
+                <h3>▌ 卡片牌池（30 張）</h3>
+                <p style="margin-bottom:6px;color:#64748b;font-size:12px">邊框色對應卡片等級 Lv.1 → Lv.5</p>
+
+                <p><b>🌀 風</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">疾風破</span>
+                    <span class="card-tag lv2">風之護符</span>
+                    <span class="card-tag lv3">風暴共鳴</span>
+                    <span class="card-tag lv4">狂風意志</span>
+                    <span class="card-tag lv5">颶風之斬</span>
+                </div>
+                <p><b>⭐ 光</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">光明箭矢</span>
+                    <span class="card-tag lv2">聖光斬擊</span>
+                    <span class="card-tag lv3">神聖護盾</span>
+                    <span class="card-tag lv4">天使降臨</span>
+                    <span class="card-tag lv5">獅吼之光</span>
+                </div>
+                <p><b>🌙 暗</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">暗影刺穿</span>
+                    <span class="card-tag lv2">幽冥縛鎖</span>
+                    <span class="card-tag lv3">冥界呼喚</span>
+                    <span class="card-tag lv4">暗黑領域</span>
+                    <span class="card-tag lv5">冥王之擊</span>
+                </div>
+                <p><b>🔥 火</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">烈焰攻心</span>
+                    <span class="card-tag lv2">炎爆衝擊</span>
+                    <span class="card-tag lv3">熔岩巨擊</span>
+                    <span class="card-tag lv4">鳳凰烈焰</span>
+                    <span class="card-tag lv5">半神怒火</span>
+                </div>
+                <p><b>❄️ 冰</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">冰霜箭矢</span>
+                    <span class="card-tag lv2">寒冰鎖鏈</span>
+                    <span class="card-tag lv3">冰封術式</span>
+                    <span class="card-tag lv4">極寒風暴</span>
+                    <span class="card-tag lv5">凜冬穿刺</span>
+                </div>
+                <p><b>🌿 自然</b></p>
+                <div class="card-row">
+                    <span class="card-tag lv1">藤蔓纏繞</span>
+                    <span class="card-tag lv2">大地脈動</span>
+                    <span class="card-tag lv3">森林庇護</span>
+                    <span class="card-tag lv4">根系爆裂</span>
+                    <span class="card-tag lv5">大地重錘</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// === 視窗自適應縮放 (Auto-Scaling) ===
+function resizeApp() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    // 計算縮放比例，確保 1280x720 永遠維持 16:9 比例塞入螢幕中，不變形
+    const scale = Math.min(w / 1280, h / 720);
+    // 這裡只需要單純 scale，因為 margin 已經負責絕對置中了
+    document.getElementById('game-container').style.transform = `scale(${scale})`;
+}
+// 監聽視窗改變與手機翻轉事件
+window.addEventListener('resize', resizeApp);
+window.addEventListener('orientationchange', () => setTimeout(resizeApp, 200)); // 稍微拉長一點延遲確保取得正確長寬
+resizeApp(); 
+
+// === 全螢幕控制邏輯 ===
+const statsBtn = document.getElementById('statsBtn');
+statsBtn.addEventListener('click', () => {
+    showStatsPanel = !showStatsPanel;
+    statsBtn.classList.toggle('active', showStatsPanel);
+    statsBtn.innerHTML = showStatsPanel ? '📊' : '📈';
+});
+
+const infoPanel = document.getElementById('infoPanel');
+document.getElementById('infoPanelClose').addEventListener('click', () => {
+    infoPanel.classList.remove('visible');
+    showInfoPanel = false;
+});
+
+const fsBtn = document.getElementById('fsBtn');
+fsBtn.addEventListener('click', () => {
+    let docEl = document.documentElement;
+    let requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+    let exitFullScreen = document.exitFullscreen || document.webkitExitFullscreen;
+
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (requestFullScreen) requestFullScreen.call(docEl).catch(err => console.log(err));
+    } else {
+        if (exitFullScreen) exitFullScreen.call(document);
+    }
+});
+
+function updateFsBtn() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        fsBtn.innerHTML = '🗗'; 
+    } else {
+        fsBtn.innerHTML = '⛶'; 
+    }
+    setTimeout(resizeApp, 200);
+}
+document.addEventListener('fullscreenchange', updateFsBtn);
+document.addEventListener('webkitfullscreenchange', updateFsBtn);
+
+// === 遊戲設定與資料 ===
+const COLS = 7;
+const ROWS = 5;
+const GEM_SIZE = 82;
+const GRID_W = COLS * GEM_SIZE;
+const GRID_H = ROWS * GEM_SIZE;
+const GRID_X = (1280 - GRID_W) / 2;
+const GRID_Y = 100;
+
+const ELEMENTS = [
+    { id: 0, name: 'Wind', color: '#94a3b8', icon: '🌀', type: '風', skillName: '颶風之斬' },
+    { id: 1, name: 'Light', color: '#facc15', icon: '☀️', type: '光', skillName: '獅吼之光' },
+    { id: 2, name: 'Dark', color: '#a855f7', icon: '🌙', type: '暗', skillName: '冥王之擊' },
+    { id: 3, name: 'Fire', color: '#ef4444', icon: '🔥', type: '火', skillName: '半神怒火' },
+    { id: 4, name: 'Ice', color: '#3b82f6', icon: '❄️', type: '冰', skillName: '凜冬穿刺' },
+    { id: 5, name: 'Nature', color: '#22c55e', icon: '🌿', type: '自然', skillName: '大地重錘' }
+];
+
+const WILD_ID = 6;
+const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
+
+const LEVEL_TRIM = { 1: '#64748b', 2: '#b45309', 3: '#94a3b8', 4: '#ca8a04', 5: '#c084fc' };
+
+const CARD_DEFINITIONS = [
+    { elemId: 0, level: 1, name: '疾風破' }, { elemId: 0, level: 2, name: '風之護符' },
+    { elemId: 0, level: 3, name: '風暴共鳴' }, { elemId: 0, level: 4, name: '狂風意志' },
+    { elemId: 0, level: 5, name: '颶風之斬' },
+    { elemId: 1, level: 1, name: '光明箭矢' }, { elemId: 1, level: 2, name: '聖光斬擊' },
+    { elemId: 1, level: 3, name: '神聖護盾' }, { elemId: 1, level: 4, name: '天使降臨' },
+    { elemId: 1, level: 5, name: '獅吼之光' },
+    { elemId: 2, level: 1, name: '暗影刺穿' }, { elemId: 2, level: 2, name: '幽冥縛鎖' },
+    { elemId: 2, level: 3, name: '冥界呼喚' }, { elemId: 2, level: 4, name: '暗黑領域' },
+    { elemId: 2, level: 5, name: '冥王之擊' },
+    { elemId: 3, level: 1, name: '烈焰攻心' }, { elemId: 3, level: 2, name: '炎爆衝擊' },
+    { elemId: 3, level: 3, name: '熔岩巨擊' }, { elemId: 3, level: 4, name: '鳳凰烈焰' },
+    { elemId: 3, level: 5, name: '半神怒火' },
+    { elemId: 4, level: 1, name: '冰霜箭矢' }, { elemId: 4, level: 2, name: '寒冰鎖鏈' },
+    { elemId: 4, level: 3, name: '冰封術式' }, { elemId: 4, level: 4, name: '極寒風暴' },
+    { elemId: 4, level: 5, name: '凜冬穿刺' },
+    { elemId: 5, level: 1, name: '藤蔓纏繞' }, { elemId: 5, level: 2, name: '大地脈動' },
+    { elemId: 5, level: 3, name: '森林庇護' }, { elemId: 5, level: 4, name: '根系爆裂' },
+    { elemId: 5, level: 5, name: '大地重錘' },
+];
+
+const MONSTER_NAMES = {
+    0: ['愛神侍衛', '亞馬遜女戰士', '黃金林大仙', '赫拉寶箱守衛'],
+    1: ['阿波羅神殿衛', '太陽戰車騎士', '聖光審判者', '奧林匹斯寶箱'],
+    2: ['地獄犬幼崽', '復仇女神使者', '冥府幽靈', '潘朵拉寶盒'],
+    3: ['涅墨亞幼獅', '克里特火牛', '奇美拉幼體', '火神鑄件'],
+    4: ['斯廷法利鳥', '極地鳥妖', '冰霜美杜莎', '失落神殿寶箱'],
+    5: ['蠻橫野豬', '刻律涅牝鹿', '狄俄野馬', '大地神殿守衛']
+};
+
+function getRandomMonsterData(elemId) {
+    let names = MONSTER_NAMES[elemId] || ['未知怪物'];
+    let name = names[Math.floor(Math.random() * names.length)];
+    return { name: name };
+}
+
+function getBGMultiplier() {
+    if (!isBG) return 1;
+    let idx = bgMultiplierIndex;
+    let val = idx < BG_MULTIPLIERS.length
+        ? BG_MULTIPLIERS[idx]
+        : BG_MULTIPLIERS[BG_MULTIPLIERS.length - 1] * Math.pow(2, idx - (BG_MULTIPLIERS.length - 1));
+    return Math.min(val, 2048);
+}
+
+function getScore(count, elemId = 3) {
+    if (count < 3) return 0;
+    // 基礎分（火/冰/自然）
+    const base = { 3: 10, 4: 30, 5: 80, 6: 200, 7: 500, 8: 1200, 9: 3000, 10: 8000 };
+    let b = base[count] ?? (() => { let v = 8000; for (let i = 11; i <= count; i++) v = Math.floor(v * 2.5); return v; })();
+    // 屬性倍率：光暗 ×2，風 ×1.5，火冰自然 ×1（BG 模式下屬性倍率無效，只計BG倍率）
+    const elemMult = isBG ? 1 : ((elemId === 1 || elemId === 2) ? 2 : (elemId === 0) ? 1.5 : 1);
+    return Math.floor(b * elemMult * getBGMultiplier());
+}
+
+// 傷害計算：3消=1格，每多1顆+1，6顆以上加速；再乘以卡片等級倍率
+function getCardDamage(gemCount, cardLevel) {
+    const baseMap = { 3: 1, 4: 2, 5: 3, 6: 4, 7: 5 };
+    let base = baseMap[Math.min(gemCount, 7)] || 5;
+    const levelMult = { 1: 1, 2: 1.5, 3: 2, 4: 3, 5: 4 };
+    return Math.max(1, Math.floor(base * (levelMult[cardLevel] || 1)));
+}
+
+// 遊戲狀態機
+const STATE = {
+    IDLE: 0,
+    SPINNING: 1,
+    CHECKING: 2,
+    POPPING: 3,
+    GRAVITY: 4,
+    EVALUATING: 5,
+    ATTACKING: 6,
+    KILL_EFFECT: 7
+};
+
+const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 送出寶石！', '🔄 轉換顏色！', '💥 清除雜色！', '🎰 FREE GAME！', '✨ BONUS GAME！'];
+const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨'];
+const BG_MULTIPLIERS = [1, 2, 4, 8, 16, 36]; // index 6+ 繼續 ×2
+
+const FORCE_MENU_ITEMS = [
+    { label: '生成WILD', type: 1, color: '#ffd700' },
+    { label: '生成圖示', type: 2, color: '#38bdf8' },
+    { label: '轉換圖示', type: 3, color: '#a78bfa' },
+    { label: '清除圖示', type: 4, color: '#f87171' },
+    { label: 'FG',       type: 5, color: '#10b981' },
+    { label: 'BG',       type: 6, color: '#f59e0b' },
+];
+
+let currentState = STATE.IDLE;
+let board = [];
+let cards = [];
+let monsters = [];
+let particles = [];
+let scoreTexts = [];
+let flyingScores = []; 
+
+// 數值與統計系統
+let totalScore = 0;
+let winScore = 0;
+let betAmount = 100;
+let matchHistory = []; // 本次 spin 每組消除紀錄 {elemId, count}
+let showStatsPanel = true;
+let showInfoPanel = false;
+let stats = { spins: 0, hits: 0 };
+let hasHitThisSpin = false;
+
+// 動畫變數
+let colOffsets = [];
+let colStates = [];
+let colDelays = [];
+let matchQueue = [];
+let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
+let popWaitTimer = 0;
+let pendingRounds = []; // 待發射的攻擊輪次
+let pendingKillEffects = []; // 怪獸死亡後待套用的盤面效果
+let forceKill = false;
+let forceMenuOpen = false;
+let forcedEffectType = 0; // 0=隨機, 1-6=擊殺後指定觸發的效果
+let killEffectCurrent = null; // 當前播放中的效果
+let killEffectPhase = 'idle'; // 'flying' | 'showing' | 'applied'
+let killEffectTimer = 0;
+let killEffectProgress = 0;
+let isMouseHoverSpin = false;
+let isMouseHoverAuto = false;
+let isAutoSpinning = false;
+let autoSpinCount = 0;
+let autoSpinDelay = 0;
+
+// === FG / BG 狀態 ===
+let isFG = false;            // Free Game 模式：6張卡，自動旋轉10局
+let fgSpinsRemaining = 0;
+let isBG = false;            // Bonus Game 模式：無卡牌/怪獸，倍數遞增
+let bgSpinsRemaining = 0;
+let bgMultiplierIndex = 0;   // 當前倍率索引，對應 BG_MULTIPLIERS
+let pendingFGBG = null;      // 當前局連爆結束後才正式進入的模式（'FG' | 'BG' | 'NG' | null）
+let savedBoard = null;       // 進入 FG/BG 前保存的盤面，退出後還原繼續連爆
+let shouldCheckAfterTransition = false; // NG 轉場結束後切換至 CHECKING 繼續連爆
+
+// === 轉場動畫狀態 ===
+let transitionPhase = 'idle'; // 'in' | 'hold' | 'out' | 'idle'
+let transitionTimer = 0;
+let transitionAlpha = 0;
+let transitionText = '';
+let transitionSubText = '';
+let transitionBgColor = '#000000';
+let transitionAccentColor = '#ffffff';
+
+// === 初始化 ===
+function initMonsters() {
+    // 宙斯固定光屬性(1)，赫拉固定暗屬性(2)
+    monsters = [
+        { elemId: 1, side: 'left',  yIndex: 0, hp: 20, maxHp: 20, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
+        { elemId: 0, side: 'left',  yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 3, side: 'left',  yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 2, side: 'right', yIndex: 0, hp: 20, maxHp: 20, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
+        { elemId: 4, side: 'right', yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 5, side: 'right', yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false }
+    ];
+
+    // 小怪使用 6 種屬性中隨機不重複的四種屬性（含光暗）
+    let smallPool = [0, 1, 2, 3, 4, 5];
+    smallPool.sort(() => Math.random() - 0.5);
+    [1, 2, 4, 5].forEach((idx, i) => {
+        let blocks = 5 + Math.floor(Math.random() * 6);
+        let md = getRandomMonsterData(smallPool[i]);
+        monsters[idx] = { ...monsters[idx], elemId: smallPool[i], hp: blocks, maxHp: blocks, name: md.name, isDead: false, shake: 0, reward: blocks * 100 };
+    });
+}
+
+function getMonsterElemPool() {
+    let pool = cards.map(c => c.elemId);
+    return pool.length > 0 ? pool : [0, 1, 2, 3, 4, 5];
+}
+
+function respawnMonster(idx, showEscape = true, fixedElem = -1) {
+    let m = monsters[idx];
+    // 逃跑特效（擊殺補怪時不顯示）
+    if (showEscape && m.name) {
+        let ex = m.side === 'left' ? 180 : 1100;
+        let ey = 100 + m.yIndex * 150 + 60;
+        scoreTexts.push({ x: ex, y: ey, text: `${m.name} 逃跑了！`, color: '#fbbf24', life: 90, fontSize: 26 });
+    }
+    let newElem;
+    if (fixedElem >= 0) {
+        newElem = fixedElem;
+    } else if (isFG) {
+        // FG 模式：從 6 種屬性中排除其他存活小怪已用屬性，確保不重複
+        const smallIdxs = [1, 2, 4, 5];
+        const usedElems = new Set(
+            smallIdxs.filter(i => i !== idx && !monsters[i].isDead).map(i => monsters[i].elemId)
+        );
+        const available = [0, 1, 2, 3, 4, 5].filter(e => !usedElems.has(e));
+        newElem = available[Math.floor(Math.random() * available.length)];
+    } else {
+        newElem = getMonsterElemPool()[Math.floor(Math.random() * getMonsterElemPool().length)];
+    }
+    let blocks = 5 + Math.floor(Math.random() * 6);
+    let md = getRandomMonsterData(newElem);
+    monsters[idx] = {
+        side: m.side, yIndex: m.yIndex,
+        elemId: newElem, hp: blocks, maxHp: blocks,
+        name: md.name, isDead: false, shake: 0,
+        jackpot: 0, reward: blocks * 100
+    };
+}
+
+function generateRandomBoard(initialLight = false) {
+    let newBoard = [];
+    for (let c = 0; c < COLS; c++) {
+        newBoard[c] = [];
+        for (let r = 0; r < ROWS; r++) {
+            newBoard[c][r] = { id: initialLight ? 1 : Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
+        }
+    }
+    return newBoard;
+}
+
+function generateCards() {
+    cards = [];
+    let usedElems = new Set();
+    let attempts = 0;
+
+    // 決定本局是否出現光暗卡（最多1張）
+    let bossElemForThisSpin = Math.random() < 0.3 ? (Math.random() < 0.5 ? 1 : 2) : -1;
+
+    while (cards.length < 3 && attempts < 300) {
+        attempts++;
+        let elemId;
+        // 第一張嘗試放光或暗（若本局有）
+        if (bossElemForThisSpin >= 0 && cards.length === 0) {
+            elemId = bossElemForThisSpin;
+            bossElemForThisSpin = -1;
+        } else {
+            let avail = [0, 3, 4, 5].filter(e => !usedElems.has(e));
+            if (avail.length === 0) continue;
+            elemId = avail[Math.floor(Math.random() * avail.length)];
+        }
+
+        usedElems.add(elemId);
+        let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
+        let def = defs[Math.floor(Math.random() * defs.length)];
+
+        let targetCount = 4;
+        if (def.level === 2) targetCount = Math.floor(Math.random() * 2) + 5;
+        else if (def.level === 3) targetCount = Math.floor(Math.random() * 2) + 7;
+        else if (def.level === 4) targetCount = Math.floor(Math.random() * 2) + 9;
+        else if (def.level === 5) targetCount = Math.floor(Math.random() * 3) + 11;
+
+        cards.push({
+            elemId: def.elemId, level: def.level, name: def.name,
+            targetCount: targetCount,
+            activated: false, isCharging: false, chargeTimer: 0,
+            scale: 1, shake: 0, yOffset: 130, enterDelay: cards.length * 10, yTarget: 0
+        });
+    }
+}
+
+function generateCardsForFG() {
+    // FG 強化：6種屬性各一張，隨機等級
+    cards = [];
+    [0, 1, 2, 3, 4, 5].forEach((elemId, i) => {
+        let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
+        let def = defs[Math.floor(Math.random() * defs.length)];
+        let targetCount = 4;
+        if (def.level === 2) targetCount = Math.floor(Math.random() * 2) + 5;
+        else if (def.level === 3) targetCount = Math.floor(Math.random() * 2) + 7;
+        else if (def.level === 4) targetCount = Math.floor(Math.random() * 2) + 9;
+        else if (def.level === 5) targetCount = Math.floor(Math.random() * 3) + 11;
+        cards.push({
+            elemId: def.elemId, level: def.level, name: def.name,
+            targetCount, activated: false, isCharging: false, chargeTimer: 0,
+            scale: 1, shake: 0, yOffset: 130, enterDelay: i * 8, yTarget: 0
+        });
+    });
+}
+
+// === 核心邏輯 ===
+function findMatches() {
+    let groups = [];
+
+    // 橫向掃描（WILD 可加入任意顏色的連線）
+    for (let r = 0; r < ROWS; r++) {
+        let c = 0;
+        while (c < COLS) {
+            if (board[c][r].id === -1) { c++; continue; }
+            let startC = c;
+            let runColor = -1;
+            while (c < COLS && board[c][r].id !== -1) {
+                let id = board[c][r].id;
+                if (id === WILD_ID) { c++; continue; }
+                if (runColor === -1) { runColor = id; c++; continue; }
+                if (id === runColor) { c++; continue; }
+                break;
+            }
+            if (runColor !== -1 && c - startC >= 3) {
+                let cells = [];
+                for (let i = startC; i < c; i++) cells.push({ c: i, r });
+                groups.push({ elemId: runColor, cells, count: c - startC });
+            } else {
+                c = startC + 1; // 未湊成消除（含純WILD段）→退回重掃，避免跳過夾在中間的WILD
+            }
+        }
+    }
+
+    // 縱向掃描
+    for (let col = 0; col < COLS; col++) {
+        let r = 0;
+        while (r < ROWS) {
+            if (board[col][r].id === -1) { r++; continue; }
+            let startR = r;
+            let runColor = -1;
+            while (r < ROWS && board[col][r].id !== -1) {
+                let id = board[col][r].id;
+                if (id === WILD_ID) { r++; continue; }
+                if (runColor === -1) { runColor = id; r++; continue; }
+                if (id === runColor) { r++; continue; }
+                break;
+            }
+            if (runColor !== -1 && r - startR >= 3) {
+                let cells = [];
+                for (let i = startR; i < r; i++) cells.push({ c: col, r: i });
+                groups.push({ elemId: runColor, cells, count: r - startR });
+            } else {
+                r = startR + 1; // 未湊成消除（含純WILD段）→退回重掃
+            }
+        }
+    }
+
+    return groups;
+}
+
+function applyGravity() {
+    for (let c = 0; c < COLS; c++) {
+        let emptySpaces = 0;
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (board[c][r].id === -1) {
+                emptySpaces++;
+            } else if (emptySpaces > 0) {
+                board[c][r + emptySpaces] = board[c][r];
+                board[c][r + emptySpaces].yOffset = -emptySpaces * GEM_SIZE;
+                board[c][r] = { id: -1, yOffset: 0, scale: 1, isMatched: false };
+            }
+        }
+        for (let i = 0; i < emptySpaces; i++) {
+            board[c][i] = {
+                id: Math.floor(Math.random() * 6),
+                yOffset: -(emptySpaces) * GEM_SIZE - 50,
+                scale: 1,
+                isMatched: false
+            };
+        }
+    }
+}
+
+function prepareNextPop() {
+    // 找第一個仍有效的組
+    let first = null;
+    while (matchQueue.length > 0 && !first) {
+        let candidate = matchQueue.shift();
+        candidate.cells = candidate.cells.filter(cell => board[cell.c][cell.r].id !== -1);
+        candidate.count = candidate.cells.length;
+        if (candidate.count >= 3) first = candidate;
+    }
+
+    if (!first) {
+        if (isBG) {
+            // BG 模式：無卡牌攻擊，直接補盤
+            applyGravity();
+            currentState = STATE.GRAVITY;
+        } else {
+            currentState = STATE.EVALUATING;
+        }
+        return;
+    }
+
+    // 偵測 L 形：找剩餘隊列中與 first 共用格子的組，批次同時消除
+    let firstKeys = new Set(first.cells.map(c => `${c.c},${c.r}`));
+    let batch = [first];
+    let leftovers = [];
+    while (matchQueue.length > 0) {
+        let next = matchQueue.shift();
+        next.cells = next.cells.filter(cell => board[cell.c][cell.r].id !== -1);
+        next.count = next.cells.length;
+        if (next.cells.some(c => firstKeys.has(`${c.c},${c.r}`))) {
+            // 共用格子 → 同批次同時消除
+            if (next.count >= 1) batch.push(next);
+        } else if (next.count >= 3) {
+            leftovers.push(next);
+        }
+    }
+    matchQueue.unshift(...leftovers);
+
+    // 標記所有批次格子（共用格子只標記一次）
+    let marked = new Set();
+    batch.forEach(m => m.cells.forEach(cell => {
+        let key = `${cell.c},${cell.r}`;
+        if (!marked.has(key)) {
+            marked.add(key);
+            board[cell.c][cell.r].isMatched = true;
+        }
+    }));
+
+    currentMatches = batch;
+    currentState = STATE.POPPING;
+    popWaitTimer = 0;
+}
+
+// === 怪獸擊殺盤面效果 ===
+function getCardElems() { return new Set(cards.map(c => c.elemId)); }
+function getNonCardElems() { return [0,1,2,3,4,5].filter(e => !getCardElems().has(e)); }
+
+function applyKillEffect(effectType, monsterMaxHp) {
+    let cardElems = [...getCardElems()];
+    let nonCardElems = getNonCardElems();
+
+    if (effectType === 1) {
+        if (monsterMaxHp >= 20) {
+            // Boss → 放置 2×2 WILD 區塊（固定在最底兩列，重力不會拆散）
+            let startC = Math.floor(Math.random() * (COLS - 1));
+            let startR = ROWS - 2;
+            for (let dc = 0; dc < 2; dc++)
+                for (let dr = 0; dr < 2; dr++)
+                    board[startC + dc][startR + dr] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false };
+        } else {
+            // 小怪 → 放置 1×1 WILD 數顆（maxHp 5→1顆，10→5顆）
+            let wildCount = Math.min(5, Math.max(1, monsterMaxHp - 4));
+            let allCells = [];
+            for (let c = 0; c < COLS; c++)
+                for (let r = 0; r < ROWS; r++)
+                    allCells.push({ c, r });
+            allCells.sort(() => Math.random() - 0.5);
+            for (let i = 0; i < wildCount; i++)
+                board[allCells[i].c][allCells[i].r] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false };
+        }
+
+    } else if (effectType === 2) {
+        // 送出卡牌色寶石：數量 = monsterMaxHp（5~10），Boss 上限 10
+        let sendCount = Math.min(10, monsterMaxHp);
+        let targets = [];
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS; r++)
+                if (board[c][r].id !== -1 && nonCardElems.includes(board[c][r].id))
+                    targets.push({ c, r });
+        targets.sort(() => Math.random() - 0.5);
+        let count = Math.min(sendCount, targets.length);
+        for (let i = 0; i < count; i++)
+            board[targets[i].c][targets[i].r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
+
+    } else if (effectType === 3) {
+        // 將所有非卡牌色轉換成卡牌色
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS; r++)
+                if (nonCardElems.includes(board[c][r].id))
+                    board[c][r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
+
+    } else if (effectType === 4) {
+        // 消除所有非卡牌色的寶石
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS; r++)
+                if (nonCardElems.includes(board[c][r].id))
+                    board[c][r] = { id: -1, yOffset: 0, scale: 1, isMatched: false };
+
+    } else if (effectType === 5) {
+        // FG：連爆結束後才正式進入，避免當前連爆在 FG 模式下運行
+        fgSpinsRemaining = 10;
+        pendingFGBG = 'FG';
+        startModeTransition('🎰 FREE GAME', '6張強化卡牌 × 10局', '#064e3b', '#10b981');
+
+    } else if (effectType === 6) {
+        // BG：連爆結束後才正式進入
+        bgSpinsRemaining = 8;
+        bgMultiplierIndex = 0;
+        pendingFGBG = 'BG';
+        startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 8局', '#431407', '#f59e0b');
+    }
+}
+
+// 在轉場 hold 階段（全黑）執行實際的模式切換，避免玩家看到中間過程
+function applyPendingModeChange() {
+    if (pendingFGBG === 'FG') {
+        // savedBoard 已在 GRAVITY done 儲存，此處只需切換模式
+        isFG = true;
+        generateCardsForFG();   // 全黑時生成6張卡，淡出時已就位
+
+    } else if (pendingFGBG === 'BG') {
+        // savedBoard 已在 GRAVITY done 儲存，此處只需切換模式
+        isBG = true;
+        cards = [];             // 全黑時移除卡牌
+
+    } else if (pendingFGBG === 'NG') {
+        isBG = false;
+        isFG = false;
+        bgMultiplierIndex = 0;
+        if (savedBoard) {
+            // 還原進入 FG/BG 前的盤面，淡出時帶著原盤面出現
+            board = savedBoard.map(col => col.map(cell => ({ ...cell })));
+            savedBoard = null;
+            matchHistory = [];
+            shouldCheckAfterTransition = true; // 轉場結束後繼續連爆
+        }
+        generateCards();        // 恢復3張卡，淡出時自然動畫進場
+    }
+    pendingFGBG = null;
+}
+
+function startModeTransition(text, subText, bgColor, accentColor) {
+    transitionText      = text;
+    transitionSubText   = subText;
+    transitionBgColor   = bgColor;
+    transitionAccentColor = accentColor;
+    transitionPhase     = 'in';
+    transitionTimer     = 0;
+    transitionAlpha     = 0;
+}
+
+function startKillEffect(effect) {
+    killEffectCurrent = effect;
+    killEffectPhase = 'flying';
+    killEffectTimer = 0;
+    killEffectProgress = 0;
+    currentState = STATE.KILL_EFFECT;
+}
+
+function drawTransition() {
+    if (transitionPhase === 'idle' || transitionAlpha <= 0) return;
+
+    // 全螢幕背景遮罩
+    ctx.globalAlpha = transitionAlpha;
+    ctx.fillStyle = transitionBgColor;
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // 光暈裝飾圓
+    ctx.globalAlpha = transitionAlpha * 0.25;
+    ctx.beginPath();
+    ctx.arc(640, 340, 260, 0, Math.PI * 2);
+    ctx.fillStyle = transitionAccentColor;
+    ctx.fill();
+
+    // 主標題
+    ctx.globalAlpha = transitionAlpha;
+    ctx.shadowColor = transitionAccentColor;
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = transitionAccentColor;
+    ctx.font = 'bold 80px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(transitionText, 640, 320);
+
+    // 副標題
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(transitionSubText, 640, 410);
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'alphabetic';
+}
+
+function drawKillEffect() {
+    if (!killEffectCurrent || killEffectPhase === 'idle') return;
+    const cx = GRID_X + GRID_W / 2;
+    const cy = GRID_Y + GRID_H / 2;
+
+    if (killEffectPhase === 'flying') {
+        let t = killEffectProgress;
+        let ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        let curX = killEffectCurrent.fromX + (cx - killEffectCurrent.fromX) * ease;
+        let curY = killEffectCurrent.fromY + (cy - killEffectCurrent.fromY) * ease;
+        // 光暈
+        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 35;
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.arc(curX, curY, 22, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // 效果圖示
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(EFFECT_ICONS[killEffectCurrent.type], curX, curY);
+
+    } else if (killEffectPhase === 'showing') {
+        let fadeIn = Math.min(1, (50 - killEffectTimer) / 12);
+        // 盤面半透明遮罩
+        ctx.fillStyle = `rgba(0,0,10,${0.65 * fadeIn})`;
+        ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+        // 大圖示
+        ctx.globalAlpha = fadeIn;
+        ctx.font = '72px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(EFFECT_ICONS[killEffectCurrent.type], cx, cy - 50);
+        // 效果名稱
+        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 25;
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 42px sans-serif';
+        ctx.fillText(EFFECT_NAMES[killEffectCurrent.type], cx, cy + 20);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+
+    } else if (killEffectPhase === 'applied') {
+        let flash = (killEffectTimer / 40) * 0.45;
+        ctx.fillStyle = `rgba(255,215,0,${flash})`;
+        ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+    }
+}
+
+function fireAttackRound(round) {
+    const cardW = cards.length === 6 ? 85 : 140;
+    const gap   = cards.length === 6 ? 8  : 20;
+    const totalW = cards.length * cardW + (cards.length - 1) * gap;
+    round.forEach(({ elemId, count }) => {
+        let cardIdx = cards.findIndex(c => c.elemId === elemId);
+        if (cardIdx === -1) return;
+        let card = cards[cardIdx];
+        let candidates = monsters.filter(m => m.elemId === elemId && m.hp > 0);
+        if (candidates.length === 0) return;
+        let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
+        const cardX = (1280 - totalW) / 2 + cardIdx * (cardW + gap) + cardW / 2;
+        let dmg = getCardDamage(count, card.level);
+        particles.push({
+            stage: 1,
+            startX: 640, startY: GRID_Y + GRID_H,
+            tx: cardX, ty: 570,
+            progress: 0,
+            color: ELEMENTS[elemId].color,
+            cardRef: card,
+            targetMonster,
+            damage: dmg
+        });
+    });
+}
+
+function injectGuaranteedMatches() {
+    // 為每張卡的屬性在盤面上放一排3個連線，確保觸發
+    let rows = [0, 1, 2, 3, 4];
+    for (let i = rows.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [rows[i], rows[j]] = [rows[j], rows[i]];
+    }
+    cards.forEach((card, i) => {
+        let row = rows[i % rows.length];
+        let startCol = Math.floor(Math.random() * (COLS - 2));
+        for (let dc = 0; dc < 3; dc++) {
+            board[startCol + dc][row] = { id: card.elemId, yOffset: 0, scale: 1, isMatched: false };
+        }
+    });
+}
+
+function startSpin() {
+    currentState = STATE.SPINNING;
+    winScore = 0;
+    matchHistory = [];
+    pendingRounds = [];
+    pendingKillEffects = [];
+    pendingFGBG = null;
+    stats.spins++;
+    hasHitThisSpin = false;
+
+    if (isBG) {
+        // BG 模式：無卡牌與怪獸機制，倍率跨局保留
+        cards = [];
+    } else if (isFG) {
+        // FG 模式：血量跨局保留，每局重新抽牌並隨機分配屬性
+        generateCardsForFG();
+        const smallIdxs = [1, 2, 4, 5];
+        let fgSmallPool = [0, 1, 2, 3, 4, 5];
+        fgSmallPool.sort(() => Math.random() - 0.5);
+        smallIdxs.forEach((idx, i) => {
+            let m = monsters[idx];
+            m.elemId = fgSmallPool[i];
+        });
+    } else {
+        // 一般模式
+        [0, 3].forEach(idx => { let m = monsters[idx]; m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
+        generateCards();
+        let monsterElemPool = cards.map(c => c.elemId);
+        if (monsterElemPool.length === 0) monsterElemPool = [0, 1, 2, 3, 4, 5];
+        let assigned = [];
+        for (let i = 0; i < 4; i++) assigned.push(monsterElemPool[i % monsterElemPool.length]);
+        assigned.sort(() => Math.random() - 0.5);
+        const smallIdxs = [1, 2, 4, 5];
+        smallIdxs.forEach((idx, i) => {
+            let m = monsters[idx];
+            m.hp = m.maxHp; m.isDead = false; m.shake = 0;
+            m.elemId = assigned[i];
+        });
+    }
+
+    colStates = Array(COLS).fill(1);
+    colOffsets = Array(COLS).fill(0);
+    colDelays = Array(COLS).fill(0).map((_, i) => i * 4);
+}
+
+// === 繪圖 ===
+function drawRoundedRect(x, y, w, h, r, fill, stroke, lineWidth = 2) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.lineWidth = lineWidth; ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+
+function drawStatsPanel() {
+    if (!showStatsPanel) return;
+    let sw = 900;
+    let sh = 55;
+    let sx = (1280 - sw) / 2; 
+    let sy = 15;
+
+    drawRoundedRect(sx, sy, sw, sh, 10, 'rgba(30, 41, 59, 0.9)', '#334155', 2);
+
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i <= 4; i++) {
+        let lineX = sx + (sw / 5) * i;
+        ctx.moveTo(lineX, sy + 10); 
+        ctx.lineTo(lineX, sy + sh - 10);
+    }
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    let blockW = sw / 5;
+    let textY1 = sy + 22; 
+    let textY2 = sy + 44; 
+
+    // 1. SPINS
+    let cx1 = sx + blockW * 0.5;
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+    ctx.fillText('SPINS', cx1, textY1);
+    ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(stats.spins, cx1, textY2);
+
+    // 2. TOTAL BET
+    let cx2 = sx + blockW * 1.5;
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+    ctx.fillText('TOTAL BET', cx2, textY1);
+    let totalBet = stats.spins * betAmount;
+    ctx.fillStyle = '#f1f5f9'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(totalBet, cx2, textY2);
+
+    // 3. TOTAL WIN
+    let cx3 = sx + blockW * 2.5;
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+    ctx.fillText('TOTAL WIN', cx3, textY1);
+    ctx.fillStyle = '#facc15'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(totalScore, cx3, textY2);
+
+    // 4. RTP%
+    let cx4 = sx + blockW * 3.5;
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+    ctx.fillText('RTP', cx4, textY1);
+    let rtp = totalBet > 0 ? ((totalScore / totalBet) * 100).toFixed(2) : "0.00";
+    ctx.fillStyle = '#a855f7'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(rtp + '%', cx4, textY2);
+
+    // 5. HIT RATE
+    let cx5 = sx + blockW * 4.5;
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+    ctx.fillText('HIT RATE', cx5, textY1);
+    let hitRate = stats.spins > 0 ? Math.round((stats.hits / stats.spins) * 100) : 0;
+    ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(hitRate + '%', cx5, textY2);
+}
+
+function drawMonsters() {
+    monsters.forEach(m => {
+        let mx = m.side === 'left' ? 40 : 960;
+        let my = 100 + m.yIndex * 150;
+        let w = 280; let h = 120;
+        let elem = ELEMENTS[m.elemId];
+
+        if (m.shake > 0) {
+            mx += (Math.random() - 0.5) * 10;
+            my += (Math.random() - 0.5) * 10;
+            m.shake--;
+        }
+
+
+        drawRoundedRect(mx, my, w, h, 12, '#0f172a', elem.color, m.hp <= 0 ? 1 : 3);
+        
+        if (m.hp <= 0) {
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            drawRoundedRect(mx, my, w, h, 12, 'rgba(0,0,0,0.6)');
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("DEFEATED", mx + w/2, my + h/2 + 10);
+            return;
+        }
+
+        ctx.fillStyle = elem.color;
+        ctx.beginPath(); ctx.arc(mx + 45, my + 45, 28, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '28px Segoe UI Emoji';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(elem.icon, mx + 45, my + 48);
+
+        let lvText = m.maxHp === 20 ? 'Lv.5' : m.maxHp >= 9 ? 'Lv.3' : m.maxHp >= 7 ? 'Lv.2' : 'Lv.1';
+
+        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'left'; ctx.fillText(`${lvText} ${m.name}`, mx + 90, my + 40);
+
+        // 分格式血條
+        let barX = mx + 90, barY = my + 60, barW = 170, barH = 24;
+        let hpColor = m.hp / m.maxHp > 0.3 ? '#22c55e' : '#ef4444';
+        drawRoundedRect(barX, barY, barW, barH, 4, '#334155');
+        let blockW = barW / m.maxHp;
+        for (let b = 0; b < m.hp; b++) {
+            ctx.fillStyle = hpColor;
+            ctx.fillRect(barX + b * blockW + 1, barY + 2, blockW - 2, barH - 4);
+        }
+        ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1;
+        for (let b = 1; b < m.maxHp; b++) {
+            let lx = barX + b * blockW;
+            ctx.beginPath(); ctx.moveTo(lx, barY); ctx.lineTo(lx, barY + barH); ctx.stroke();
+        }
+    });
+
+    // 盤面上方 JP 橫幅（宙斯左、赫拉右）
+    [monsters[0], monsters[3]].forEach((boss, bi) => {
+        if (!boss || boss.isDead) return;
+        let bw = 180, bh = 26;
+        let bx = bi === 0 ? GRID_X : GRID_X + GRID_W - bw;
+        let by = GRID_Y - 30;
+        drawRoundedRect(bx, by, bw, bh, 13, '#1a0e00', '#b45309', 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = bi === 0 ? 'left' : 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`🏆 ${boss.name} ${boss.jackpot.toLocaleString()}`, bi === 0 ? bx + 10 : bx + bw - 10, by + bh / 2);
+    });
+}
+
+function drawCards() {
+    if (isBG) return; // BG 模式無卡牌
+
+    const isFGMode = cards.length === 6;
+    const cardW = isFGMode ? 85  : 140;
+    const cardH = isFGMode ? 90  : 110;
+    const gap   = isFGMode ? 8   : 20;
+    const count = Math.max(cards.length, isFGMode ? 6 : 3);
+    const totalW = count * cardW + (count - 1) * gap;
+    const startX = (1280 - totalW) / 2;
+    const baseY = isFGMode ? 525 : 520;
+
+    // 插槽背景
+    for (let i = 0; i < count; i++) {
+        let sx = startX + i * (cardW + gap);
+        drawRoundedRect(sx - 6, baseY - 6, cardW + 12, cardH + 12, 16, '#060d1a', '#1e3a5f', 2);
+        drawRoundedRect(sx - 2, baseY - 2, cardW + 4, cardH + 4, 13, '#0a1628', null);
+    }
+
+    // 限制卡牌只在插槽範圍內顯示
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(startX - 8, baseY - 8, totalW + 16, cardH + 16);
+    ctx.clip();
+
+    cards.forEach((card, i) => {
+        let x = startX + i * (cardW + gap);
+        let drawY = baseY + card.yOffset;
+        let elem = ELEMENTS[card.elemId];
+        let trimColor = LEVEL_TRIM[card.level];
+
+        ctx.save();
+
+        let cx = x + cardW / 2;
+        let cy = drawY + cardH / 2;
+        let shakeX = card.shake > 0 ? (Math.random() - 0.5) * card.shake : 0;
+        let shakeY = card.shake > 0 ? (Math.random() - 0.5) * card.shake : 0;
+
+        ctx.translate(cx + shakeX, cy + shakeY);
+        ctx.scale(card.scale, card.scale);
+        ctx.translate(-cx, -cy);
+
+        // activated 不降低透明度，維持原色
+
+        if (card.isCharging) {
+            ctx.shadowColor = elem.color;
+            ctx.shadowBlur = 35;
+        }
+
+        drawRoundedRect(x, drawY, cardW, cardH, 10, '#1e293b', trimColor, card.isCharging ? 4 : 2);
+        ctx.shadowBlur = 0;
+
+        if (card.isCharging) {
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            drawRoundedRect(x, drawY, cardW, cardH, 10, ctx.fillStyle);
+        }
+
+        // 卡牌頭部背景（FG 小卡頭部縮小）
+        const hdrH = isFGMode ? 26 : 35;
+        ctx.fillStyle = elem.color;
+        drawRoundedRect(x, drawY, cardW, hdrH, 10, elem.color);
+        ctx.fillRect(x, drawY + hdrH - 10, cardW, 10);
+
+        // 屬性徽章
+        const badgeR = isFGMode ? 9 : 12;
+        const badgeX = x + (isFGMode ? 16 : 24);
+        const badgeY = drawY + (isFGMode ? 13 : 17);
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = `${isFGMode ? 11 : 14}px Segoe UI Emoji`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(elem.icon, badgeX, badgeY + 1);
+
+        // 星星等級
+        let stars = '★'.repeat(card.level);
+        ctx.font = `bold ${isFGMode ? 9 : 12}px sans-serif`;
+        ctx.textAlign = 'left'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(stars, x + (isFGMode ? 30 : 44), badgeY);
+        ctx.fillStyle = '#facc15';
+        ctx.fillText(stars, x + (isFGMode ? 30 : 44), badgeY);
+
+        // 技能名稱（自動縮小字體避免溢出）
+        const maxTextW = cardW - (isFGMode ? 12 : 24);
+        let fontSize = isFGMode ? 12 : 18;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        while (ctx.measureText(card.name).width > maxTextW && fontSize > 7) {
+            fontSize--;
+            ctx.font = `bold ${fontSize}px sans-serif`;
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(card.name, cx, drawY + (isFGMode ? 62 : 72));
+
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+    });
+
+    ctx.restore(); // 結束 clip
+}
+
+function drawAccumulator() {
+    let accumY = 460;
+    drawRoundedRect(390, accumY, 500, 45, 12, 'rgba(30, 41, 59, 0.9)', '#334155', 2);
+    
+    let activeAccums = [];
+    for (let i = 0; i < 6; i++) {
+        // 改為依據顯示用陣列來判斷是否畫出來
+        if (displayAccumulatedMatches[i] > 0) activeAccums.push(i);
+    }
+    
+    if (activeAccums.length === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("當前消除累計將顯示於此...", 640, accumY + 28);
+        return;
+    }
+    
+    let itemW = 80;
+    let startX = 640 - (activeAccums.length * itemW) / 2;
+    
+    activeAccums.forEach((elemId, idx) => {
+        let x = startX + idx * itemW + itemW/2;
+        let elem = ELEMENTS[elemId];
+        ctx.fillStyle = elem.color;
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        // 改為顯示 displayAccumulatedMatches
+        ctx.fillText(`${elem.icon} x${displayAccumulatedMatches[elemId]}`, x, accumY + 30);
+    });
+}
+
+function drawGrid() {
+    drawRoundedRect(GRID_X - 10, GRID_Y - 10, GRID_W + 20, GRID_H + 20, 16, '#0f172a', '#334155', 4);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H); ctx.clip();
+
+    for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+            let gem = board[c] ? board[c][r] : null;
+
+            if (gem && gem.id !== -1) {
+                let currentYOffset = (colOffsets[c] || 0) + gem.yOffset;
+                let x = GRID_X + c * GEM_SIZE;
+                let y = GRID_Y + r * GEM_SIZE + currentYOffset;
+                let elem = gem.id === WILD_ID ? WILD_ELEM : ELEMENTS[gem.id];
+
+                const pad = 4;
+                const maxS = GEM_SIZE - pad * 2;
+                const s = maxS * gem.scale;
+
+                let drawX = x + pad + (maxS - s) / 2;
+                let drawY = y + pad + (maxS - s) / 2;
+
+                if (gem.isMatched) {
+                    ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 15;
+                }
+
+                if (gem.id === WILD_ID) {
+                    // WILD：金色漸層外框 + 旋轉光暈
+                    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
+                    drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1a1400', '#ffd700', 3);
+                    ctx.shadowBlur = 0;
+                    // 彩色 overlay
+                    let grad = ctx.createLinearGradient(drawX, drawY, drawX + s, drawY + s);
+                    grad.addColorStop(0, 'rgba(255,100,100,0.25)');
+                    grad.addColorStop(0.5, 'rgba(100,255,100,0.25)');
+                    grad.addColorStop(1, 'rgba(100,100,255,0.25)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.roundRect(drawX, drawY, s, s, 12 * gem.scale); ctx.fill();
+                } else {
+                    drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1e293b', elem.color, 2);
+                    ctx.shadowBlur = 0;
+                }
+
+                if (gem.id === WILD_ID) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = `bold ${36 * gem.scale}px sans-serif`;
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `${32 * gem.scale}px Segoe UI Emoji`;
+                }
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
+            }
+        }
+    }
+    ctx.restore();
+}
+
+function drawUI() {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 640, 1280, 80);
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 640); ctx.lineTo(1280, 640); ctx.stroke();
+
+    const bottomY = 660;
+
+    drawRoundedRect(40, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
+    ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText("強開 ▲", 90, bottomY + 20);
+
+    // 上拉選單
+    if (forceMenuOpen) {
+        const itemH = 38, gap = 4, mw = 110, mx0 = 35;
+        const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
+        const my0 = bottomY - totalH - 4;
+        drawRoundedRect(mx0 - 5, my0 - 4, mw + 10, totalH + 4, 8, 'rgba(8,14,26,0.96)', '#334155');
+        FORCE_MENU_ITEMS.forEach((item, i) => {
+            const iy = my0 + i * (itemH + gap);
+            drawRoundedRect(mx0, iy, mw, itemH, 6, '#1e293b', item.color, 1.5);
+            ctx.fillStyle = item.color; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(item.label, mx0 + mw / 2, iy + itemH / 2);
+        });
+    }
+
+    drawRoundedRect(160, bottomY, 100, 40, 20, showInfoPanel ? '#0f3460' : '#1e293b', showInfoPanel ? '#38bdf8' : '#334155');
+    ctx.fillStyle = showInfoPanel ? '#38bdf8' : '#cbd5e1';
+    ctx.fillText("INFO", 210, bottomY + 20);
+
+    drawRoundedRect(280, bottomY, 150, 40, 20, '#1e293b', '#334155');
+    ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355, bottomY + 20);
+
+    drawRoundedRect(850, bottomY, 150, 40, 10, '#1e293b', '#334155');
+    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${winScore}`, 925, bottomY + 20);
+
+    drawRoundedRect(1020, bottomY, 220, 40, 10, '#1e293b', '#334155');
+    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${totalScore}`, 1130, bottomY + 20);
+
+    // FG / BG 狀態橫幅
+    if (isFG) {
+        // 顯示在卡牌區右側（6張卡最右到約 x=920，右側文字從 x=940 開始）
+        ctx.save();
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#10b981';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 10;
+        ctx.fillText(`🎰 FG 剩餘`, 940, 545);
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillStyle = '#6ee7b7';
+        ctx.fillText(`${fgSpinsRemaining} 局`, 940, 580);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+    if (isBG) {
+        // BG 倍率面板：緊貼盤面底部，只佔卡牌區上半段
+        const bpX = 390, bpY = 516, bpW = 500, bpH = 108;
+        ctx.fillStyle = 'rgba(15,23,42,0.94)';
+        ctx.fillRect(bpX, bpY, bpW, bpH);
+        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(245,158,11,0.10)', '#f59e0b', 1.5);
+        ctx.textAlign = 'center';
+        // 標題列
+        ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px sans-serif';
+        ctx.fillText(`✨ BONUS GAME　剩餘 ${bgSpinsRemaining} 局`, 640, bpY + 22);
+        // 倍率大字
+        ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 52px sans-serif';
+        ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 22;
+        ctx.fillText(`×${getBGMultiplier()}`, 640, bpY + 85);
+        ctx.shadowBlur = 0;
+    }
+
+    let spinBtnColor = currentState === STATE.IDLE && !isAutoSpinning ? (isMouseHoverSpin ? '#0284c7' : '#38bdf8') : '#475569';
+    drawRoundedRect(490, 650, 140, 50, 25, spinBtnColor);
+    ctx.fillStyle = 'white'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(currentState === STATE.IDLE && !isAutoSpinning ? "SPIN" : "...", 560, 675);
+
+    let autoBtnColor = isAutoSpinning ? (isMouseHoverAuto ? '#dc2626' : '#ef4444') : (isMouseHoverAuto ? '#0284c7' : '#38bdf8');
+    drawRoundedRect(650, 650, 140, 50, 25, autoBtnColor);
+    ctx.fillStyle = 'white'; ctx.font = 'bold 18px sans-serif';
+    if (isAutoSpinning) {
+        ctx.fillText(`STOP (${autoSpinCount})`, 720, 675);
+    } else {
+        ctx.fillText("AUTO SPIN", 720, 675);
+    }
+}
+
+function drawEffects() {
+    particles.forEach(p => {
+        if (p.stage === 1 || p.stage === 1.5) return; // stage 1 由 collect emoji 代替，不畫光球
+
+        let curX = p.startX + (p.tx - p.startX) * p.progress;
+        let curY = p.startY + (p.ty - p.startY) * p.progress;
+
+        ctx.beginPath();
+        ctx.arc(curX, curY, 18, 0, Math.PI*2);
+        ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 20;
+        ctx.fill(); ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(curX - (p.tx - p.startX)*0.05, curY - (p.ty - p.startY)*0.05, 12, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,255,255,0.4)`; ctx.fill();
+    });
+
+    flyingScores.forEach(fs => {
+        ctx.globalAlpha = Math.min(1, fs.life / 20);
+        ctx.textAlign = 'center';
+        if (fs.type === 'collect') {
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText(fs.text, fs.x, fs.y);
+        } else {
+            ctx.fillStyle = fs.color;
+            ctx.font = fs.type === 'kill' ? 'bold 44px sans-serif' : 'bold 32px sans-serif';
+            ctx.strokeStyle = '#000000'; ctx.lineWidth = 5;
+            ctx.strokeText(fs.text, fs.x, fs.y);
+            ctx.fillText(fs.text, fs.x, fs.y);
+        }
+        ctx.globalAlpha = 1.0;
+    });
+
+    scoreTexts.forEach(st => {
+        st.y -= 0.6;
+        ctx.fillStyle = st.color;
+        ctx.globalAlpha = st.life / 120;
+        ctx.font = `bold ${st.fontSize || 56}px sans-serif`;
+        ctx.textAlign = 'center';
+        
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 6;
+        ctx.strokeText(st.text, st.x, st.y);
+        ctx.fillText(st.text, st.x, st.y);
+        ctx.globalAlpha = 1.0;
+    });
+}
+
+function update() {
+    // 轉場動畫更新（淡入30幀 → 停留50幀 → 淡出30幀）
+    if (transitionPhase !== 'idle') {
+        transitionTimer++;
+        if (transitionPhase === 'in') {
+            transitionAlpha = Math.min(1, transitionTimer / 30);
+            if (transitionTimer >= 30) {
+                transitionPhase = 'hold';
+                transitionTimer = 0;
+                // ★ 畫面全黑時執行模式切換，玩家看不到任何變化
+                applyPendingModeChange();
+            }
+        } else if (transitionPhase === 'hold') {
+            transitionAlpha = 1;
+            if (transitionTimer >= 50) { transitionPhase = 'out'; transitionTimer = 0; }
+        } else if (transitionPhase === 'out') {
+            transitionAlpha = Math.max(0, 1 - transitionTimer / 30);
+            if (transitionTimer >= 30) {
+                transitionPhase = 'idle'; transitionAlpha = 0;
+                // NG 轉場結束後繼續連爆（還原盤面有待消除的情況）
+                if (shouldCheckAfterTransition) {
+                    shouldCheckAfterTransition = false;
+                    currentState = STATE.CHECKING;
+                }
+            }
+        }
+    }
+
+    cards.forEach(card => {
+        if (card.isCharging) {
+            card.scale = Math.min(1.15, card.scale + 0.05);
+            card.shake = 8;
+            card.yTarget = -22;
+        } else if (card.activated) {
+            card.scale = Math.max(1, card.scale - 0.05);
+            card.shake = 0;
+            card.yTarget = 0;
+        } else {
+            card.scale = Math.max(1, card.scale - 0.05);
+            card.shake = 0;
+            card.yTarget = 0;
+        }
+        if (card.enterDelay > 0) {
+            card.enterDelay--;
+        } else {
+            card.yOffset += (card.yTarget - card.yOffset) * 0.18;
+            if (Math.abs(card.yOffset - card.yTarget) < 0.5) card.yOffset = card.yTarget;
+        }
+    });
+
+    if (currentState === STATE.SPINNING) {
+        let allDone = true;
+        for (let c = 0; c < COLS; c++) {
+            if (colDelays[c] > 0) {
+                colDelays[c]--;
+                allDone = false; continue;
+            }
+            if (colStates[c] === 1) { 
+                colOffsets[c] += 40; 
+                allDone = false;
+                if (colOffsets[c] > GRID_H + 50) {
+                    for (let r = 0; r < ROWS; r++) {
+                        board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
+                    }
+                    colStates[c] = 2; 
+                    colOffsets[c] = -(GRID_H + 50);
+                }
+            } else if (colStates[c] === 2) {
+                colOffsets[c] += 40; 
+                allDone = false;
+                if (colOffsets[c] >= 0) {
+                    colOffsets[c] = 0; colStates[c] = 0;
+                }
+            }
+        }
+        if (allDone) {
+            if (forceKill) injectGuaranteedMatches();
+            currentState = STATE.CHECKING;
+        }
+
+    } else if (currentState === STATE.CHECKING) {
+        let matchedGroups = findMatches();
+        if (matchedGroups.length > 0) {
+            matchQueue = [...matchedGroups];
+            prepareNextPop();
+        } else {
+            currentState = STATE.IDLE;
+            autoSpinDelay = 60;
+        }
+
+    } else if (currentState === STATE.POPPING) {
+        if (popWaitTimer > 0) {
+            popWaitTimer--;
+            if (popWaitTimer === 0) prepareNextPop();
+            return;
+        }
+
+        // 掃描全盤縮小所有 isMatched 格子
+        let allShrunk = true;
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                let gem = board[c][r];
+                if (gem.isMatched) {
+                    gem.scale -= 0.04;
+                    if (gem.scale > 0) allShrunk = false;
+                    else { gem.id = -1; gem.isMatched = false; }
+                }
+            }
+        }
+
+        if (allShrunk) {
+            if (!hasHitThisSpin) { hasHitThisSpin = true; stats.hits++; }
+
+            currentMatches.forEach((match, mi) => {
+                let { elemId, count } = match;
+                matchHistory.push({ elemId, count });
+
+                let score = getScore(count, elemId);
+                winScore += score; totalScore += score;
+
+                // 分數文字：BG 模式顯示倍率
+                let scoreLabel = isBG
+                    ? `×${getBGMultiplier()} | ${ELEMENTS[elemId].icon}×${count} = ${score}`
+                    : `${ELEMENTS[elemId].icon}×${count} = ${score}`;
+                scoreTexts.push({
+                    x: 640, y: 320 + mi * 50,
+                    text: scoreLabel,
+                    color: isBG ? '#f59e0b' : ELEMENTS[elemId].color, life: 90
+                });
+
+                // 寶石飛向對應卡片（BG 無卡牌跳過；FG 使用6卡版面）
+                if (!isBG) {
+                    let cardIdx = cards.findIndex(c => c.elemId === elemId);
+                    if (cardIdx !== -1) {
+                        const cW = cards.length === 6 ? 85 : 140;
+                        const cGap = cards.length === 6 ? 8 : 20;
+                        const cTotalW = cards.length * cW + (cards.length - 1) * cGap;
+                        let cardCX = (1280 - cTotalW) / 2 + cardIdx * (cW + cGap) + cW / 2;
+                        let startCX = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                        let startCY = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                        flyingScores.push({
+                            type: 'collect', x: startCX, y: startCY,
+                            tx: cardCX, ty: 575,
+                            text: ELEMENTS[elemId].icon, color: ELEMENTS[elemId].color,
+                            life: 40, delay: 0
+                        });
+                    }
+                }
+            });
+
+            // BG：每輪消除後倍率遞增一級
+            if (isBG) bgMultiplierIndex++;
+
+            popWaitTimer = 30;
+        }
+
+    } else if (currentState === STATE.GRAVITY) {
+        let gravityDone = true;
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                if (board[c][r].yOffset < 0) {
+                    board[c][r].yOffset += 9; 
+                    if (board[c][r].yOffset >= 0) board[c][r].yOffset = 0;
+                    else gravityDone = false;
+                }
+            }
+        }
+        if (gravityDone) {
+            // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
+            if (pendingKillEffects.length > 0) {
+                startKillEffect(pendingKillEffects.shift());
+            } else if (pendingFGBG !== null) {
+                // 即將進入 FG/BG：先儲存當前盤面，然後等待轉場完全結束
+                savedBoard = board.map(col => col.map(cell => ({ ...cell })));
+                matchHistory = [];
+                currentState = STATE.IDLE; // 轉場守衛會阻止任何旋轉，直到轉場結束
+            } else {
+                currentState = STATE.CHECKING;
+            }
+        }
+
+    } else if (currentState === STATE.EVALUATING) {
+        // 按元素分組，建立攻擊輪次（同元素有 N 組 → N 輪）
+        const cardW = cards.length === 6 ? 85 : 140;
+        const gap   = cards.length === 6 ? 8  : 20;
+        const totalW = cards.length * cardW + (cards.length - 1) * gap;
+        let elemGroups = {};
+        matchHistory.forEach(m => {
+            if (!elemGroups[m.elemId]) elemGroups[m.elemId] = [];
+            elemGroups[m.elemId].push(m.count);
+        });
+        matchHistory = [];
+
+        // 過濾掉沒有對應卡片或怪物的元素
+        Object.keys(elemGroups).forEach(eid => {
+            let id = parseInt(eid);
+            if (!cards.find(c => c.elemId === id) || !monsters.find(m => m.elemId === id && m.hp > 0))
+                delete elemGroups[eid];
+        });
+
+        let maxRounds = Math.max(0, ...Object.values(elemGroups).map(g => g.length));
+        pendingRounds = [];
+        for (let i = 0; i < maxRounds; i++) {
+            let round = [];
+            Object.entries(elemGroups).forEach(([eid, counts]) => {
+                if (i < counts.length) round.push({ elemId: parseInt(eid), count: counts[i] });
+            });
+            if (round.length > 0) pendingRounds.push(round);
+        }
+
+        if (pendingRounds.length > 0) {
+            fireAttackRound(pendingRounds.shift());
+            currentState = STATE.ATTACKING;
+        } else {
+            applyGravity();
+            currentState = STATE.GRAVITY;
+        }
+
+    } else if (currentState === STATE.ATTACKING) {
+        let attacksDone = true;
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            
+            if (p.stage === 1) {
+                p.progress += 0.04; 
+                if (p.progress >= 1.0) {
+                    p.stage = 1.5; 
+                    p.cardRef.isCharging = true;
+                    p.cardRef.chargeTimer = 35; 
+                }
+                attacksDone = false;
+            } else if (p.stage === 1.5) {
+                p.cardRef.chargeTimer--;
+                if (p.cardRef.chargeTimer <= 0) {
+                    p.stage = 2; 
+                    p.progress = 0;
+                    p.cardRef.isCharging = false;
+                    p.cardRef.activated = true; 
+                    p.startX = p.tx; p.startY = p.ty;
+                    p.tx = p.targetMonster.side === 'left' ? 180 : 1100;
+                    p.ty = 150 + p.targetMonster.yIndex * 150;
+                }
+                attacksDone = false;
+            } else if (p.stage === 2) {
+                if ((p.delay || 0) > 0) {
+                    p.delay--;
+                    if (p.delay === 0) {
+                        // 卡片脈衝提示：本次攻擊即將發射
+                        p.cardRef.scale = 1.25;
+                        p.cardRef.shake = 8;
+                    }
+                    attacksDone = false; continue;
+                }
+                p.progress += 0.025;
+                if (p.progress >= 1.0) {
+                    // 強殺：命中時直接歸零
+                    if (forceKill) { p.targetMonster.hp = p.damage; forceKill = false; }
+                    p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
+                    p.targetMonster.shake = 15;
+
+                    if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
+                        p.targetMonster.isDead = true;
+
+                        let mx = p.targetMonster.side === 'left' ? 180 : 1100;
+                        let my = 100 + p.targetMonster.yIndex * 150;
+                        // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
+                        if (!p.targetMonster.jackpot) {
+                            let effectType = forcedEffectType > 0 ? forcedEffectType : Math.floor(Math.random() * 6) + 1;
+                            forcedEffectType = 0;
+                            pendingKillEffects.push({ type: effectType, fromX: mx, fromY: my, monsterMaxHp: p.targetMonster.maxHp });
+                        }
+
+                        if (p.targetMonster.jackpot > 0) {
+                            winScore += p.targetMonster.jackpot;
+                            totalScore += p.targetMonster.jackpot;
+                            scoreTexts.push({
+                                x: 640, y: 360,
+                                text: `🏆 JACKPOT! +${p.targetMonster.jackpot}`,
+                                color: '#fbbf24', life: 180
+                            });
+                        } else {
+                            let reward = p.targetMonster.reward || p.targetMonster.maxHp * 100;
+                            winScore += reward;
+                            totalScore += reward;
+                            flyingScores.push({
+                                type: 'kill', x: mx, y: my,
+                                tx: 925, ty: 660,
+                                text: `KILL! +${reward}`,
+                                color: '#ef4444', life: 100, delay: 20
+                            });
+                        }
+                    }
+                    particles.splice(i, 1);
+                }
+            } else {
+                attacksDone = false;
+            }
+        }
+        if (attacksDone && particles.length === 0) {
+            if (pendingRounds.length > 0) {
+                fireAttackRound(pendingRounds.shift());
+                // 留在 ATTACKING 等下一輪完成
+            } else {
+                // FG/BG 效果排到最後，確保一般效果先觸發
+                pendingKillEffects.sort((a, b) => (a.type >= 5 ? 1 : 0) - (b.type >= 5 ? 1 : 0));
+                // 先補盤，GRAVITY 完成後再判斷是否觸發 kill effect
+                applyGravity();
+                currentState = STATE.GRAVITY;
+            }
+        }
+    } else if (currentState === STATE.KILL_EFFECT) {
+        killEffectTimer++;
+        if (killEffectPhase === 'flying') {
+            killEffectProgress = Math.min(1, killEffectTimer / 40);
+            if (killEffectTimer >= 40) {
+                killEffectPhase = 'showing';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'showing') {
+            if (killEffectTimer >= 50) {
+                // 套用效果
+                applyKillEffect(killEffectCurrent.type, killEffectCurrent.monsterMaxHp);
+                applyGravity();
+                killEffectPhase = 'applied';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'applied') {
+            if (killEffectTimer >= 40) {
+                killEffectPhase = 'idle';
+                killEffectCurrent = null;
+                // 補入新怪獸替換已死亡的小怪（不顯示逃跑文字）
+                [1, 2, 4, 5].forEach(idx => {
+                    if (monsters[idx].isDead) respawnMonster(idx, false);
+                });
+                // 每個 kill effect 播完後先補盤，由 GRAVITY 完成時統一判斷下一個 effect
+                applyGravity();
+                currentState = STATE.GRAVITY;
+            }
+        }
+    }
+
+    for (let i = flyingScores.length - 1; i >= 0; i--) {
+        let fs = flyingScores[i];
+        if (fs.delay > 0) {
+            fs.delay--;
+            if (fs.type === 'kill') fs.y -= 0.5; 
+        } else {
+            fs.x += (fs.tx - fs.x) * 0.15; 
+            fs.y += (fs.ty - fs.y) * 0.15;
+        }
+        fs.life--;
+        if (fs.life <= 0) {
+            flyingScores.splice(i, 1);
+        }
+    }
+
+    for (let i = scoreTexts.length - 1; i >= 0; i--) {
+        scoreTexts[i].life--;
+        if (scoreTexts[i].life <= 0) scoreTexts.splice(i, 1);
+    }
+
+    if (currentState === STATE.IDLE) {
+        // 轉場進行中或有待處理的模式切換時，一律不啟動旋轉
+        if (transitionPhase !== 'idle' || pendingFGBG !== null) return;
+
+        if (isFG && fgSpinsRemaining > 0) {
+            if (autoSpinDelay > 0) { autoSpinDelay--; }
+            else { startSpin(); fgSpinsRemaining--; }
+        } else if (isFG && fgSpinsRemaining <= 0) {
+            // FG 結束：觸發轉場回 NG（全黑時還原盤面繼續連爆）
+            pendingFGBG = 'NG';
+            startModeTransition('🎮 NORMAL GAME', '回到一般模式', '#0c1a2e', '#38bdf8');
+        } else if (isBG && bgSpinsRemaining > 0) {
+            if (autoSpinDelay > 0) { autoSpinDelay--; }
+            else { startSpin(); bgSpinsRemaining--; }
+        } else if (isBG && bgSpinsRemaining <= 0) {
+            // BG 結束：觸發返回 NG 轉場（全黑時還原卡牌）
+            pendingFGBG = 'NG';
+            startModeTransition('🎮 NORMAL GAME', '回到一般模式', '#0c1a2e', '#38bdf8');
+        } else if (isAutoSpinning) {
+            if (autoSpinDelay > 0) { autoSpinDelay--; }
+            else if (autoSpinCount > 0) { startSpin(); autoSpinCount--; }
+            else { isAutoSpinning = false; }
+        }
+    }
+}
+
+function gameLoop() {
+    update();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!isBG) drawMonsters(); // BG 模式不顯示怪獸
+    drawCards();
+    drawGrid();
+    drawUI();
+    drawStatsPanel();
+    drawEffects();
+    drawKillEffect();
+    drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
+    requestAnimationFrame(gameLoop);
+}
+
+// === 輸入控制 (支援滑鼠與觸控) ===
+function handleInput(clientX, clientY, isClick) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (clientX - rect.left) * (canvas.width / rect.width);
+    const my = (clientY - rect.top) * (canvas.height / rect.height);
+    
+    if (mx >= 490 && mx <= 630 && my >= 650 && my <= 700) {
+        isMouseHoverSpin = true;
+    } else {
+        isMouseHoverSpin = false;
+    }
+
+    if (mx >= 650 && mx <= 790 && my >= 650 && my <= 700) {
+        isMouseHoverAuto = true;
+    } else {
+        isMouseHoverAuto = false;
+    }
+
+    if (!isClick) {
+        if ((isMouseHoverSpin && currentState === STATE.IDLE && !isAutoSpinning) || isMouseHoverAuto) {
+            canvas.style.cursor = 'pointer';
+        } else {
+            canvas.style.cursor = 'default';
+        }
+    } else {
+        if (mx >= 40 && mx <= 140 && my >= 660 && my <= 700) {
+            forceMenuOpen = !forceMenuOpen;
+        } else if (forceMenuOpen) {
+            // 點選選單項目
+            const itemH = 38, gap = 4, mw = 110, mx0 = 35;
+            const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
+            const my0 = 660 - totalH - 8;
+            if (mx >= mx0 && mx <= mx0 + mw) {
+                FORCE_MENU_ITEMS.forEach((item, i) => {
+                    const iy = my0 + i * (itemH + gap);
+                    if (my >= iy && my <= iy + itemH) {
+                        forceMenuOpen = false;
+                        // 擊殺效果（含 FG/BG）：強殺 + 指定效果類型
+                        forceKill = true;
+                        forcedEffectType = item.type;
+                        if (currentState === STATE.IDLE) startSpin();
+                    }
+                });
+            }
+        }
+        if (mx >= 160 && mx <= 260 && my >= 660 && my <= 700) {
+            showInfoPanel = !showInfoPanel;
+            infoPanel.classList.toggle('visible', showInfoPanel);
+        }
+        if (isMouseHoverSpin && currentState === STATE.IDLE && !isAutoSpinning) {
+            startSpin();
+        }
+        if (isMouseHoverAuto) {
+            if (isAutoSpinning) {
+                isAutoSpinning = false;
+                autoSpinCount = 0;
+            } else {
+                isAutoSpinning = true;
+                autoSpinCount = 100; 
+                if (currentState === STATE.IDLE) {
+                    startSpin();
+                    autoSpinCount--;
+                }
+            }
+        }
+    }
+}
+
+canvas.addEventListener('mousemove', (e) => handleInput(e.clientX, e.clientY, false));
+canvas.addEventListener('click', (e) => handleInput(e.clientX, e.clientY, true));
+// 新增：手機端觸控支援
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault(); // 防止雙擊放大等預設行為
+    const touch = e.touches[0];
+    handleInput(touch.clientX, touch.clientY, true);
+}, { passive: false });
+
+// === 啟動遊戲 ===
+initMonsters();
+board = generateRandomBoard(true);
+generateCards();
+requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>
