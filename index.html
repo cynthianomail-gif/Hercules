@@ -198,7 +198,7 @@
                 <h3>▌ 基本規則</h3>
                 <p>• 盤面 <b>7 × 5</b>，共 6 種元素寶石</p>
                 <p>• 直線或橫線 <b>3 個以上</b>相同元素即可消除</p>
-                <p>• L 形視為兩組獨立直線，各自計算</p>
+                <p>• L / T 形合計總顆數，視為一組消除</p>
                 <p>• 消除後觸發對應屬性卡片攻擊，補入新寶石後繼續判定（連爆）</p>
                 <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，不重複屬性</p>
                 <p>• 有消除該屬性 → 觸發卡片；消除 N 組 → 攻擊 <b>N 次</b></p>
@@ -225,12 +225,14 @@
             <div>
                 <h3>▌ 消除傷害對照（格）</h3>
                 <table>
-                    <tr><th>消除顆數</th><th>Lv.1 ×1</th><th>Lv.2 ×1.5</th><th>Lv.3 ×2</th><th>Lv.4 ×3</th><th>Lv.5 ×4</th></tr>
-                    <tr><td>3 顆</td><td>1</td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
-                    <tr><td>4 顆</td><td>2</td><td>3</td><td>4</td><td>6</td><td>8</td></tr>
-                    <tr><td>5 顆</td><td>3</td><td>4</td><td>6</td><td>9</td><td>12</td></tr>
-                    <tr><td>6 顆</td><td>4</td><td>6</td><td>8</td><td>12</td><td>16</td></tr>
-                    <tr><td>7 顆+</td><td>5</td><td>7</td><td>10</td><td>15</td><td>20</td></tr>
+                    <tr><th>消除顆數</th><th>Lv.1 ×1</th><th>Lv.2 ×2</th><th>Lv.3 ×3</th><th>Lv.4 ×4</th><th>Lv.5 ×5</th></tr>
+                    <tr><td>3 顆</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+                    <tr><td>4 顆</td><td>2</td><td>4</td><td>6</td><td>8</td><td>10</td></tr>
+                    <tr><td>5 顆</td><td>3</td><td>6</td><td>9</td><td>12</td><td>15</td></tr>
+                    <tr><td>6~7 顆</td><td>4</td><td>8</td><td>12</td><td>16</td><td>20</td></tr>
+                    <tr><td>8~9 顆</td><td>5</td><td>10</td><td>15</td><td>20</td><td>25</td></tr>
+                    <tr><td>10~11 顆</td><td>6</td><td>12</td><td>18</td><td>24</td><td>30</td></tr>
+                    <tr><td>12+ 顆</td><td>7</td><td>14</td><td>21</td><td>28</td><td>35</td></tr>
                 </table>
 
                 <h3>▌ 卡片牌池（30 張）</h3>
@@ -415,20 +417,20 @@ function getBGMultiplier() {
 
 function getScore(count, elemId = 3) {
     if (count < 3) return 0;
-    // 基礎分（火/冰/自然）
-    const base = { 3: 10, 4: 30, 5: 80, 6: 200, 7: 500, 8: 1200, 9: 3000, 10: 8000 };
-    let b = base[count] ?? (() => { let v = 8000; for (let i = 11; i <= count; i++) v = Math.floor(v * 2.5); return v; })();
-    // 屬性倍率：光暗 ×2，風 ×1.5，火冰自然 ×1（BG 模式下屬性倍率無效，只計BG倍率）
-    const elemMult = isBG ? 1 : ((elemId === 1 || elemId === 2) ? 2 : (elemId === 0) ? 1.5 : 1);
-    return Math.floor(b * elemMult * getBGMultiplier());
+    const isBossElem = (elemId === 1 || elemId === 2); // 光/暗
+    // 押注額 100，乘率直接對應得分
+    const bossScores  = { 3: 30,  4: 50,  5: 80,  6: 100, 8: 300,  10: 500,  12: 1000 };
+    const otherScores = { 3: 10,  4: 30,  5: 50,  6: 80,  8: 100,  10: 300,  12: 500  };
+    const table = isBossElem ? bossScores : otherScores;
+    let key = count >= 12 ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
+    return Math.floor(table[key] * getBGMultiplier());
 }
 
-// 傷害計算：3消=1格，每多1顆+1，6顆以上加速；再乘以卡片等級倍率
+// 傷害計算：區間 base × 卡片等級（Lv1×1 ~ Lv5×5）
 function getCardDamage(gemCount, cardLevel) {
-    const baseMap = { 3: 1, 4: 2, 5: 3, 6: 4, 7: 5 };
-    let base = baseMap[Math.min(gemCount, 7)] || 5;
-    const levelMult = { 1: 1, 2: 1.5, 3: 2, 4: 3, 5: 4 };
-    return Math.max(1, Math.floor(base * (levelMult[cardLevel] || 1)));
+    let base = gemCount >= 12 ? 7 : gemCount >= 10 ? 6 : gemCount >= 8 ? 5
+             : gemCount >= 6  ? 4 : gemCount === 5  ? 3 : gemCount === 4 ? 2 : 1;
+    return base * (cardLevel || 1);
 }
 
 // 遊戲狀態機
@@ -454,6 +456,7 @@ const FORCE_MENU_ITEMS = [
     { label: '清除圖示', type: 4, color: '#f87171' },
     { label: 'FG',       type: 5, color: '#10b981' },
     { label: 'BG',       type: 6, color: '#f59e0b' },
+    { label: '追擊',     type: 7, color: '#f97316' },
 ];
 
 let currentState = STATE.IDLE;
@@ -482,8 +485,11 @@ let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
 let pendingRounds = []; // 待發射的攻擊輪次
-let pendingKillEffects = []; // 怪獸死亡後待套用的盤面效果
+let pendingKillEffects = [];  // 怪獸死亡後待套用的盤面效果
+let deferredKillEffects = []; // 暫存：等所有攻擊（含追擊）結束後才轉入
 let forceKill = false;
+let forceOverflow = false;  // 強制觸發追擊
+let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
 let forceMenuOpen = false;
 let forcedEffectType = 0; // 0=隨機, 1-6=擊殺後指定觸發的效果
 let killEffectCurrent = null; // 當前播放中的效果
@@ -519,10 +525,10 @@ let transitionAccentColor = '#ffffff';
 function initMonsters() {
     // 宙斯固定光屬性(1)，赫拉固定暗屬性(2)
     monsters = [
-        { elemId: 1, side: 'left',  yIndex: 0, hp: 20, maxHp: 20, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
+        { elemId: 1, side: 'left',  yIndex: 0, hp: 35, maxHp: 35, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
         { elemId: 0, side: 'left',  yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 3, side: 'left',  yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 2, side: 'right', yIndex: 0, hp: 20, maxHp: 20, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
+        { elemId: 2, side: 'right', yIndex: 0, hp: 35, maxHp: 35, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
         { elemId: 4, side: 'right', yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 5, side: 'right', yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false }
     ];
@@ -553,14 +559,6 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     let newElem;
     if (fixedElem >= 0) {
         newElem = fixedElem;
-    } else if (isFG) {
-        // FG 模式：從 6 種屬性中排除其他存活小怪已用屬性，確保不重複
-        const smallIdxs = [1, 2, 4, 5];
-        const usedElems = new Set(
-            smallIdxs.filter(i => i !== idx && !monsters[i].isDead).map(i => monsters[i].elemId)
-        );
-        const available = [0, 1, 2, 3, 4, 5].filter(e => !usedElems.has(e));
-        newElem = available[Math.floor(Math.random() * available.length)];
     } else {
         newElem = getMonsterElemPool()[Math.floor(Math.random() * getMonsterElemPool().length)];
     }
@@ -626,9 +624,20 @@ function generateCards() {
 }
 
 function generateCardsForFG() {
-    // FG 強化：6種屬性各一張，隨機等級
+    // FG：3張卡，從存活怪獸的屬性中抽取
+    let aliveElems = monsters
+        .filter(m => m.maxHp > 0 && !m.isDead)
+        .map(m => m.elemId);
+    aliveElems.sort(() => Math.random() - 0.5);
+    // 不足3種時補上其他屬性
+    let allElems = [0, 1, 2, 3, 4, 5];
+    let extra = allElems.filter(e => !aliveElems.includes(e));
+    extra.sort(() => Math.random() - 0.5);
+    let selectedElems = [...new Set(aliveElems)].slice(0, 3);
+    while (selectedElems.length < 3 && extra.length > 0) selectedElems.push(extra.shift());
+
     cards = [];
-    [0, 1, 2, 3, 4, 5].forEach((elemId, i) => {
+    selectedElems.forEach((elemId, i) => {
         let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
         let def = defs[Math.floor(Math.random() * defs.length)];
         let targetCount = 4;
@@ -639,7 +648,7 @@ function generateCardsForFG() {
         cards.push({
             elemId: def.elemId, level: def.level, name: def.name,
             targetCount, activated: false, isCharging: false, chargeTimer: 0,
-            scale: 1, shake: 0, yOffset: 130, enterDelay: i * 8, yTarget: 0
+            scale: 1, shake: 0, yOffset: 130, enterDelay: i * 10, yTarget: 0
         });
     });
 }
@@ -760,19 +769,45 @@ function prepareNextPop() {
     }
     matchQueue.unshift(...leftovers);
 
-    // 標記所有批次格子（共用格子只標記一次）
+    // 標記所有批次格子（共用格子只標記一次），L/T 形合計顆數合併為一組
     let marked = new Set();
+    let mergedCells = [];
     batch.forEach(m => m.cells.forEach(cell => {
         let key = `${cell.c},${cell.r}`;
         if (!marked.has(key)) {
             marked.add(key);
             board[cell.c][cell.r].isMatched = true;
+            mergedCells.push(cell);
         }
     }));
 
-    currentMatches = batch;
+    currentMatches = [{ elemId: batch[0].elemId, cells: mergedCells, count: mergedCells.length }];
     currentState = STATE.POPPING;
     popWaitTimer = 0;
+}
+
+// === 溢出傷害：找相同屬性的目標，光球抵達才扣血 ===
+function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false) {
+    if (overflow <= 0) return;
+    // 強制追擊時忽略屬性限制，否則只追擊相同屬性
+    let targets = monsters
+        .filter(m => m.side === side && !m.isDead && m.maxHp > 0 && m.hp > 0 && (ignoreElem || m.elemId === elemId))
+        .sort((a, b) => a.yIndex - b.yIndex);
+    if (targets.length === 0) return;
+    let target = targets[0];
+    let tx = target.side === 'left' ? 180 : 1100;
+    let ty = 100 + target.yIndex * 150 + 60;
+
+    // 顯示固定大字，停留後光球飛出
+    scoreTexts.push({ x: fromX, y: fromY, text: `追擊：${target.name}`, color: '#f97316', life: 110, fontSize: 32, fixed: true });
+    // 傷害資訊存入粒子，抵達時才套用
+    particles.push({
+        stage: 2, isOverflow: true,
+        startX: fromX, startY: fromY, tx, ty,
+        progress: 0, color: '#f97316', delay: 90,
+        overflowDamage: overflow, overflowElemId: elemId,
+        targetMonster: target
+    });
 }
 
 // === 怪獸擊殺盤面效果 ===
@@ -834,7 +869,7 @@ function applyKillEffect(effectType, monsterMaxHp) {
         // FG：連爆結束後才正式進入，避免當前連爆在 FG 模式下運行
         fgSpinsRemaining = 10;
         pendingFGBG = 'FG';
-        startModeTransition('🎰 FREE GAME', '6張強化卡牌 × 10局', '#064e3b', '#10b981');
+        startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
 
     } else if (effectType === 6) {
         // BG：連爆結束後才正式進入
@@ -850,7 +885,9 @@ function applyPendingModeChange() {
     if (pendingFGBG === 'FG') {
         // savedBoard 已在 GRAVITY done 儲存，此處只需切換模式
         isFG = true;
-        generateCardsForFG();   // 全黑時生成6張卡，淡出時已就位
+        // FG 進場時重置全部怪獸血量
+        monsters.forEach(m => { if (m.maxHp > 0) { m.hp = m.maxHp; m.isDead = false; m.shake = 0; } });
+        generateCardsForFG();   // 全黑時生成3張卡，淡出時已就位
 
     } else if (pendingFGBG === 'BG') {
         // savedBoard 已在 GRAVITY done 儲存，此處只需切換模式
@@ -1020,6 +1057,7 @@ function startSpin() {
     matchHistory = [];
     pendingRounds = [];
     pendingKillEffects = [];
+    deferredKillEffects = [];
     pendingFGBG = null;
     stats.spins++;
     hasHitThisSpin = false;
@@ -1028,15 +1066,15 @@ function startSpin() {
         // BG 模式：無卡牌與怪獸機制，倍率跨局保留
         cards = [];
     } else if (isFG) {
-        // FG 模式：血量跨局保留，每局重新抽牌並隨機分配屬性
-        generateCardsForFG();
+        // FG 模式：血量跨局保留，卡牌與小怪屬性對應（同 NG 邏輯）
+        generateCards();
+        let monsterElemPool = cards.map(c => c.elemId);
+        if (monsterElemPool.length === 0) monsterElemPool = [0, 1, 2, 3, 4, 5];
+        let assigned = [];
+        for (let i = 0; i < 4; i++) assigned.push(monsterElemPool[i % monsterElemPool.length]);
+        assigned.sort(() => Math.random() - 0.5);
         const smallIdxs = [1, 2, 4, 5];
-        let fgSmallPool = [0, 1, 2, 3, 4, 5];
-        fgSmallPool.sort(() => Math.random() - 0.5);
-        smallIdxs.forEach((idx, i) => {
-            let m = monsters[idx];
-            m.elemId = fgSmallPool[i];
-        });
+        smallIdxs.forEach((idx, i) => { monsters[idx].elemId = assigned[i]; });
     } else {
         // 一般模式
         [0, 3].forEach(idx => { let m = monsters[idx]; m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
@@ -1521,9 +1559,9 @@ function drawEffects() {
     });
 
     scoreTexts.forEach(st => {
-        st.y -= 0.6;
+        if (!st.fixed) st.y -= 0.6;
         ctx.fillStyle = st.color;
-        ctx.globalAlpha = st.life / 120;
+        ctx.globalAlpha = Math.min(1, st.life / 60);
         ctx.font = `bold ${st.fontSize || 56}px sans-serif`;
         ctx.textAlign = 'center';
         
@@ -1780,7 +1818,7 @@ function update() {
             } else if (p.stage === 2) {
                 if ((p.delay || 0) > 0) {
                     p.delay--;
-                    if (p.delay === 0) {
+                    if (p.delay === 0 && !p.isOverflow) {
                         // 卡片脈衝提示：本次攻擊即將發射
                         p.cardRef.scale = 1.25;
                         p.cardRef.shake = 8;
@@ -1789,21 +1827,58 @@ function update() {
                 }
                 p.progress += 0.025;
                 if (p.progress >= 1.0) {
+                    if (p.isOverflow) {
+                        // 光球抵達：此時才套溢出傷害
+                        let t = p.targetMonster;
+                        let prevHp = t.hp;
+                        t.hp = Math.max(0, t.hp - p.overflowDamage);
+                        t.shake = 15;
+                        if (t.hp === 0 && !t.isDead) {
+                            t.isDead = true;
+                            let mx = t.side === 'left' ? 180 : 1100;
+                            let my = 100 + t.yIndex * 150;
+                            if (!t.jackpot) {
+                                const hasPendingFGBG = deferredKillEffects.some(e => e.type === 5 || e.type === 6) || pendingFGBG !== null;
+                                const maxType = (isFG || hasPendingFGBG) ? 4 : 6;
+                                deferredKillEffects.push({ type: Math.floor(Math.random() * maxType) + 1, fromX: mx, fromY: my, monsterMaxHp: t.maxHp });
+                            }
+                            if (t.jackpot > 0) {
+                                winScore += t.jackpot; totalScore += t.jackpot;
+                                scoreTexts.push({ x: 640, y: 360, text: `🏆 JACKPOT! +${t.jackpot}`, color: '#fbbf24', life: 180 });
+                            } else {
+                                let reward = t.reward || t.maxHp * 100;
+                                winScore += reward; totalScore += reward;
+                                flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925, ty: 660, text: `KILL! +${reward}`, color: '#ef4444', life: 100, delay: 20 });
+                            }
+                            applyOverflow(t.side, p.overflowDamage - prevHp, p.tx, p.ty, p.overflowElemId);
+                        }
+                        particles.splice(i, 1); continue;
+                    }
                     // 強殺：命中時直接歸零
                     if (forceKill) { p.targetMonster.hp = p.damage; forceKill = false; }
+                    let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = 15;
 
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
                         p.targetMonster.isDead = true;
+                        let omx = p.targetMonster.side === 'left' ? 180 : 1100;
+                        let omy = 100 + p.targetMonster.yIndex * 150 + 60;
+                        let overflowDmg = p.damage - prevHp;
+                        let ignoreElem = false;
+                        if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); ignoreElem = true; forceOverflow = false; }
+                        applyOverflow(p.targetMonster.side, overflowDmg, omx, omy, p.targetMonster.elemId, ignoreElem);
 
                         let mx = p.targetMonster.side === 'left' ? 180 : 1100;
                         let my = 100 + p.targetMonster.yIndex * 150;
                         // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
                         if (!p.targetMonster.jackpot) {
-                            let effectType = forcedEffectType > 0 ? forcedEffectType : Math.floor(Math.random() * 6) + 1;
+                            const hasPendingFGBG = pendingKillEffects.some(e => e.type === 5 || e.type === 6) || pendingFGBG !== null;
+                            const maxType = (isFG || hasPendingFGBG || forceNoFGBG) ? 4 : 6;
+                            forceNoFGBG = false;
+                            let effectType = forcedEffectType > 0 ? forcedEffectType : Math.floor(Math.random() * maxType) + 1;
                             forcedEffectType = 0;
-                            pendingKillEffects.push({ type: effectType, fromX: mx, fromY: my, monsterMaxHp: p.targetMonster.maxHp });
+                            deferredKillEffects.push({ type: effectType, fromX: mx, fromY: my, monsterMaxHp: p.targetMonster.maxHp });
                         }
 
                         if (p.targetMonster.jackpot > 0) {
@@ -1837,9 +1912,11 @@ function update() {
                 fireAttackRound(pendingRounds.shift());
                 // 留在 ATTACKING 等下一輪完成
             } else {
+                // 所有攻擊（含追擊）結束，統一把暫存效果轉入正式隊列
+                pendingKillEffects.push(...deferredKillEffects);
+                deferredKillEffects = [];
                 // FG/BG 效果排到最後，確保一般效果先觸發
                 pendingKillEffects.sort((a, b) => (a.type >= 5 ? 1 : 0) - (b.type >= 5 ? 1 : 0));
-                // 先補盤，GRAVITY 完成後再判斷是否觸發 kill effect
                 applyGravity();
                 currentState = STATE.GRAVITY;
             }
@@ -1972,9 +2049,15 @@ function handleInput(clientX, clientY, isClick) {
                     const iy = my0 + i * (itemH + gap);
                     if (my >= iy && my <= iy + itemH) {
                         forceMenuOpen = false;
-                        // 擊殺效果（含 FG/BG）：強殺 + 指定效果類型
+                        // 擊殺效果（含 FG/BG/追擊）：強殺 + 指定效果
                         forceKill = true;
-                        forcedEffectType = item.type;
+                        if (item.type === 7) {
+                            forceOverflow = true;
+                            forceNoFGBG = true;
+                            forcedEffectType = 0;
+                        } else {
+                            forcedEffectType = item.type;
+                        }
                         if (currentState === STATE.IDLE) startSpin();
                     }
                 });
