@@ -445,18 +445,19 @@ const STATE = {
     KILL_EFFECT: 7
 };
 
-const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 送出寶石！', '🔄 轉換顏色！', '💥 清除雜色！', '🎰 FREE GAME！', '✨ BONUS GAME！'];
-const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨'];
+const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 送出寶石！', '🔄 轉換圖示(強)！', '💥 清除雜色！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！'];
+const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀'];
 const BG_MULTIPLIERS = [1, 2, 4, 8, 16, 36]; // index 6+ 繼續 ×2
 
 const FORCE_MENU_ITEMS = [
-    { label: '生成WILD', type: 1, color: '#ffd700' },
-    { label: '生成圖示', type: 2, color: '#38bdf8' },
-    { label: '轉換圖示', type: 3, color: '#a78bfa' },
-    { label: '清除圖示', type: 4, color: '#f87171' },
-    { label: 'FG',       type: 5, color: '#10b981' },
-    { label: 'BG',       type: 6, color: '#f59e0b' },
-    { label: '追擊',     type: 7, color: '#f97316' },
+    { label: '生成WILD',     type: 1, color: '#ffd700' },
+    { label: '生成圖示',     type: 2, color: '#38bdf8' },
+    { label: '轉換圖示(強)', type: 3, color: '#a78bfa' },
+    { label: '轉換圖示(弱)', type: 8, color: '#c084fc' },
+    { label: '清除圖示',     type: 4, color: '#f87171' },
+    { label: 'FG',           type: 5, color: '#10b981' },
+    { label: 'BG',           type: 6, color: '#f59e0b' },
+    { label: '追擊',         type: 7, color: '#f97316' },
 ];
 
 let currentState = STATE.IDLE;
@@ -858,6 +859,17 @@ function applyKillEffect(effectType, monsterMaxHp) {
                 if (nonCardElems.includes(board[c][r].id))
                     board[c][r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
 
+    } else if (effectType === 8) {
+        // 轉換圖示(弱)：使用 showing 階段預先決定的 from/to
+        let fromId = killEffectCurrent ? killEffectCurrent.fromElemId : null;
+        let toId   = killEffectCurrent ? killEffectCurrent.toElemId   : null;
+        if (fromId !== null && toId !== undefined) {
+            for (let c = 0; c < COLS; c++)
+                for (let r = 0; r < ROWS; r++)
+                    if (board[c][r].id === fromId)
+                        board[c][r].id = toId;
+        }
+
     } else if (effectType === 4) {
         // 消除所有非卡牌色的寶石
         for (let c = 0; c < COLS; c++)
@@ -999,7 +1011,17 @@ function drawKillEffect() {
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 42px sans-serif';
         ctx.fillText(EFFECT_NAMES[killEffectCurrent.type], cx, cy + 20);
+        // 副標題
         ctx.shadowBlur = 0;
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillStyle = '#e2e8f0';
+        if (killEffectCurrent.type === 3) {
+            ctx.fillText('全非屬性圖示轉換', cx, cy + 68);
+        } else if (killEffectCurrent.type === 8 && killEffectCurrent.fromElemId !== null) {
+            let fromIcon = ELEMENTS[killEffectCurrent.fromElemId].icon;
+            let toIcon   = ELEMENTS[killEffectCurrent.toElemId].icon;
+            ctx.fillText(`${fromIcon}  →  ${toIcon}`, cx, cy + 68);
+        }
         ctx.globalAlpha = 1;
 
     } else if (killEffectPhase === 'applied') {
@@ -1926,6 +1948,20 @@ function update() {
         if (killEffectPhase === 'flying') {
             killEffectProgress = Math.min(1, killEffectTimer / 40);
             if (killEffectTimer >= 40) {
+                // 弱轉換：提前決定 from/to，顯示和套用都用同一組
+                if (killEffectCurrent.type === 8) {
+                    let cElems = [...getCardElems()];
+                    let ncElems = getNonCardElems();
+                    let presentNonCard = ncElems.filter(id =>
+                        board.some(col => col.some(cell => cell.id === id))
+                    );
+                    if (presentNonCard.length > 0 && cElems.length > 0) {
+                        killEffectCurrent.fromElemId = presentNonCard[Math.floor(Math.random() * presentNonCard.length)];
+                        killEffectCurrent.toElemId   = cElems[Math.floor(Math.random() * cElems.length)];
+                    } else {
+                        killEffectCurrent.fromElemId = null;
+                    }
+                }
                 killEffectPhase = 'showing';
                 killEffectTimer = 0;
             }
