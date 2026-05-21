@@ -200,15 +200,18 @@
                 <p>• 直線或橫線 <b>3 個以上</b>相同元素即可消除</p>
                 <p>• L / T 形合計總顆數，視為一組消除</p>
                 <p>• 消除後觸發對應屬性卡片攻擊，補入新寶石後繼續判定（連爆）</p>
-                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，不重複屬性</p>
+                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，不重複屬性 ※ 「光」與「暗」不會同時出現</p>
                 <p>• 有消除該屬性 → 觸發卡片；消除 N 組 → 攻擊 <b>N 次</b></p>
 
                 <h3>▌ 怪物血量</h3>
                 <table>
                     <tr><th>怪物</th><th>屬性</th><th>血量</th><th>獎池</th></tr>
-                    <tr><td>⚡ 宙斯</td><td>⭐ 光</td><td>20 格</td><td>JP</td></tr>
-                    <tr><td>👑 赫拉</td><td>🌙 暗</td><td>20 格</td><td>JP</td></tr>
-                    <tr><td>小怪 ×4</td><td>隨機</td><td>5 ~ 10 格</td><td>固定獎勵</td></tr>
+                    <tr><td>⚡ 宙斯（左上）</td><td>⭐ 光</td><td>50 格</td><td>JP</td></tr>
+                    <tr><td>👑 赫拉（右上）</td><td>🌙 暗</td><td>50 格</td><td>JP</td></tr>
+                    <tr><td>Lv.4 小怪（左二）</td><td>隨機</td><td>30 格</td><td>固定獎勵</td></tr>
+                    <tr><td>Lv.3 小怪（右二）</td><td>隨機</td><td>20 格</td><td>固定獎勵</td></tr>
+                    <tr><td>Lv.2 小怪（左下）</td><td>隨機</td><td>15 格</td><td>固定獎勵</td></tr>
+                    <tr><td>Lv.1 小怪（右下）</td><td>隨機</td><td>10 格</td><td>固定獎勵</td></tr>
                 </table>
 
                 <h3>▌ 卡片等級倍率</h3>
@@ -522,25 +525,28 @@ let transitionSubText = '';
 let transitionBgColor = '#000000';
 let transitionAccentColor = '#ffffff';
 
+// 各位置固定血量：左第二=Lv4(30)、左最下=Lv2(15)、右第二=Lv3(20)、右最下=Lv1(10)
+const MONSTER_FIXED_HP = { 1: 30, 2: 15, 4: 20, 5: 10 };
+
 // === 初始化 ===
 function initMonsters() {
     // 宙斯固定光屬性(1)，赫拉固定暗屬性(2)
     monsters = [
-        { elemId: 1, side: 'left',  yIndex: 0, hp: 35, maxHp: 35, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
-        { elemId: 0, side: 'left',  yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 3, side: 'left',  yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 2, side: 'right', yIndex: 0, hp: 35, maxHp: 35, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
-        { elemId: 4, side: 'right', yIndex: 1, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 5, side: 'right', yIndex: 2, hp: 0,  maxHp: 0,  shake: 0, name: '',     jackpot: 0,     isDead: false }
+        { elemId: 1, side: 'left',  yIndex: 0, hp: 50, maxHp: 50, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
+        { elemId: 0, side: 'left',  yIndex: 1, hp: 30, maxHp: 30, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 3, side: 'left',  yIndex: 2, hp: 15, maxHp: 15, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 2, side: 'right', yIndex: 0, hp: 50, maxHp: 50, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
+        { elemId: 4, side: 'right', yIndex: 1, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 5, side: 'right', yIndex: 2, hp: 10, maxHp: 10, shake: 0, name: '',     jackpot: 0,     isDead: false }
     ];
 
-    // 小怪使用 6 種屬性中隨機不重複的四種屬性（含光暗）
+    // 小怪使用 6 種屬性中隨機不重複的四種屬性
     let smallPool = [0, 1, 2, 3, 4, 5];
     smallPool.sort(() => Math.random() - 0.5);
     [1, 2, 4, 5].forEach((idx, i) => {
-        let blocks = 5 + Math.floor(Math.random() * 6);
+        let hp = MONSTER_FIXED_HP[idx];
         let md = getRandomMonsterData(smallPool[i]);
-        monsters[idx] = { ...monsters[idx], elemId: smallPool[i], hp: blocks, maxHp: blocks, name: md.name, isDead: false, shake: 0, reward: blocks * 100 };
+        monsters[idx] = { ...monsters[idx], elemId: smallPool[i], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: hp * 100 };
     });
 }
 
@@ -563,7 +569,7 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     } else {
         newElem = getMonsterElemPool()[Math.floor(Math.random() * getMonsterElemPool().length)];
     }
-    let blocks = 5 + Math.floor(Math.random() * 6);
+    let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
     let md = getRandomMonsterData(newElem);
     monsters[idx] = {
         side: m.side, yIndex: m.yIndex,
@@ -634,8 +640,17 @@ function generateCardsForFG() {
     let allElems = [0, 1, 2, 3, 4, 5];
     let extra = allElems.filter(e => !aliveElems.includes(e));
     extra.sort(() => Math.random() - 0.5);
-    let selectedElems = [...new Set(aliveElems)].slice(0, 3);
-    while (selectedElems.length < 3 && extra.length > 0) selectedElems.push(extra.shift());
+    // 光(1)與暗(2)不同時出現：若兩者都在候選中，隨機保留其一
+    let uniqueAlive = [...new Set(aliveElems)];
+    if (uniqueAlive.includes(1) && uniqueAlive.includes(2)) {
+        uniqueAlive = uniqueAlive.filter(e => e !== (Math.random() < 0.5 ? 1 : 2));
+    }
+    let selectedElems = uniqueAlive.slice(0, 3);
+    while (selectedElems.length < 3 && extra.length > 0) {
+        let e = extra.shift();
+        if ((e === 1 && selectedElems.includes(2)) || (e === 2 && selectedElems.includes(1))) continue;
+        selectedElems.push(e);
+    }
 
     cards = [];
     selectedElems.forEach((elemId, i) => {
@@ -1231,7 +1246,7 @@ function drawMonsters() {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(elem.icon, mx + 45, my + 48);
 
-        let lvText = m.maxHp === 20 ? 'Lv.5' : m.maxHp >= 9 ? 'Lv.3' : m.maxHp >= 7 ? 'Lv.2' : 'Lv.1';
+        let lvText = m.maxHp >= 50 ? 'JP' : m.maxHp >= 30 ? 'Lv.4' : m.maxHp >= 20 ? 'Lv.3' : m.maxHp >= 15 ? 'Lv.2' : 'Lv.1';
 
         ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'left'; ctx.fillText(`${lvText} ${m.name}`, mx + 90, my + 40);
