@@ -477,6 +477,7 @@ const FORCE_MENU_ITEMS = [
     { label: 'BG',           type: 6, color: '#f59e0b' },
     { label: '追擊',         type: 7,      color: '#f97316' },
     { label: '爆擊',         type: 'crit', color: '#ff4444' },
+    { label: '噴金幣',       type: 'coin', color: '#ffd700' },
 ];
 
 let currentState = STATE.IDLE;
@@ -514,6 +515,7 @@ let forceOverflow = false;  // 強制觸發追擊
 let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
 let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊
+let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣
 let forceMenuOpen = false;
 let forcedEffectType = 0; // 0=隨機, 1-6=擊殺後指定觸發的效果
 let killEffectCurrent = null; // 當前播放中的效果
@@ -1073,7 +1075,7 @@ function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
                 type: 'bossHit',
                 x: bossX, y: bossY - 10,
                 tx: 925, ty: 660,
-                text: `🪙 ×${mult}  +${reward}`,
+                text: `🪙 +${reward}`,
                 color: '#ffd700',
                 life: 150, delay: 85,
             });
@@ -1292,6 +1294,23 @@ function startSpin() {
             m.hp = m.maxHp; m.isDead = false; m.shake = 0;
             m.elemId = assigned[i];
         });
+    }
+
+    // 強開噴金幣：確保宙斯血量剛好在最高里程碑臨界點，並注入光屬性卡
+    if (forceCoinBurst && !isBG) {
+        // 若牌組沒有光屬性卡，強制替換第一張
+        if (!cards.some(c => c.elemId === 1)) {
+            const defs = CARD_DEFINITIONS.filter(d => d.elemId === 1);
+            const def  = defs[Math.floor(Math.random() * defs.length)];
+            cards[0] = {
+                elemId: def.elemId, level: def.level, name: def.name,
+                targetCount: 4, activated: false, isCharging: false, chargeTimer: 0,
+                scale: 1, shake: 0, yOffset: 130, enterDelay: 0, yTarget: 0
+            };
+        }
+        // 宙斯 HP = 11（下一擊必跨 ≤10 最高里程碑）
+        monsters[0].hp = 11;
+        monsters[0].isDead = false;
     }
 
     colStates = Array(COLS).fill(1);
@@ -1876,7 +1895,8 @@ function update() {
             }
         }
         if (allDone) {
-            if (forceKill || forceCrit) injectGuaranteedMatches(); // forceCrit 也需要確保有攻擊觸發
+            if (forceKill || forceCrit || forceCoinBurst) injectGuaranteedMatches();
+            if (forceCoinBurst) forceCoinBurst = false; // 注入完畢，清除旗標
             currentState = STATE.CHECKING;
         }
 
@@ -2010,22 +2030,19 @@ function update() {
                 delete elemGroups[eid];
         });
 
-        let maxRounds = Math.max(0, ...Object.values(elemGroups).map(g => g.length));
         pendingRounds = [];
-        // 卡牌攻擊順序：每輪依卡牌位置由左到右，且每張卡單獨出擊（上一張結束後下一張才發）
-        for (let i = 0; i < maxRounds; i++) {
-            let entries = Object.entries(elemGroups)
-                .filter(([eid, counts]) => i < counts.length)
-                .sort(([eidA], [eidB]) => {
-                    let ia = cards.findIndex(c => c.elemId === parseInt(eidA));
-                    let ib = cards.findIndex(c => c.elemId === parseInt(eidB));
-                    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-                });
-            // 每張卡獨立一個 round，依序排入佇列
-            entries.forEach(([eid, counts]) => {
-                pendingRounds.push([{ elemId: parseInt(eid), count: counts[i] }]);
+        // 卡牌攻擊順序：由左到右，每張卡連續打完所有輪次後才換下一張
+        const sortedElems = Object.keys(elemGroups)
+            .sort((eidA, eidB) => {
+                let ia = cards.findIndex(c => c.elemId === parseInt(eidA));
+                let ib = cards.findIndex(c => c.elemId === parseInt(eidB));
+                return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
             });
-        }
+        sortedElems.forEach(eid => {
+            elemGroups[eid].forEach(count => {
+                pendingRounds.push([{ elemId: parseInt(eid), count }]);
+            });
+        });
 
         if (pendingRounds.length > 0) {
             fireAttackRound(pendingRounds.shift());
@@ -2486,7 +2503,10 @@ function handleInput(clientX, clientY, isClick) {
                     const iy = my0 + i * (itemH + gap);
                     if (my >= iy && my <= iy + itemH) {
                         forceMenuOpen = false;
-                        if (item.type === 'crit') {
+                        if (item.type === 'coin') {
+                            // 噴金幣強開：下一局 spin 讓宙斯血量跨里程碑
+                            forceCoinBurst = true;
+                        } else if (item.type === 'crit') {
                             // 爆擊強開：不需強殺，只讓下一發攻擊必定爆擊
                             forceCrit = true;
                         } else {
