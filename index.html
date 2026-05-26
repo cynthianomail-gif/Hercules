@@ -1876,7 +1876,7 @@ function update() {
             }
         }
         if (allDone) {
-            if (forceKill) injectGuaranteedMatches();
+            if (forceKill || forceCrit) injectGuaranteedMatches(); // forceCrit 也需要確保有攻擊觸發
             currentState = STATE.CHECKING;
         }
 
@@ -2051,7 +2051,7 @@ function update() {
             } else if (p.stage === 1.5) {
                 // 爆擊：先全版顯示圖片 40 幀，再倒數發射計時器
                 if (p.isCrit) {
-                    if (p.critImageFrames === undefined) p.critImageFrames = 55;
+                    if (p.critImageFrames === undefined) p.critImageFrames = 75;
                     if (p.critImageFrames > 0) {
                         p.critImageFrames--;
                         p.cardRef.isCharging = true;
@@ -2384,7 +2384,7 @@ function drawCritOverlay() {
     }
     if (!critP) return;
 
-    const frames = critP.critImageFrames; // 55 → 1
+    const frames = critP.critImageFrames; // 75 → 1
     const cx = GRID_X + GRID_W / 2;
     const cy = GRID_Y + GRID_H / 2;
 
