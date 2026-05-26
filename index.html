@@ -2393,7 +2393,7 @@ function drawCritOverlay() {
     ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H);
     ctx.clip();
 
-    if (frames > 52) {
+    if (frames > 72) {
         // ── 白閃衝擊（3幀）：白底 + 放射速度線 ──
         ctx.globalAlpha = 1;
         ctx.fillStyle = '#ffffff';
@@ -2421,9 +2421,9 @@ function drawCritOverlay() {
             GRID_Y + (GRID_H - dh) / 2,
             dw, dh);
 
-        // 剛出現後殘留白光（frames 52→45）快速消退，強化「砰」的感覺
-        if (frames > 45) {
-            ctx.globalAlpha = ((frames - 45) / 7) * imageAlpha;
+        // 剛出現後殘留白光（7幀）快速消退，強化「砰」的感覺
+        if (frames > 65) {
+            ctx.globalAlpha = ((frames - 65) / 7) * imageAlpha;
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
         }
