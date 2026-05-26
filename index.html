@@ -452,6 +452,13 @@ const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 �
 const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀', '🎡', '💰'];
 const BG_MULTIPLIERS = [1, 2, 4, 8, 16, 36]; // index 6+ 繼續 ×2
 
+// 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=50
+const BOSS_MILESTONES = [
+    { hpLost: 15, minMult:  5, maxMult:  10 },   // ≈25%
+    { hpLost: 25, minMult: 20, maxMult:  25 },   // ≈50%
+    { hpLost: 40, minMult: 90, maxMult: 100 },   // ≈75%
+];
+
 const FORCE_MENU_ITEMS = [
     { label: '生成WILD',     type: 1, color: '#ffd700' },
     { label: '生成圖示',     type: 2, color: '#38bdf8' },
@@ -469,7 +476,9 @@ let cards = [];
 let monsters = [];
 let particles = [];
 let scoreTexts = [];
-let flyingScores = []; 
+let flyingScores = [];
+let coinBursts = [];        // 宙斯/赫拉受傷：金幣噴發粒子
+let bossHitMilestones = {}; // { monIdx: Set<hpLost> } 每局觸發紀錄
 
 // 數值與統計系統
 let totalScore = 0;
@@ -1016,6 +1025,52 @@ function startKillEffect(effect) {
     currentState = STATE.KILL_EFFECT;
 }
 
+// 宙斯 / 赫拉 金幣噴發
+function spawnCoinBurst(cx, cy, count) {
+    for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = 0.4 + Math.random() * 1.8;
+        let life  = 70 + Math.floor(Math.random() * 50);
+        coinBursts.push({
+            x: cx + (Math.random() - 0.5) * 50,
+            y: cy + (Math.random() - 0.5) * 20,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.8,
+            life, maxLife: life,
+            r: 4 + Math.random() * 4
+        });
+    }
+}
+
+// 宙斯 / 赫拉 傷害里程碑檢查
+function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
+    let m = monsters[monIdx];
+    if (!m || !m.jackpot) return;
+    if (!bossHitMilestones[monIdx]) bossHitMilestones[monIdx] = new Set();
+    let triggered = bossHitMilestones[monIdx];
+    BOSS_MILESTONES.forEach(ms => {
+        let threshold = m.maxHp - ms.hpLost;
+        if (prevHp > threshold && newHp <= threshold && !triggered.has(ms.hpLost)) {
+            triggered.add(ms.hpLost);
+            let mult   = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
+            let reward = betAmount * mult;
+            winScore  += reward;
+            totalScore += reward;
+            let coinCount = ms.hpLost <= 15 ? 14 : ms.hpLost <= 25 ? 22 : 34;
+            spawnCoinBurst(bossX, bossY, coinCount);
+            // 大字停留 80 幀後飛往 WIN 欄
+            flyingScores.push({
+                type: 'bossHit',
+                x: bossX, y: bossY - 10,
+                tx: 925, ty: 660,
+                text: `🪙 ×${mult}  +${reward}`,
+                color: '#ffd700',
+                life: 150, delay: 85,
+            });
+        }
+    });
+}
+
 function drawTransition() {
     if (transitionPhase === 'idle' || transitionAlpha <= 0) return;
 
@@ -1192,6 +1247,8 @@ function startSpin() {
     pendingFGBG = null;
     stats.spins++;
     hasHitThisSpin = false;
+    coinBursts = [];
+    bossHitMilestones = {};
 
     if (isBG) {
         // BG 模式：無卡牌與怪獸機制，倍率跨局保留
@@ -1657,6 +1714,20 @@ function drawUI() {
 }
 
 function drawEffects() {
+    // 金幣噴發
+    coinBursts.forEach(c => {
+        let alpha = Math.max(0, c.life / c.maxLife);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = '#ffd700';
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur  = 10;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur  = 0;
+
     particles.forEach(p => {
         if (p.stage === 1 || p.stage === 1.5) return; // stage 1 由 collect emoji 代替，不畫光球
 
@@ -1674,12 +1745,24 @@ function drawEffects() {
     });
 
     flyingScores.forEach(fs => {
-        ctx.globalAlpha = Math.min(1, fs.life / 20);
         ctx.textAlign = 'center';
         if (fs.type === 'collect') {
+            ctx.globalAlpha = Math.min(1, fs.life / 20);
             ctx.font = 'bold 22px sans-serif';
             ctx.fillText(fs.text, fs.x, fs.y);
+        } else if (fs.type === 'bossHit') {
+            const holding = fs.delay > 0;
+            ctx.globalAlpha  = holding ? 1 : Math.min(1, fs.life / 25);
+            ctx.font         = `bold ${holding ? 52 : 38}px sans-serif`;
+            ctx.fillStyle    = '#ffd700';
+            ctx.shadowColor  = '#ffd700';
+            ctx.shadowBlur   = holding ? 24 : 0;
+            ctx.strokeStyle  = '#000'; ctx.lineWidth = 7;
+            ctx.strokeText(fs.text, fs.x, fs.y);
+            ctx.fillText(fs.text, fs.x, fs.y);
+            ctx.shadowBlur   = 0;
         } else {
+            ctx.globalAlpha = Math.min(1, fs.life / 20);
             ctx.fillStyle = fs.color;
             ctx.font = fs.type === 'kill' ? 'bold 44px sans-serif' : 'bold 32px sans-serif';
             ctx.strokeStyle = '#000000'; ctx.lineWidth = 5;
@@ -1981,6 +2064,10 @@ function update() {
                         let prevHp = t.hp;
                         t.hp = Math.max(0, t.hp - p.overflowDamage);
                         t.shake = 15;
+                        // 宙斯/赫拉里程碑
+                        if (t.jackpot > 0) {
+                            checkBossMilestones(monsters.indexOf(t), prevHp, t.hp, p.tx, p.ty);
+                        }
                         if (t.hp === 0 && !t.isDead) {
                             t.isDead = true;
                             let mx = t.side === 'left' ? 180 : 1100;
@@ -2012,6 +2099,12 @@ function update() {
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = 15;
+                    // 宙斯/赫拉里程碑
+                    if (p.targetMonster.jackpot > 0) {
+                        let bx = p.targetMonster.side === 'left' ? 180 : 1100;
+                        let by = 100 + p.targetMonster.yIndex * 150 + 60;
+                        checkBossMilestones(monsters.indexOf(p.targetMonster), prevHp, p.targetMonster.hp, bx, by);
+                    }
 
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
                         p.targetMonster.isDead = true;
@@ -2166,6 +2259,17 @@ function update() {
     for (let i = scoreTexts.length - 1; i >= 0; i--) {
         scoreTexts[i].life--;
         if (scoreTexts[i].life <= 0) scoreTexts.splice(i, 1);
+    }
+
+    // 金幣粒子更新
+    for (let i = coinBursts.length - 1; i >= 0; i--) {
+        let c = coinBursts[i];
+        c.x += c.vx;
+        c.y += c.vy;
+        c.vy += 0.06; // 重力
+        c.vx *= 0.98; // 阻尼
+        c.life--;
+        if (c.life <= 0) coinBursts.splice(i, 1);
     }
 
     if (currentState === STATE.IDLE) {
