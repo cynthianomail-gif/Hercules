@@ -494,6 +494,7 @@ let deferredKillEffects = []; // 暫存：等所有攻擊（含追擊）結束�
 let forceKill = false;
 let forceOverflow = false;  // 強制觸發追擊
 let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
+let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceMenuOpen = false;
 let forcedEffectType = 0; // 0=隨機, 1-6=擊殺後指定觸發的效果
 let killEffectCurrent = null; // 當前播放中的效果
@@ -940,17 +941,17 @@ function applyKillEffect(effect) {
                     board[c][r] = { id: -1, yOffset: 0, scale: 1, isMatched: false };
 
     } else if (effectType === 5) {
-        // FG：連爆結束後才正式進入
+        // FG：收集到左上欄位，等盤面連爆結束後才觸發轉場
         fgSpinsRemaining = 10;
         pendingFGBG = 'FG';
-        startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
+        // startModeTransition 延後到 CHECKING 無消除時才呼叫
 
     } else if (effectType === 6) {
-        // BG：連爆結束後才正式進入
+        // BG：收集到左上欄位，等盤面連爆結束後才觸發轉場
         bgSpinsRemaining = 8;
         bgMultiplierIndex = 0;
         pendingFGBG = 'BG';
-        startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 8局', '#431407', '#f59e0b');
+        // startModeTransition 延後到 CHECKING 無消除時才呼叫
 
     } else if (effectType === 9) {
         // 輪盤（待實裝，暫以隨機彩金代替）
@@ -1057,13 +1058,20 @@ function drawKillEffect() {
     const cy = GRID_Y + GRID_H / 2;
 
     if (killEffectPhase === 'flying') {
+        const isFGBG = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6);
+        // FG/BG 飛向左上收集欄中心；其他效果飛向盤面中心
+        const targetX = isFGBG ? 182 : cx;
+        const targetY = isFGBG ? 85  : cy;
+        const ballColor = isFGBG
+            ? (killEffectCurrent.type === 5 ? '#10b981' : '#f59e0b')
+            : '#ffd700';
         let t = killEffectProgress;
         let ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-        let curX = killEffectCurrent.fromX + (cx - killEffectCurrent.fromX) * ease;
-        let curY = killEffectCurrent.fromY + (cy - killEffectCurrent.fromY) * ease;
+        let curX = killEffectCurrent.fromX + (targetX - killEffectCurrent.fromX) * ease;
+        let curY = killEffectCurrent.fromY + (targetY - killEffectCurrent.fromY) * ease;
         // 光暈
-        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 35;
-        ctx.fillStyle = '#ffd700';
+        ctx.shadowColor = ballColor; ctx.shadowBlur = 35;
+        ctx.fillStyle = ballColor;
         ctx.beginPath(); ctx.arc(curX, curY, 22, 0, Math.PI*2); ctx.fill();
         ctx.shadowBlur = 0;
         // 效果圖示
@@ -1113,9 +1121,22 @@ function drawKillEffect() {
         ctx.globalAlpha = 1;
 
     } else if (killEffectPhase === 'applied') {
-        let flash = (killEffectTimer / 40) * 0.45;
-        ctx.fillStyle = `rgba(255,215,0,${flash})`;
-        ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+        if (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) {
+            // FG/BG：在收集欄上畫爆光而不是蓋全盤
+            const accent = killEffectCurrent.type === 5 ? '#10b981' : '#f59e0b';
+            const glow = Math.max(0, 1 - killEffectTimer / 25);
+            ctx.shadowColor = accent;
+            ctx.shadowBlur  = 30 * glow;
+            ctx.fillStyle   = `rgba(255,255,255,${0.5 * glow})`;
+            ctx.beginPath();
+            ctx.arc(182, 85, 20 + 15 * glow, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else {
+            let flash = (killEffectTimer / 40) * 0.45;
+            ctx.fillStyle = `rgba(255,215,0,${flash})`;
+            ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+        }
     }
 }
 
@@ -1768,8 +1789,22 @@ function update() {
             matchQueue = [...matchedGroups];
             prepareNextPop();
         } else {
-            currentState = STATE.IDLE;
-            autoSpinDelay = 60;
+            // 盤面無法繼續連爆：若有收集中的 FG/BG，此時才觸發轉場
+            if (pendingFGBG !== null) {
+                savedBoard = board.map(col => col.map(cell => ({ ...cell })));
+                matchHistory = [];
+                if (pendingFGBG === 'FG') {
+                    startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
+                } else if (pendingFGBG === 'BG') {
+                    startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 8局', '#431407', '#f59e0b');
+                }
+                currentState = STATE.IDLE;
+            } else {
+                forcedEffectType = 0;    // 局末清除殘留強制效果
+                forceTargetLv4 = false;
+                currentState = STATE.IDLE;
+                autoSpinDelay = 60;
+            }
         }
 
     } else if (currentState === STATE.POPPING) {
@@ -1853,12 +1888,8 @@ function update() {
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
             if (pendingKillEffects.length > 0) {
                 startKillEffect(pendingKillEffects.shift());
-            } else if (pendingFGBG !== null) {
-                // 即將進入 FG/BG：先儲存當前盤面，然後等待轉場完全結束
-                savedBoard = board.map(col => col.map(cell => ({ ...cell })));
-                matchHistory = [];
-                currentState = STATE.IDLE; // 轉場守衛會阻止任何旋轉，直到轉場結束
             } else {
+                // 無論 pendingFGBG 是否有值，都先繼續 CHECKING 讓連爆打完
                 currentState = STATE.CHECKING;
             }
         }
@@ -1972,8 +2003,12 @@ function update() {
                         }
                         particles.splice(i, 1); continue;
                     }
-                    // 強殺：命中時直接歸零
-                    if (forceKill) { p.targetMonster.hp = p.damage; forceKill = false; }
+                    // 強殺：forceTargetLv4 時只對 Lv.4 怪生效，其餘照常傷害
+                    if (forceKill && (!forceTargetLv4 || getMonsterLevel(p.targetMonster) === 4)) {
+                        p.targetMonster.hp = p.damage;
+                        forceKill = false;
+                        forceTargetLv4 = false;
+                    }
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = 15;
@@ -1992,17 +2027,28 @@ function update() {
                         // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
                         if (!p.targetMonster.jackpot) {
                             let effect;
+                            const lvl = getMonsterLevel(p.targetMonster);
                             if (forcedEffectType > 0) {
-                                // 測試強制效果：帶入預設參數
                                 const fd = { 1:{wildCount:3}, 2:{gemCount:7}, 4:{clearCount:3}, 10:{multiplier:10} };
-                                effect = { type: forcedEffectType, fromX: mx, fromY: my, ...(fd[forcedEffectType] || {}) };
-                                forcedEffectType = 0;
+                                // FG/BG 強制但打死的不是 Lv.4：改用等級效果，保留 forcedEffectType 等 Lv.4 死亡
+                                if ((forcedEffectType === 5 || forcedEffectType === 6) && lvl !== 4) {
+                                    const canFGBG2 = !isFG && !forceNoFGBG
+                                        && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
+                                        && pendingFGBG === null;
+                                    forceNoFGBG = false;
+                                    effect = pickKillEffect(lvl, mx, my, canFGBG2);
+                                    // forcedEffectType 不清除，留待 Lv.4 被打死時觸發
+                                } else {
+                                    effect = { type: forcedEffectType, fromX: mx, fromY: my, ...(fd[forcedEffectType] || {}) };
+                                    forcedEffectType = 0;
+                                    forceNoFGBG = false;
+                                }
                             } else {
                                 const canFGBG = !isFG && !forceNoFGBG
                                     && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
                                     && pendingFGBG === null;
                                 forceNoFGBG = false;
-                                effect = pickKillEffect(getMonsterLevel(p.targetMonster), mx, my, canFGBG);
+                                effect = pickKillEffect(lvl, mx, my, canFGBG);
                             }
                             deferredKillEffects.push(effect);
                         }
@@ -2053,22 +2099,29 @@ function update() {
         if (killEffectPhase === 'flying') {
             killEffectProgress = Math.min(1, killEffectTimer / 40);
             if (killEffectTimer >= 40) {
-                // 弱轉換：提前決定 from/to，顯示和套用都用同一組
-                if (killEffectCurrent.type === 8) {
-                    let cElems = [...getCardElems()];
-                    let ncElems = getNonCardElems();
-                    let presentNonCard = ncElems.filter(id =>
-                        board.some(col => col.some(cell => cell.id === id))
-                    );
-                    if (presentNonCard.length > 0 && cElems.length > 0) {
-                        killEffectCurrent.fromElemId = presentNonCard[Math.floor(Math.random() * presentNonCard.length)];
-                        killEffectCurrent.toElemId   = cElems[Math.floor(Math.random() * cElems.length)];
-                    } else {
-                        killEffectCurrent.fromElemId = null;
+                if (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) {
+                    // FG/BG：球抵達收集欄後直接套用，跳過 showing 盤面特效
+                    applyKillEffect(killEffectCurrent);
+                    killEffectPhase = 'applied';
+                    killEffectTimer = 0;
+                } else {
+                    // 弱轉換：提前決定 from/to，顯示和套用都用同一組
+                    if (killEffectCurrent.type === 8) {
+                        let cElems = [...getCardElems()];
+                        let ncElems = getNonCardElems();
+                        let presentNonCard = ncElems.filter(id =>
+                            board.some(col => col.some(cell => cell.id === id))
+                        );
+                        if (presentNonCard.length > 0 && cElems.length > 0) {
+                            killEffectCurrent.fromElemId = presentNonCard[Math.floor(Math.random() * presentNonCard.length)];
+                            killEffectCurrent.toElemId   = cElems[Math.floor(Math.random() * cElems.length)];
+                        } else {
+                            killEffectCurrent.fromElemId = null;
+                        }
                     }
+                    killEffectPhase = 'showing';
+                    killEffectTimer = 0;
                 }
-                killEffectPhase = 'showing';
-                killEffectTimer = 0;
             }
         } else if (killEffectPhase === 'showing') {
             if (killEffectTimer >= 50) {
@@ -2079,7 +2132,9 @@ function update() {
                 killEffectTimer = 0;
             }
         } else if (killEffectPhase === 'applied') {
-            if (killEffectTimer >= 40) {
+            // FG/BG 只需 25 幀爆光，其他效果保留 40 幀
+            const doneTicks = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) ? 25 : 40;
+            if (killEffectTimer >= doneTicks) {
                 killEffectPhase = 'idle';
                 killEffectCurrent = null;
                 // 補入新怪獸替換已死亡的小怪（不顯示逃跑文字）
@@ -2139,6 +2194,49 @@ function update() {
     }
 }
 
+// === 左上收集欄：常駐顯示，收集到 FG / BG 時亮起 ===
+function drawPendingFGBGSlot() {
+    const bx = 40, by = 72, bw = 285, bh = 26;
+
+    if (!pendingFGBG) {
+        // 空欄位（常駐待機狀態）
+        drawRoundedRect(bx, by, bw, bh, 8, 'rgba(15,23,42,0.75)', '#334155', 1);
+        ctx.fillStyle = '#475569';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⬡  FG / BG  收集欄', bx + 14, by + bh / 2);
+        ctx.textBaseline = 'alphabetic';
+        return;
+    }
+
+    // 已收集：亮起並脈衝
+    const isFGP  = pendingFGBG === 'FG';
+    const bgCol  = isFGP ? 'rgba(6,78,59,0.92)'  : 'rgba(67,20,7,0.92)';
+    const accent = isFGP ? '#10b981'              : '#f59e0b';
+    const icon   = isFGP ? '🎰'                  : '✨';
+    const label  = isFGP ? 'FREE GAME 收集中'     : 'BONUS GAME 收集中';
+
+    const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 280);
+    ctx.shadowColor = accent;
+    ctx.shadowBlur  = 14 * pulse;
+    drawRoundedRect(bx, by, bw, bh, 8, bgCol, accent, 2);
+    ctx.shadowBlur  = 0;
+
+    // 左側脈衝圓點
+    ctx.beginPath();
+    ctx.arc(bx + 16, by + bh / 2, 5, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
+    ctx.fill();
+
+    ctx.fillStyle    = accent;
+    ctx.font         = 'bold 13px sans-serif';
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${icon} ${label}`, bx + 28, by + bh / 2);
+    ctx.textBaseline = 'alphabetic';
+}
+
 function gameLoop() {
     update();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2147,6 +2245,7 @@ function gameLoop() {
     drawGrid();
     drawUI();
     drawStatsPanel();
+    drawPendingFGBGSlot(); // 左上收集欄
     drawEffects();
     drawKillEffect();
     drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
@@ -2198,6 +2297,8 @@ function handleInput(clientX, clientY, isClick) {
                             forcedEffectType = 0;
                         } else {
                             forcedEffectType = item.type;
+                            // FG/BG 只能由 Lv.4 怪觸發：啟用定向強殺
+                            forceTargetLv4 = (item.type === 5 || item.type === 6);
                         }
                         if (currentState === STATE.IDLE) startSpin();
                     }
