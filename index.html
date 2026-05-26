@@ -2112,7 +2112,7 @@ function update() {
                         let omy = 100 + p.targetMonster.yIndex * 150 + 60;
                         let overflowDmg = p.damage - prevHp;
                         let ignoreElem = false;
-                        if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); ignoreElem = true; forceOverflow = false; }
+                        if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); forceOverflow = false; }
                         applyOverflow(p.targetMonster.side, overflowDmg, omx, omy, p.targetMonster.elemId, ignoreElem);
 
                         let mx = p.targetMonster.side === 'left' ? 180 : 1100;
