@@ -475,7 +475,8 @@ const FORCE_MENU_ITEMS = [
     { label: '清除圖示',     type: 4, color: '#f87171' },
     { label: 'FG',           type: 5, color: '#10b981' },
     { label: 'BG',           type: 6, color: '#f59e0b' },
-    { label: '追擊',         type: 7, color: '#f97316' },
+    { label: '追擊',         type: 7,      color: '#f97316' },
+    { label: '爆擊',         type: 'crit', color: '#ff4444' },
 ];
 
 let currentState = STATE.IDLE;
@@ -512,6 +513,7 @@ let forceKill = false;
 let forceOverflow = false;  // 強制觸發追擊
 let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
 let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
+let forceCrit = false;      // 強制下一次攻擊觸發爆擊
 let forceMenuOpen = false;
 let forcedEffectType = 0; // 0=隨機, 1-6=擊殺後指定觸發的效果
 let killEffectCurrent = null; // 當前播放中的效果
@@ -1215,8 +1217,9 @@ function fireAttackRound(round) {
         if (candidates.length === 0) return;
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
         const cardX = (1280 - totalW) / 2 + cardIdx * (cardW + gap) + cardW / 2;
-        // 光(1)暗(2)不爆擊；其他 10% 機率爆擊
-        const isCrit = (elemId !== 1 && elemId !== 2) && Math.random() < 0.10;
+        // 光(1)暗(2)不爆擊；其他 10% 機率爆擊（或強制爆擊）
+        const isCrit = (elemId !== 1 && elemId !== 2) && (forceCrit || Math.random() < 0.10);
+        if (forceCrit) forceCrit = false; // 消耗一次強制
         const dmg = isCrit ? getCritDamage(count, card.level) : getCardDamage(count, card.level);
         particles.push({
             stage: 1,
@@ -2464,16 +2467,21 @@ function handleInput(clientX, clientY, isClick) {
                     const iy = my0 + i * (itemH + gap);
                     if (my >= iy && my <= iy + itemH) {
                         forceMenuOpen = false;
-                        // 擊殺效果（含 FG/BG/追擊）：強殺 + 指定效果
-                        forceKill = true;
-                        if (item.type === 7) {
-                            forceOverflow = true;
-                            forceNoFGBG = true;
-                            forcedEffectType = 0;
+                        if (item.type === 'crit') {
+                            // 爆擊強開：不需強殺，只讓下一發攻擊必定爆擊
+                            forceCrit = true;
                         } else {
-                            forcedEffectType = item.type;
-                            // FG/BG 只能由 Lv.4 怪觸發：啟用定向強殺
-                            forceTargetLv4 = (item.type === 5 || item.type === 6);
+                            // 擊殺效果（含 FG/BG/追擊）：強殺 + 指定效果
+                            forceKill = true;
+                            if (item.type === 7) {
+                                forceOverflow = true;
+                                forceNoFGBG = true;
+                                forcedEffectType = 0;
+                            } else {
+                                forcedEffectType = item.type;
+                                // FG/BG 只能由 Lv.4 怪觸發：啟用定向強殺
+                                forceTargetLv4 = (item.type === 5 || item.type === 6);
+                            }
                         }
                         if (currentState === STATE.IDLE) startSpin();
                     }
