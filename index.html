@@ -448,8 +448,8 @@ const STATE = {
     KILL_EFFECT: 7
 };
 
-const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 送出寶石！', '🔄 轉換圖示(強)！', '💥 清除雜色！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！'];
-const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀'];
+const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！', '🎡 輪盤！', '💰 直接給分！'];
+const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀', '🎡', '💰'];
 const BG_MULTIPLIERS = [1, 2, 4, 8, 16, 36]; // index 6+ 繼續 ×2
 
 const FORCE_MENU_ITEMS = [
@@ -527,6 +527,50 @@ let transitionAccentColor = '#ffffff';
 
 // 各位置固定血量：左第二=Lv4(30)、左最下=Lv2(15)、右第二=Lv3(20)、右最下=Lv1(10)
 const MONSTER_FIXED_HP = { 1: 30, 2: 15, 4: 20, 5: 10 };
+
+// 根據 maxHp 判斷怪獸等級（JP Boss 回傳 0）
+function getMonsterLevel(m) {
+    if (m.maxHp >= 50) return 0;   // JP Boss
+    if (m.maxHp >= 30) return 4;
+    if (m.maxHp >= 20) return 3;
+    if (m.maxHp >= 15) return 2;
+    return 1;
+}
+
+// 各等級對應的擊殺效果池，隨機抽一個
+function pickKillEffect(level, fromX, fromY, canFGBG) {
+    let p1 = [
+        () => ({ type: 1,  wildCount: 1 + Math.floor(Math.random() * 2) }),          // 生成WILD 1~2個
+        () => ({ type: 8  }),                                                          // 轉換圖示 1種
+        () => ({ type: 4,  clearCount: 1 + Math.floor(Math.random() * 2) }),          // 清除圖示 1~2種
+        () => ({ type: 10, multiplier:  3 + Math.floor(Math.random() * 3) }),         // 直接給分 3~5倍
+    ];
+    let p2 = [
+        () => ({ type: 1,  wildCount: 3 + Math.floor(Math.random() * 2) }),           // 生成WILD 3~4個
+        () => ({ type: 2,  gemCount:  5 + Math.floor(Math.random() * 6) }),           // 生成圖示 5~10個
+        () => ({ type: 4,  clearCount: 3 + Math.floor(Math.random() * 2) }),          // 清除圖示 3~4種
+        () => ({ type: 10, multiplier:  5 + Math.floor(Math.random() * 6) }),         // 直接給分 5~10倍
+    ];
+    let p3 = [
+        () => ({ type: 1,  wildCount: 5 + Math.floor(Math.random() * 2) }),           // 生成WILD 5~6個
+        () => ({ type: 1,  big: true }),                                               // 生成巨型WILD (2×2)
+        () => ({ type: 3  }),                                                          // 轉換圖示 6種(全)
+        () => ({ type: 4,  clearCount: 5 + Math.floor(Math.random() * 2) }),          // 清除圖示 5~6種
+        () => ({ type: 10, multiplier: 10 + Math.floor(Math.random() * 6) }),         // 直接給分 10~15倍
+    ];
+    let p4 = [
+        () => ({ type: 10, multiplier: 25 + Math.floor(Math.random() * 26) }),        // 直接給分 25~50倍
+        () => ({ type: 9  }),                                                          // 輪盤
+    ];
+    if (canFGBG) {
+        p4.push(() => ({ type: 5 }));  // FG
+        p4.push(() => ({ type: 6 }));  // BG
+    }
+    const pools = { 1: p1, 2: p2, 3: p3, 4: p4 };
+    let pool = pools[level] || p1;
+    let eff = pool[Math.floor(Math.random() * pool.length)]();
+    return { ...eff, fromX, fromY };
+}
 
 // === 初始化 ===
 function initMonsters() {
@@ -830,21 +874,22 @@ function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false)
 function getCardElems() { return new Set(cards.map(c => c.elemId)); }
 function getNonCardElems() { return [0,1,2,3,4,5].filter(e => !getCardElems().has(e)); }
 
-function applyKillEffect(effectType, monsterMaxHp) {
+function applyKillEffect(effect) {
+    const effectType = effect.type;
     let cardElems = [...getCardElems()];
     let nonCardElems = getNonCardElems();
 
     if (effectType === 1) {
-        if (monsterMaxHp >= 20) {
-            // Boss → 放置 2×2 WILD 區塊（固定在最底兩列，重力不會拆散）
+        if (effect.big) {
+            // 生成巨型WILD：2×2 區塊（固定底部兩列，重力不拆散）
             let startC = Math.floor(Math.random() * (COLS - 1));
             let startR = ROWS - 2;
             for (let dc = 0; dc < 2; dc++)
                 for (let dr = 0; dr < 2; dr++)
                     board[startC + dc][startR + dr] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false };
         } else {
-            // 小怪 → 放置 1×1 WILD 數顆（maxHp 5→1顆，10→5顆）
-            let wildCount = Math.min(5, Math.max(1, monsterMaxHp - 4));
+            // 生成小 WILD：固定數量
+            let wildCount = effect.wildCount || 1;
             let allCells = [];
             for (let c = 0; c < COLS; c++)
                 for (let r = 0; r < ROWS; r++)
@@ -855,8 +900,8 @@ function applyKillEffect(effectType, monsterMaxHp) {
         }
 
     } else if (effectType === 2) {
-        // 送出卡牌色寶石：數量 = monsterMaxHp（5~10），Boss 上限 10
-        let sendCount = Math.min(10, monsterMaxHp);
+        // 生成圖示：固定數量的卡牌色寶石
+        let sendCount = effect.gemCount || 5;
         let targets = [];
         for (let c = 0; c < COLS; c++)
             for (let r = 0; r < ROWS; r++)
@@ -868,14 +913,14 @@ function applyKillEffect(effectType, monsterMaxHp) {
             board[targets[i].c][targets[i].r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
 
     } else if (effectType === 3) {
-        // 將所有非卡牌色轉換成卡牌色
+        // 轉換圖示(強)：將所有非卡牌色轉換成卡牌色
         for (let c = 0; c < COLS; c++)
             for (let r = 0; r < ROWS; r++)
                 if (nonCardElems.includes(board[c][r].id))
                     board[c][r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
 
     } else if (effectType === 8) {
-        // 轉換圖示(弱)：使用 showing 階段預先決定的 from/to
+        // 轉換圖示(弱)：使用 showing 階段預先決定的 from/to（1種）
         let fromId = killEffectCurrent ? killEffectCurrent.fromElemId : null;
         let toId   = killEffectCurrent ? killEffectCurrent.toElemId   : null;
         if (fromId !== null && toId !== undefined) {
@@ -886,14 +931,16 @@ function applyKillEffect(effectType, monsterMaxHp) {
         }
 
     } else if (effectType === 4) {
-        // 消除所有非卡牌色的寶石
+        // 清除圖示：依等級清除指定種數的非卡牌色
+        let clearCount = effect.clearCount !== undefined ? effect.clearCount : nonCardElems.length;
+        let typesToClear = [...nonCardElems].sort(() => Math.random() - 0.5).slice(0, clearCount);
         for (let c = 0; c < COLS; c++)
             for (let r = 0; r < ROWS; r++)
-                if (nonCardElems.includes(board[c][r].id))
+                if (typesToClear.includes(board[c][r].id))
                     board[c][r] = { id: -1, yOffset: 0, scale: 1, isMatched: false };
 
     } else if (effectType === 5) {
-        // FG：連爆結束後才正式進入，避免當前連爆在 FG 模式下運行
+        // FG：連爆結束後才正式進入
         fgSpinsRemaining = 10;
         pendingFGBG = 'FG';
         startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
@@ -904,6 +951,19 @@ function applyKillEffect(effectType, monsterMaxHp) {
         bgMultiplierIndex = 0;
         pendingFGBG = 'BG';
         startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 8局', '#431407', '#f59e0b');
+
+    } else if (effectType === 9) {
+        // 輪盤（待實裝，暫以隨機彩金代替）
+        let mult = 10 + Math.floor(Math.random() * 16);
+        let reward = betAmount * mult;
+        winScore += reward; totalScore += reward;
+        scoreTexts.push({ x: 640, y: 320, text: `🎡 輪盤！ ×${mult} = +${reward}`, color: '#ffd700', life: 150, fontSize: 40 });
+
+    } else if (effectType === 10) {
+        // 直接給分：依等級倍率
+        let mult = effect.multiplier || 3;
+        let reward = betAmount * mult;
+        winScore += reward; totalScore += reward;
     }
 }
 
@@ -1030,12 +1090,25 @@ function drawKillEffect() {
         ctx.shadowBlur = 0;
         ctx.font = 'bold 28px sans-serif';
         ctx.fillStyle = '#e2e8f0';
-        if (killEffectCurrent.type === 3) {
+        const eff = killEffectCurrent;
+        if (eff.type === 1 && eff.big) {
+            ctx.fillText('2×2 巨型WILD', cx, cy + 68);
+        } else if (eff.type === 1 && eff.wildCount) {
+            ctx.fillText(`生成 ${eff.wildCount} 個 WILD`, cx, cy + 68);
+        } else if (eff.type === 2 && eff.gemCount) {
+            ctx.fillText(`生成 ${eff.gemCount} 個屬性圖示`, cx, cy + 68);
+        } else if (eff.type === 3) {
             ctx.fillText('全非屬性圖示轉換', cx, cy + 68);
-        } else if (killEffectCurrent.type === 8 && killEffectCurrent.fromElemId !== null) {
-            let fromIcon = ELEMENTS[killEffectCurrent.fromElemId].icon;
-            let toIcon   = ELEMENTS[killEffectCurrent.toElemId].icon;
+        } else if (eff.type === 4 && eff.clearCount) {
+            ctx.fillText(`清除 ${eff.clearCount} 種非屬性`, cx, cy + 68);
+        } else if (eff.type === 8 && eff.fromElemId !== null) {
+            let fromIcon = ELEMENTS[eff.fromElemId].icon;
+            let toIcon   = ELEMENTS[eff.toElemId].icon;
             ctx.fillText(`${fromIcon}  →  ${toIcon}`, cx, cy + 68);
+        } else if (eff.type === 9) {
+            ctx.fillText('待開獎...', cx, cy + 68);
+        } else if (eff.type === 10) {
+            ctx.fillText(`×${eff.multiplier} = +${betAmount * eff.multiplier}`, cx, cy + 68);
         }
         ctx.globalAlpha = 1;
 
@@ -1811,12 +1884,19 @@ function update() {
 
         let maxRounds = Math.max(0, ...Object.values(elemGroups).map(g => g.length));
         pendingRounds = [];
+        // 卡牌攻擊順序：每輪依卡牌位置由左到右，且每張卡單獨出擊（上一張結束後下一張才發）
         for (let i = 0; i < maxRounds; i++) {
-            let round = [];
-            Object.entries(elemGroups).forEach(([eid, counts]) => {
-                if (i < counts.length) round.push({ elemId: parseInt(eid), count: counts[i] });
+            let entries = Object.entries(elemGroups)
+                .filter(([eid, counts]) => i < counts.length)
+                .sort(([eidA], [eidB]) => {
+                    let ia = cards.findIndex(c => c.elemId === parseInt(eidA));
+                    let ib = cards.findIndex(c => c.elemId === parseInt(eidB));
+                    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+                });
+            // 每張卡獨立一個 round，依序排入佇列
+            entries.forEach(([eid, counts]) => {
+                pendingRounds.push([{ elemId: parseInt(eid), count: counts[i] }]);
             });
-            if (round.length > 0) pendingRounds.push(round);
         }
 
         if (pendingRounds.length > 0) {
@@ -1875,9 +1955,10 @@ function update() {
                             let mx = t.side === 'left' ? 180 : 1100;
                             let my = 100 + t.yIndex * 150;
                             if (!t.jackpot) {
-                                const hasPendingFGBG = deferredKillEffects.some(e => e.type === 5 || e.type === 6) || pendingFGBG !== null;
-                                const maxType = (isFG || hasPendingFGBG) ? 4 : 6;
-                                deferredKillEffects.push({ type: Math.floor(Math.random() * maxType) + 1, fromX: mx, fromY: my, monsterMaxHp: t.maxHp });
+                                const canFGBG = !isFG
+                                    && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
+                                    && pendingFGBG === null;
+                                deferredKillEffects.push(pickKillEffect(getMonsterLevel(t), mx, my, canFGBG));
                             }
                             if (t.jackpot > 0) {
                                 winScore += t.jackpot; totalScore += t.jackpot;
@@ -1910,12 +1991,20 @@ function update() {
                         let my = 100 + p.targetMonster.yIndex * 150;
                         // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
                         if (!p.targetMonster.jackpot) {
-                            const hasPendingFGBG = pendingKillEffects.some(e => e.type === 5 || e.type === 6) || pendingFGBG !== null;
-                            const maxType = (isFG || hasPendingFGBG || forceNoFGBG) ? 4 : 6;
-                            forceNoFGBG = false;
-                            let effectType = forcedEffectType > 0 ? forcedEffectType : Math.floor(Math.random() * maxType) + 1;
-                            forcedEffectType = 0;
-                            deferredKillEffects.push({ type: effectType, fromX: mx, fromY: my, monsterMaxHp: p.targetMonster.maxHp });
+                            let effect;
+                            if (forcedEffectType > 0) {
+                                // 測試強制效果：帶入預設參數
+                                const fd = { 1:{wildCount:3}, 2:{gemCount:7}, 4:{clearCount:3}, 10:{multiplier:10} };
+                                effect = { type: forcedEffectType, fromX: mx, fromY: my, ...(fd[forcedEffectType] || {}) };
+                                forcedEffectType = 0;
+                            } else {
+                                const canFGBG = !isFG && !forceNoFGBG
+                                    && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
+                                    && pendingFGBG === null;
+                                forceNoFGBG = false;
+                                effect = pickKillEffect(getMonsterLevel(p.targetMonster), mx, my, canFGBG);
+                            }
+                            deferredKillEffects.push(effect);
                         }
 
                         if (p.targetMonster.jackpot > 0) {
@@ -1953,7 +2042,8 @@ function update() {
                 pendingKillEffects.push(...deferredKillEffects);
                 deferredKillEffects = [];
                 // FG/BG 效果排到最後，確保一般效果先觸發
-                pendingKillEffects.sort((a, b) => (a.type >= 5 ? 1 : 0) - (b.type >= 5 ? 1 : 0));
+                // FG/BG 排到最後，其餘依死亡順序
+                pendingKillEffects.sort((a, b) => ((a.type === 5 || a.type === 6) ? 1 : 0) - ((b.type === 5 || b.type === 6) ? 1 : 0));
                 applyGravity();
                 currentState = STATE.GRAVITY;
             }
@@ -1983,7 +2073,7 @@ function update() {
         } else if (killEffectPhase === 'showing') {
             if (killEffectTimer >= 50) {
                 // 套用效果
-                applyKillEffect(killEffectCurrent.type, killEffectCurrent.monsterMaxHp);
+                applyKillEffect(killEffectCurrent);
                 applyGravity();
                 killEffectPhase = 'applied';
                 killEffectTimer = 0;
