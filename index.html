@@ -847,12 +847,12 @@ function prepareNextPop() {
     popWaitTimer = 0;
 }
 
-// === 溢出傷害：找相同屬性的目標，光球抵達才扣血 ===
+// === 溢出傷害：找相同屬性的目標（不限同側），光球抵達才扣血 ===
 function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false) {
     if (overflow <= 0) return;
-    // 強制追擊時忽略屬性限制，否則只追擊相同屬性
+    // 強制追擊時忽略屬性限制；一般追擊只限同屬性，但不限同側
     let targets = monsters
-        .filter(m => m.side === side && !m.isDead && m.maxHp > 0 && m.hp > 0 && (ignoreElem || m.elemId === elemId))
+        .filter(m => !m.isDead && m.maxHp > 0 && m.hp > 0 && (ignoreElem || m.elemId === elemId))
         .sort((a, b) => a.yIndex - b.yIndex);
     if (targets.length === 0) return;
     let target = targets[0];
