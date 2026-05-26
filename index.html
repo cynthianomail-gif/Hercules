@@ -435,6 +435,14 @@ function getCardDamage(gemCount, cardLevel) {
              : gemCount >= 6  ? 4 : gemCount === 5  ? 3 : gemCount === 4 ? 2 : 1;
     return base * (cardLevel || 1);
 }
+// 爆擊傷害 = 普通 × 2（光暗不爆擊）
+function getCritDamage(gemCount, cardLevel) {
+    return getCardDamage(gemCount, cardLevel) * 2;
+}
+
+// 爆擊全版圖片
+const critImage = new Image();
+critImage.src = 'crit.png';
 
 // 遊戲狀態機
 const STATE = {
@@ -1207,7 +1215,9 @@ function fireAttackRound(round) {
         if (candidates.length === 0) return;
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
         const cardX = (1280 - totalW) / 2 + cardIdx * (cardW + gap) + cardW / 2;
-        let dmg = getCardDamage(count, card.level);
+        // 光(1)暗(2)不爆擊；其他 10% 機率爆擊
+        const isCrit = (elemId !== 1 && elemId !== 2) && Math.random() < 0.10;
+        const dmg = isCrit ? getCritDamage(count, card.level) : getCardDamage(count, card.level);
         particles.push({
             stage: 1,
             startX: 640, startY: GRID_Y + GRID_H,
@@ -1216,7 +1226,8 @@ function fireAttackRound(round) {
             color: ELEMENTS[elemId].color,
             cardRef: card,
             targetMonster,
-            damage: dmg
+            damage: dmg,
+            isCrit,
         });
     });
 }
@@ -2035,12 +2046,22 @@ function update() {
                 }
                 attacksDone = false;
             } else if (p.stage === 1.5) {
+                // 爆擊：先全版顯示圖片 40 幀，再倒數發射計時器
+                if (p.isCrit) {
+                    if (p.critImageFrames === undefined) p.critImageFrames = 40;
+                    if (p.critImageFrames > 0) {
+                        p.critImageFrames--;
+                        p.cardRef.isCharging = true;
+                        attacksDone = false;
+                        continue; // 圖片播完前不倒扣 chargeTimer
+                    }
+                }
                 p.cardRef.chargeTimer--;
                 if (p.cardRef.chargeTimer <= 0) {
-                    p.stage = 2; 
+                    p.stage = 2;
                     p.progress = 0;
                     p.cardRef.isCharging = false;
-                    p.cardRef.activated = true; 
+                    p.cardRef.activated = true;
                     p.startX = p.tx; p.startY = p.ty;
                     p.tx = p.targetMonster.side === 'left' ? 180 : 1100;
                     p.ty = 150 + p.targetMonster.yIndex * 150;
@@ -2099,6 +2120,15 @@ function update() {
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = 15;
+                    // 爆擊命中文字
+                    if (p.isCrit) {
+                        scoreTexts.push({
+                            x: p.tx, y: p.ty - 20,
+                            text: '💥 CRITICAL!!',
+                            color: '#ff4444',
+                            life: 100, fontSize: 54
+                        });
+                    }
                     // 宙斯/赫拉里程碑
                     if (p.targetMonster.jackpot > 0) {
                         let bx = p.targetMonster.side === 'left' ? 180 : 1100;
@@ -2341,6 +2371,46 @@ function drawPendingFGBGSlot() {
     ctx.textBaseline = 'alphabetic';
 }
 
+// 爆擊全版圖片覆蓋（只在 stage 1.5 的 critImageFrames 倒數期間顯示）
+function drawCritOverlay() {
+    let critP = null;
+    for (let p of particles) {
+        if (p.isCrit && p.critImageFrames !== undefined && p.critImageFrames > 0) {
+            critP = p; break;
+        }
+    }
+    if (!critP) return;
+
+    const frames = critP.critImageFrames; // 40 → 1
+    // 前 5 幀淡入，後 5 幀淡出
+    const alpha = frames > 35 ? (40 - frames) / 5       // 淡入
+                : frames < 5  ? frames / 5               // 淡出
+                : 1;
+
+    ctx.globalAlpha = alpha;
+    // 純黑底
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // 圖片滿版（保比例 cover）
+    if (critImage.complete && critImage.naturalWidth > 0) {
+        const iw = critImage.naturalWidth;
+        const ih = critImage.naturalHeight;
+        const scale = Math.max(1280 / iw, 720 / ih);
+        const dw = iw * scale, dh = ih * scale;
+        ctx.drawImage(critImage, (1280 - dw) / 2, (720 - dh) / 2, dw, dh);
+    }
+
+    // 紅色暗角
+    const vig = ctx.createRadialGradient(640, 360, 80, 640, 360, 780);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(180,0,0,0.55)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, 1280, 720);
+
+    ctx.globalAlpha = 1;
+}
+
 function gameLoop() {
     update();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2352,6 +2422,7 @@ function gameLoop() {
     drawPendingFGBGSlot(); // 左上收集欄
     drawEffects();
     drawKillEffect();
+    drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
     drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
     requestAnimationFrame(gameLoop);
 }
