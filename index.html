@@ -2374,7 +2374,7 @@ function drawPendingFGBGSlot() {
     ctx.textBaseline = 'alphabetic';
 }
 
-// 爆擊全版圖片覆蓋（只在 stage 1.5 的 critImageFrames 倒數期間顯示）
+// 爆擊圖片壓在盤面上（無黑底，直接疊在盤面範圍）
 function drawCritOverlay() {
     let critP = null;
     for (let p of particles) {
@@ -2382,36 +2382,34 @@ function drawCritOverlay() {
             critP = p; break;
         }
     }
-    if (!critP) return;
+    if (!critP || !critImage.complete || !critImage.naturalWidth) return;
 
     const frames = critP.critImageFrames; // 40 → 1
-    // 前 5 幀淡入，後 5 幀淡出
-    const alpha = frames > 35 ? (40 - frames) / 5       // 淡入
-                : frames < 5  ? frames / 5               // 淡出
+    // 各 15 幀淡入／淡出，中間 10 幀滿不透明
+    const alpha = frames > 25 ? (40 - frames) / 15   // 淡入
+                : frames < 15 ? frames / 15           // 淡出
                 : 1;
 
+    ctx.save();
+    // 剪裁到盤面範圍，不蓋到怪獸、卡牌等 UI
+    ctx.beginPath();
+    ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H);
+    ctx.clip();
+
     ctx.globalAlpha = alpha;
-    // 純黑底
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, 1280, 720);
 
-    // 圖片滿版（保比例 cover）
-    if (critImage.complete && critImage.naturalWidth > 0) {
-        const iw = critImage.naturalWidth;
-        const ih = critImage.naturalHeight;
-        const scale = Math.max(1280 / iw, 720 / ih);
-        const dw = iw * scale, dh = ih * scale;
-        ctx.drawImage(critImage, (1280 - dw) / 2, (720 - dh) / 2, dw, dh);
-    }
-
-    // 紅色暗角
-    const vig = ctx.createRadialGradient(640, 360, 80, 640, 360, 780);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(180,0,0,0.55)');
-    ctx.fillStyle = vig;
-    ctx.fillRect(0, 0, 1280, 720);
+    // 以盤面為基準 cover 縮放
+    const iw = critImage.naturalWidth;
+    const ih = critImage.naturalHeight;
+    const scale = Math.max(GRID_W / iw, GRID_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    ctx.drawImage(critImage,
+        GRID_X + (GRID_W - dw) / 2,
+        GRID_Y + (GRID_H - dh) / 2,
+        dw, dh);
 
     ctx.globalAlpha = 1;
+    ctx.restore();
 }
 
 function gameLoop() {
