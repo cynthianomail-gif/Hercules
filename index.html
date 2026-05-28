@@ -411,11 +411,7 @@ function getRandomMonsterData(elemId) {
 
 function getBGMultiplier() {
     if (!isBG) return 1;
-    let idx = bgMultiplierIndex;
-    let val = idx < BG_MULTIPLIERS.length
-        ? BG_MULTIPLIERS[idx]
-        : BG_MULTIPLIERS[BG_MULTIPLIERS.length - 1] * Math.pow(2, idx - (BG_MULTIPLIERS.length - 1));
-    return Math.min(val, 2048);
+    return Math.min(bgMultiplierIndex + 1, 1024);
 }
 
 function getScore(count, elemId = 3) {
@@ -458,7 +454,6 @@ const STATE = {
 
 const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！', '🎡 輪盤！', '💰 直接給分！'];
 const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀', '🎡', '💰'];
-const BG_MULTIPLIERS = [1, 2, 4, 8, 16, 36]; // index 6+ 繼續 ×2
 
 // 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=50
 const BOSS_MILESTONES = [
@@ -533,7 +528,7 @@ let isFG = false;            // Free Game 模式：6張卡，自動旋轉10局
 let fgSpinsRemaining = 0;
 let isBG = false;            // Bonus Game 模式：無卡牌/怪獸，倍數遞增
 let bgSpinsRemaining = 0;
-let bgMultiplierIndex = 0;   // 當前倍率索引，對應 BG_MULTIPLIERS
+let bgMultiplierIndex = 0;   // 當前連爆次數，倍率 = index+1（×1, ×2, ×3...最高×1024）
 let pendingFGBG = null;      // 當前局連爆結束後才正式進入的模式（'FG' | 'BG' | 'NG' | null）
 let savedBoard = null;       // 進入 FG/BG 前保存的盤面，退出後還原繼續連爆
 let shouldCheckAfterTransition = false; // NG 轉場結束後切換至 CHECKING 繼續連爆
