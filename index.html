@@ -2453,7 +2453,7 @@ function gameLoop() {
     drawGrid();
     drawUI();
     drawStatsPanel();
-    drawPendingFGBGSlot(); // 左上收集欄
+    if (!isBG) drawPendingFGBGSlot(); // 左上收集欄
     drawEffects();
     drawKillEffect();
     drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
