@@ -186,7 +186,7 @@
 
 <div id="game-container">
     <button id="fsBtn" title="全螢幕 (Fullscreen)">⛶</button>
-    <button id="statsBtn" class="active" title="測試面板">📊</button>
+    <button id="statsBtn" title="測試面板">📈</button>
     <canvas id="gameCanvas" width="1280" height="720"></canvas>
 
     <div id="infoPanel">
@@ -230,8 +230,8 @@
                     <tr><th>屬性</th><th>效果</th><th>觸發率(Lv4/Lv5)</th></tr>
                     <tr><td>🔥 烈焰</td><td>爆擊：高倍單次傷害</td><td>25% / 20%</td></tr>
                     <tr><td>❄️ 冰霜</td><td>追擊：追加額外傷害</td><td>50% / 50%</td></tr>
-                    <tr><td>🌿 大地</td><td>連擊：總傷 ×2</td><td>33.3% / 25%</td></tr>
-                    <tr><td>🔮 祕法</td><td>三值：隨機抽選傷害</td><td>必定</td></tr>
+                    <tr><td>🌿 大地</td><td>三值：隨機抽選傷害</td><td>必定</td></tr>
+                    <tr><td>🔮 祕法</td><td>連擊：總傷 ×2</td><td>33.3% / 25%</td></tr>
                 </table>
             </div>
 
@@ -360,14 +360,54 @@ function updateFsBtn() {
 document.addEventListener('fullscreenchange', updateFsBtn);
 document.addEventListener('webkitfullscreenchange', updateFsBtn);
 
+// === 美術素材載入 ===
+// 素材皆放在 assets/，未載入完成前自動退回原本的程式繪製（不會白畫面）
+function loadImg(src) { const i = new Image(); i.src = src; return i; }
+function imgReady(img) { return img && img.complete && img.naturalWidth > 0; }
+const IMG = {
+    bg:      loadImg('assets/bg.png'),
+    frame:   loadImg('assets/reel_frame.png'),
+    reelbot: loadImg('assets/reel_bot.png'),
+    gem:      [], // 寶石圖（依檔案編號 0~6）
+    monIcon:  [], // 小怪屬性頭像（0~5）
+    bossIcon: [], // 宙斯/赫拉頭像（0~1）
+    monArt:   {}, // 四角大怪
+    card:     {}, // 卡牌圖，key = `${elemId}_${level}`
+};
+for (let i = 0; i <= 6; i++) IMG.gem[i]     = loadImg(`assets/icon_${i}.png`);
+for (let i = 0; i <= 5; i++) IMG.monIcon[i] = loadImg(`assets/mon_icon_${i}.png`);
+for (let i = 0; i <= 1; i++) IMG.bossIcon[i]= loadImg(`assets/boss_icon_${i}.png`);
+IMG.monArt.rearL  = loadImg('assets/mon_rear_l.png');   // 紅龍（左後）
+IMG.monArt.frontL = loadImg('assets/mon_front_l.png');  // 野豬（左前）
+IMG.monArt.rearR  = loadImg('assets/mon_rear_r.png');   // 三頭巨人（右後）
+IMG.monArt.frontR = loadImg('assets/mon_front_r.png');  // 亞馬遜女戰士（右前）
+['1_3', '5_1', '0_2'].forEach(k => IMG.card[k] = loadImg(`assets/card_${k}.png`));
+
+// 屬性 id → 寶石/頭像檔案編號（檔名編號與屬性 id 不同，需對照）
+//  0祕法→5 / 1雷霆→0 / 2聖心→1 / 3烈焰→4 / 4冰霜→3 / 5大地→2 / 6 WILD→6
+const ELEM_ICON_IDX = [5, 0, 1, 4, 3, 2, 6];
+function gemImg(elemId)     { return IMG.gem[ELEM_ICON_IDX[elemId]]; }
+function monIconImg(elemId) { return IMG.monIcon[ELEM_ICON_IDX[elemId]]; }
+// 等比置中繪製（cover：填滿並裁切；contain：完整顯示）
+function drawImgFit(img, x, y, w, h, mode = 'contain', anchorY = 'center') {
+    if (!imgReady(img)) return;
+    const ir = img.naturalWidth / img.naturalHeight;
+    const r = w / h;
+    let dw, dh;
+    if ((mode === 'cover') ? (ir > r) : (ir < r)) { dh = h; dw = h * ir; }
+    else { dw = w; dh = w / ir; }
+    const oy = anchorY === 'top' ? 0 : anchorY === 'bottom' ? (h - dh) : (h - dh) / 2;
+    ctx.drawImage(img, x + (w - dw) / 2, y + oy, dw, dh);
+}
+
 // === 遊戲設定與資料 ===
 const COLS = 7;
 const ROWS = 5;
-const GEM_SIZE = 82;
-const GRID_W = COLS * GEM_SIZE;
-const GRID_H = ROWS * GEM_SIZE;
-const GRID_X = (1280 - GRID_W) / 2;
-const GRID_Y = 100;
+const GEM_SIZE = 96;                  // 對齊素材：每格 96px（reel_bot 672×480）
+const GRID_W = COLS * GEM_SIZE;       // 672
+const GRID_H = ROWS * GEM_SIZE;       // 480
+const GRID_X = (1280 - GRID_W) / 2;   // 304，對齊外框透明開口
+const GRID_Y = 82;                    // 82，對齊外框透明開口
 
 // 6 屬性（企劃書）：雷霆/聖心 為 Boss 屬性(id 1/2)，祕法/烈焰/冰霜/大地 為一般屬性
 const ELEMENTS = [
@@ -459,49 +499,51 @@ function baseDamage(count) {
 function tierKey(count) {
     return count >= 12 ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
 }
-// 祕法 4/5 星「三值抽選」傷害表（賠率表）
-const ARCANE_TABLE = {
+// 大地 4/5 星「三值抽選」傷害表（企畫書）
+const EARTH_TABLE = {
     4: { 3:[3,4,5],   4:[7,8,9],    5:[10,12,14], 6:[13,16,19], 8:[16,20,24], 10:[19,24,29], 12:[22,28,34] },
     5: { 3:[4,5,6],   4:[9,10,11],  5:[13,15,17], 6:[17,20,23], 8:[21,25,29], 10:[25,30,35], 12:[29,35,41] }
 };
 
+// 一般（未觸發特效）攻擊力 — 同企畫書各屬性傷害表，供卡牌 ATK 顯示與傷害計算共用
+//  雷霆/聖心：base × 星等（全星等）
+//  烈焰/冰霜/祕法：1~3星 base×星等；4星 base×3、5星 base×4
+//  大地：1~3星 base×星等；4/5星三值表（顯示取中間值）
+function normalAttack(elemId, count, level) {
+    const base = baseDamage(count);
+    if (elemId === 5 && level >= 4) return EARTH_TABLE[level][tierKey(count)][1];
+    if (elemId === 1 || elemId === 2 || level <= 3) return base * level;
+    return base * (level === 4 ? 3 : 4);   // 烈焰/冰霜/祕法 4/5 星基礎降階
+}
+
 // 計算單次攻擊：回傳 { damage, isCrit, effectLabel }
-//  雷霆/聖心：base × 星等（1~5）
-//  烈焰/冰霜/大地：1~3星 base×星等；4/5星基礎降為 ×3/×4，並有機率觸發特效
-//  祕法：1~3星 base×星等；4/5星於三值表隨機抽選
 function computeAttack(elemId, count, level, forced) {
     const base = baseDamage(count);
+    const normal = normalAttack(elemId, count, level);
 
-    // 雷霆 / 聖心：純倍率，無特殊機制
-    if (elemId === 1 || elemId === 2) {
-        return { damage: base * level, isCrit: false, effectLabel: '' };
+    // 雷霆/聖心，或 1~3 星：純基礎傷害，無特殊機制
+    if (elemId === 1 || elemId === 2 || level <= 3) {
+        return { damage: normal, isCrit: false, effectLabel: '' };
     }
 
-    // 祕法：4/5星三值抽選
-    if (elemId === 0) {
-        if (level >= 4) {
-            const arr = ARCANE_TABLE[level][tierKey(count)];
-            return { damage: arr[Math.floor(Math.random() * arr.length)], isCrit: false, effectLabel: '🔮 祕法' };
-        }
-        return { damage: base * level, isCrit: false, effectLabel: '' };
+    // 大地：4/5 星三值抽選（每次隨機）
+    if (elemId === 5) {
+        const arr = EARTH_TABLE[level][tierKey(count)];
+        return { damage: arr[Math.floor(Math.random() * arr.length)], isCrit: false, effectLabel: '🌿 大地' };
     }
 
-    // 烈焰 / 冰霜 / 大地：1~3星純倍率
-    if (level <= 3) return { damage: base * level, isCrit: false, effectLabel: '' };
-
-    // 4/5星：基礎倍率降為 ×3(Lv4) / ×4(Lv5)，換取特殊機制
-    const normal = base * (level === 4 ? 3 : 4);
-    if (elemId === 3) {            // 烈焰：爆擊 Lv4 25% / Lv5 20% → base×7 / base×9
+    // 烈焰：爆擊 Lv4 25% / Lv5 20% → base×7 / base×9
+    if (elemId === 3) {
         const p = level === 4 ? 0.25 : 0.20;
         if (forced || Math.random() < p)
             return { damage: base * (level === 4 ? 7 : 9), isCrit: true, effectLabel: '爆擊' };
     } else if (elemId === 4) {     // 冰霜：追擊 50% → 追加 base×2
         if (forced || Math.random() < 0.50)
             return { damage: normal + base * 2, isCrit: false, effectLabel: '❄️ 追擊' };
-    } else if (elemId === 5) {     // 大地：連擊 Lv4 33.3% / Lv5 25% → 總傷 ×2
+    } else if (elemId === 0) {     // 祕法：連擊 Lv4 33.3% / Lv5 25% → 總傷 ×2
         const p = level === 4 ? (1 / 3) : 0.25;
         if (forced || Math.random() < p)
-            return { damage: normal * 2, isCrit: false, effectLabel: '🌿 連擊' };
+            return { damage: normal * 2, isCrit: false, effectLabel: '🔮 連擊' };
     }
     return { damage: normal, isCrit: false, effectLabel: '' };
 }
@@ -559,8 +601,13 @@ let totalScore = 0;
 let winScore = 0;
 let betAmount = 100;
 let matchHistory = []; // 本次 spin 每組消除紀錄 {elemId, count}
-let showStatsPanel = true;
+let showStatsPanel = false; // 預設關閉，避免遮住上方 JP 橫幅；點左上 📊 可開啟
 let showInfoPanel = false;
+// === 展示用顯示開關（在統計面板內可切換）===
+let showCollectSlot = false; // FG / BG 收集欄（預設關閉）
+let showCards       = true;  // 卡牌
+let showScorePopup  = true;  // 消除得分浮字（⚡×3 = 分數）
+let statToggleRects = [];    // 統計面板內開關按鈕的點擊區域（繪製時填入）
 let stats = { spins: 0, hits: 0 };
 let hasHitThisSpin = false;
 
@@ -615,8 +662,8 @@ let transitionBgColor = '#000000';
 let transitionAccentColor = '#ffffff';
 
 // 各位置固定血量（企劃書）：Lv.1=10 / Lv.2=20 / Lv.3=30 / Lv.4=40
-// 左第二=Lv4(40)、左最下=Lv2(20)、右第二=Lv3(30)、右最下=Lv1(10)
-const MONSTER_FIXED_HP = { 1: 40, 2: 20, 4: 30, 5: 10 };
+// 左第二=Lv4(40)、左最下=Lv1(10)、右第二=Lv3(30)、右最下=Lv2(20)
+const MONSTER_FIXED_HP = { 1: 40, 2: 10, 4: 30, 5: 20 };
 
 // 根據 maxHp 判斷怪獸等級（JP Boss 回傳 0）
 function getMonsterLevel(m) {
@@ -669,10 +716,10 @@ function initMonsters() {
     monsters = [
         { elemId: 1, side: 'left',  yIndex: 0, hp: 60, maxHp: 60, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
         { elemId: 0, side: 'left',  yIndex: 1, hp: 40, maxHp: 40, shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 3, side: 'left',  yIndex: 2, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 3, side: 'left',  yIndex: 2, hp: 10, maxHp: 10, shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 2, side: 'right', yIndex: 0, hp: 60, maxHp: 60, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
         { elemId: 4, side: 'right', yIndex: 1, hp: 30, maxHp: 30, shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 5, side: 'right', yIndex: 2, hp: 10, maxHp: 10, shake: 0, name: '',     jackpot: 0,     isDead: false }
+        { elemId: 5, side: 'right', yIndex: 2, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false }
     ];
 
     // 小怪使用 6 種屬性中隨機不重複的四種屬性；外觀依等級綁定
@@ -694,8 +741,7 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     let m = monsters[idx];
     // 逃跑特效（擊殺補怪時不顯示）
     if (showEscape && m.name) {
-        let ex = m.side === 'left' ? 180 : 1100;
-        let ey = 100 + m.yIndex * 150 + 60;
+        let { x: ex, y: ey } = monsterAnchor(m);
         scoreTexts.push({ x: ex, y: ey, text: `${m.name} 逃跑了！`, color: '#fbbf24', life: 90, fontSize: 26 });
     }
     let newElem;
@@ -759,7 +805,7 @@ function generateCards() {
 
         cards.push({
             elemId: def.elemId, level: def.level, name: def.name,
-            targetCount: targetCount,
+            targetCount: targetCount, atk: 0,  // 本局該卡累計攻擊力（同屬性連續消除會疊加）
             activated: false, isCharging: false, chargeTimer: 0,
             scale: 1, shake: 0, yOffset: 130, enterDelay: cards.length * 10, yTarget: 0
         });
@@ -773,7 +819,8 @@ function generateCards() {
         if (def) {
             cards[0] = {
                 elemId: def.elemId, level: def.level, name: def.name,
-                targetCount: 4, activated: false, isCharging: false, chargeTimer: 0,
+                targetCount: 4, atk: 0,  // 本局該卡累計攻擊力（同屬性連續消除會疊加）
+                activated: false, isCharging: false, chargeTimer: 0,
                 scale: 1, shake: 0, yOffset: 130, enterDelay: 0, yTarget: 0
             };
         }
@@ -814,7 +861,8 @@ function generateCardsForFG() {
         else if (def.level === 5) targetCount = Math.floor(Math.random() * 3) + 11;
         cards.push({
             elemId: def.elemId, level: def.level, name: def.name,
-            targetCount, activated: false, isCharging: false, chargeTimer: 0,
+            targetCount, atk: 0,  // 本局該卡累計攻擊力（同屬性連續消除會疊加）
+            activated: false, isCharging: false, chargeTimer: 0,
             scale: 1, shake: 0, yOffset: 130, enterDelay: i * 10, yTarget: 0
         });
     });
@@ -962,8 +1010,7 @@ function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false)
         .sort((a, b) => a.yIndex - b.yIndex);
     if (targets.length === 0) return;
     let target = targets[0];
-    let tx = target.side === 'left' ? 180 : 1100;
-    let ty = 100 + target.yIndex * 150 + 60;
+    let { x: tx, y: ty } = monsterAnchor(target);
 
     // 顯示固定大字，停留後光球飛出
     scoreTexts.push({ x: fromX, y: fromY, text: `追擊：${target.name}`, color: '#f97316', life: 110, fontSize: 32, fixed: true });
@@ -1298,7 +1345,7 @@ function fireAttackRound(round) {
     const cardW = cards.length === 6 ? 85 : 140;
     const gap   = cards.length === 6 ? 8  : 20;
     const totalW = cards.length * cardW + (cards.length - 1) * gap;
-    round.forEach(({ elemId, count }) => {
+    round.forEach(({ elemId }) => {
         let cardIdx = cards.findIndex(c => c.elemId === elemId);
         if (cardIdx === -1) return;
         let card = cards[cardIdx];
@@ -1306,9 +1353,7 @@ function fireAttackRound(round) {
         if (candidates.length === 0) return;
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
         const cardX = (1280 - totalW) / 2 + cardIdx * (cardW + gap) + cardW / 2;
-        // 依屬性計算傷害與特效（烈焰爆擊 / 冰霜追擊 / 大地連擊 / 祕法三值）
-        const atk = computeAttack(elemId, count, card.level, forceCrit && elemId !== 1 && elemId !== 2);
-        if (atk.isCrit && forceCrit) forceCrit = false; // 真的觸發才消耗
+        // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
         particles.push({
             stage: 1,
             startX: 640, startY: GRID_Y + GRID_H,
@@ -1317,9 +1362,9 @@ function fireAttackRound(round) {
             color: ELEMENTS[elemId].color,
             cardRef: card,
             targetMonster,
-            damage: atk.damage,
-            isCrit: atk.isCrit,
-            effectLabel: atk.effectLabel,
+            damage: card.atk,
+            isCrit: !!card.atkCrit,
+            effectLabel: card.atkLabel || '',
         });
     });
 }
@@ -1391,7 +1436,8 @@ function startSpin() {
             const def  = defs[Math.floor(Math.random() * defs.length)];
             cards[0] = {
                 elemId: def.elemId, level: def.level, name: def.name,
-                targetCount: 4, activated: false, isCharging: false, chargeTimer: 0,
+                targetCount: 4, atk: 0,  // 本局該卡累計攻擊力（同屬性連續消除會疊加）
+                activated: false, isCharging: false, chargeTimer: 0,
                 scale: 1, shake: 0, yOffset: 130, enterDelay: 0, yTarget: 0
             };
         }
@@ -1423,7 +1469,7 @@ function drawRoundedRect(x, y, w, h, r, fill, stroke, lineWidth = 2) {
 }
 
 function drawStatsPanel() {
-    if (!showStatsPanel) return;
+    if (!showStatsPanel) { statToggleRects = []; return; }
     let sw = 900;
     let sh = 55;
     let sx = (1280 - sw) / 2; 
@@ -1483,74 +1529,198 @@ function drawStatsPanel() {
     let hitRate = stats.spins > 0 ? Math.round((stats.hits / stats.spins) * 100) : 0;
     ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 20px sans-serif';
     ctx.fillText(hitRate + '%', cx5, textY2);
+
+    // === 展示用顯示開關（面板下方一排，可點擊切換）===
+    const toggles = [
+        { key: 'collect', label: '收集欄',   on: showCollectSlot },
+        { key: 'cards',   label: '卡牌',     on: showCards },
+        { key: 'popup',   label: '得分浮字', on: showScorePopup },
+    ];
+    const bw = 160, bh = 30, bgap = 14;
+    const totalW = toggles.length * bw + (toggles.length - 1) * bgap;
+    const bx0 = (1280 - totalW) / 2;
+    const by0 = sy + sh + 8;
+    statToggleRects = [];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    toggles.forEach((t, i) => {
+        const bx = bx0 + i * (bw + bgap);
+        const fill   = t.on ? 'rgba(34,197,94,0.9)'  : 'rgba(51,65,85,0.9)';
+        const border = t.on ? '#22c55e'              : '#475569';
+        drawRoundedRect(bx, by0, bw, bh, 8, fill, border, 2);
+        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(`${t.label}：${t.on ? 'ON' : 'OFF'}`, bx + bw / 2, by0 + bh / 2 + 1);
+        statToggleRects.push({ x: bx, y: by0, w: bw, h: bh, key: t.key });
+    });
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 }
 
+// === 四角大怪（背景裝飾，左後龍／右後巨人／左前豬／右前女戰士）===
+function drawBigMonstersRear() {
+    drawImgFit(IMG.monArt.rearL, -55, 60, 330, 340, 'contain');   // 紅龍 左後
+    drawImgFit(IMG.monArt.rearR, 1015, 48, 268, 312, 'contain');  // 三頭巨人 右後
+}
+function drawBigMonstersFront() {
+    drawImgFit(IMG.monArt.frontL, 8, 468, 205, 175, 'contain');   // 野豬 左前
+    drawImgFit(IMG.monArt.frontR, 1012, 352, 252, 320, 'contain'); // 亞馬遜 右前
+}
+
+// === 怪獸血條中心座標（攻擊／特效命中點，需與 drawMonsters/drawBossPlate 一致）===
+function monsterAnchor(m) {
+    const left = m.side === 'left';
+    if (getMonsterLevel(m) === 0) {            // Boss：金色飾框內血條中心
+        return left ? { x: 227, y: 127 } : { x: 1052, y: 127 };
+    }
+    const r = 17, barW = 78, gap = 8;
+    const barX = left ? 98 + r + gap : 1182 - r - gap - barW;
+    let y;
+    if (!left && m.yIndex === 2)     y = 615;  // 右前 亞馬遜女戰士
+    else if (left && m.yIndex === 2) y = 610;  // 左前 野豬
+    else if (left && m.yIndex === 1) y = 320;  // 左後 紅龍
+    else                             y = 150 + m.yIndex * 150;
+    return { x: barX + barW / 2, y };
+}
+
+// === Boss（宙斯／赫拉）血量：金色飾框內專屬排版（大數字＋細血條＋徽章）===
+function drawBossPlate(m, idx, left) {
+    const ratio = Math.max(0, m.hp / m.maxHp);
+    const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
+    const plateCY = 116;                 // 金色飾框內容垂直中心
+    const embW = 50, embH = 46;
+    const barW = 74, barH = 7;
+    let embX, textX, barX;
+    if (left) {                          // 左框：徽章｜數字／血條
+        embX = 126; textX = 182; barX = 182;
+    } else {                             // 右框：數字／血條｜徽章
+        embX = 1084; textX = 1014; barX = 1015;
+    }
+    // 徽章（保留透明 PNG 原樣，不裁圓）
+    if (imgReady(emb)) drawImgFit(emb, embX, plateCY - embH / 2, embW, embH, 'contain');
+    // 大數字 hp/maxHp（白字黑描邊）
+    ctx.save();
+    ctx.font = 'bold 21px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000';
+    ctx.strokeText(`${m.hp}/${m.maxHp}`, textX, plateCY - 6);
+    ctx.fillStyle = m.hp <= 0 ? '#ef4444' : '#ffffff';
+    ctx.fillText(`${m.hp}/${m.maxHp}`, textX, plateCY - 6);
+    ctx.restore();
+    // 細血條（數字下方）
+    const by = plateCY + 11;
+    drawRoundedRect(barX, by - barH / 2, barW, barH, barH / 2, 'rgba(8,12,20,0.92)', 'rgba(0,0,0,0.7)', 1);
+    if (ratio > 0) {
+        ctx.save();
+        ctx.beginPath(); ctx.roundRect(barX + 1, by - barH / 2 + 1, (barW - 2) * ratio, barH - 2, (barH - 2) / 2); ctx.clip();
+        ctx.fillStyle = ratio > 0.3 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(barX, by - barH / 2, barW, barH);
+        ctx.restore();
+    }
+    ctx.textBaseline = 'alphabetic';
+}
+
+// === 怪物血量 UI（小頭像 + 細血條 + 數字，貼齊怪獸下方）===
 function drawMonsters() {
-    monsters.forEach(m => {
-        let mx = m.side === 'left' ? 40 : 960;
-        let my = 100 + m.yIndex * 150;
-        let w = 280; let h = 120;
-        let elem = ELEMENTS[m.elemId];
+    monsters.forEach((m, idx) => {
+        const left = m.side === 'left';
+        const elem = ELEMENTS[m.elemId];
+        const lvl  = getMonsterLevel(m);          // 0=Boss
+        // Boss（宙斯／赫拉）：金色飾框內專屬排版（大數字＋細血條＋徽章）
+        if (lvl === 0) { drawBossPlate(m, idx, left); return; }
 
-        if (m.shake > 0) {
-            mx += (Math.random() - 0.5) * 10;
-            my += (Math.random() - 0.5) * 10;
-            m.shake--;
+        let cy = 150 + m.yIndex * 150;            // 對齊攻擊命中點 y
+
+        let r = 17, barW = 78, barH = 9, gap = 8;
+        let iconCX, barX, numX, numAlign, numFont = 'bold 15px sans-serif';
+        if (!left && m.yIndex === 2) {
+            // 右前方亞馬遜女戰士：血條移到角色腳下
+            iconCX = 1182;
+            cy = 615;
+            barX = iconCX - r - gap - barW;
+            numX = barX - 6;
+            numAlign = 'right';
+        } else if (left && m.yIndex === 2) {
+            // 左前方野豬：血條移到角色腳下
+            iconCX = 98;
+            cy = 610;
+            barX = iconCX + r + gap;
+            numX = barX + barW + 6;
+            numAlign = 'left';
+        } else if (left && m.yIndex === 1) {
+            // 左後方紅龍：血條往下移 20px
+            iconCX = 98;
+            cy = 320;
+            barX = iconCX + r + gap;
+            numX = barX + barW + 6;
+            numAlign = 'left';
+        } else if (left) {
+            iconCX = 98;
+            barX = iconCX + r + gap;          // 血條在頭像內側（朝盤面）
+            numX = barX + barW + 6;
+            numAlign = 'left';
+        } else {
+            iconCX = 1182;
+            barX = iconCX - r - gap - barW;
+            numX = barX - 6;
+            numAlign = 'right';
         }
+        if (m.shake > 0) { cy += (Math.random() - 0.5) * 5; m.shake--; }
+        const accent = lvl === 0 ? '#fbbf24' : elem.color;
 
+        // 圓形頭像（Boss 用宙斯/赫拉大頭像，小怪用屬性頭像）
+        let portrait = lvl === 0 ? IMG.bossIcon[idx === 0 ? 0 : 1] : monIconImg(m.elemId);
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.arc(iconCX, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#0b1322'; ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 2; ctx.strokeStyle = accent; ctx.stroke();
+        ctx.clip();
+        if (imgReady(portrait)) drawImgFit(portrait, iconCX - r, cy - r, r * 2, r * 2, 'cover');
+        else { ctx.fillStyle = '#fff'; ctx.font = '18px Segoe UI Emoji'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(elem.icon, iconCX, cy + 1); }
+        ctx.restore();
 
-        drawRoundedRect(mx, my, w, h, 12, '#0f172a', elem.color, m.hp <= 0 ? 1 : 3);
-        
-        if (m.hp <= 0) {
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            drawRoundedRect(mx, my, w, h, 12, 'rgba(0,0,0,0.6)');
-            ctx.fillStyle = '#ef4444';
-            ctx.font = 'bold 36px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText("DEFEATED", mx + w/2, my + h/2 + 10);
-            return;
-        }
-
-        ctx.fillStyle = elem.color;
-        ctx.beginPath(); ctx.arc(mx + 45, my + 45, 28, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = '28px Segoe UI Emoji';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(elem.icon, mx + 45, my + 48);
-
-        let lvText = m.maxHp >= 50 ? 'JP' : m.maxHp >= 30 ? 'Lv.4' : m.maxHp >= 20 ? 'Lv.3' : m.maxHp >= 15 ? 'Lv.2' : 'Lv.1';
-
-        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'left'; ctx.fillText(`${lvText} ${m.name}`, mx + 90, my + 40);
-
-        // 分格式血條
-        let barX = mx + 90, barY = my + 60, barW = 170, barH = 24;
-        let hpColor = m.hp / m.maxHp > 0.3 ? '#22c55e' : '#ef4444';
-        drawRoundedRect(barX, barY, barW, barH, 4, '#334155');
-        let blockW = barW / m.maxHp;
-        for (let b = 0; b < m.hp; b++) {
+        // 細血條（無分格，純漸減）
+        const ratio = Math.max(0, m.hp / m.maxHp);
+        const hpColor = ratio > 0.3 ? '#22c55e' : '#ef4444';
+        drawRoundedRect(barX, cy - barH / 2, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
+        if (ratio > 0) {
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(barX + 1, cy - barH / 2 + 1, (barW - 2) * ratio, barH - 2, (barH - 2) / 2); ctx.clip();
             ctx.fillStyle = hpColor;
-            ctx.fillRect(barX + b * blockW + 1, barY + 2, blockW - 2, barH - 4);
+            ctx.fillRect(barX, cy - barH / 2, barW, barH);
+            ctx.restore();
         }
-        ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1;
-        for (let b = 1; b < m.maxHp; b++) {
-            let lx = barX + b * blockW;
-            ctx.beginPath(); ctx.moveTo(lx, barY); ctx.lineTo(lx, barY + barH); ctx.stroke();
-        }
-    });
 
-    // 盤面上方 JP 橫幅（宙斯左、赫拉右）
-    [monsters[0], monsters[3]].forEach((boss, bi) => {
-        if (!boss || boss.isDead) return;
-        let bw = 180, bh = 26;
-        let bx = bi === 0 ? GRID_X : GRID_X + GRID_W - bw;
-        let by = GRID_Y - 30;
-        drawRoundedRect(bx, by, bw, bh, 13, '#1a0e00', '#b45309', 2);
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.textAlign = bi === 0 ? 'left' : 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`🏆 ${boss.name} ${boss.jackpot.toLocaleString()}`, bi === 0 ? bx + 10 : bx + bw - 10, by + bh / 2);
+        // 數字 hp/maxHp
+        ctx.fillStyle = m.hp <= 0 ? '#ef4444' : '#f8fafc';
+        ctx.font = numFont;
+        ctx.textAlign = numAlign; ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+        ctx.fillText(`${m.hp}/${m.maxHp}`, numX, cy);
+        ctx.shadowBlur = 0;
+        ctx.textBaseline = 'alphabetic';
     });
+}
+
+// === 上方 Zeus JP / Hera JP 橫幅數字 ===
+function drawJPBanner() {
+    const zeus = monsters[0], hera = monsters[3];
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
+    // 宙斯（左）
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('ZEUS JP', 590, 22);
+    ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText((zeus ? zeus.jackpot : 0).toLocaleString(), 600, 44);
+    // 赫拉（右）
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('HERA JP', 690, 22);
+    ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), 680, 44);
+    ctx.restore();
+    ctx.textBaseline = 'alphabetic';
 }
 
 function drawCards() {
@@ -1558,12 +1728,12 @@ function drawCards() {
 
     const isFGMode = cards.length === 6;
     const cardW = isFGMode ? 85  : 140;
-    const cardH = isFGMode ? 90  : 110;
+    const cardH = isFGMode ? 84  : 90;
     const gap   = isFGMode ? 8   : 20;
     const count = Math.max(cards.length, isFGMode ? 6 : 3);
     const totalW = count * cardW + (count - 1) * gap;
     const startX = (1280 - totalW) / 2;
-    const baseY = isFGMode ? 525 : 520;
+    const baseY = isFGMode ? 552 : 560; // 移到盤面下方（盤面底 562），避免擋到盤面
 
     // 插槽背景
     for (let i = 0; i < count; i++) {
@@ -1597,6 +1767,25 @@ function drawCards() {
 
         // activated 不降低透明度，維持原色
 
+        // ── 有對應卡牌美術圖時直接畫圖（cover 裁切）+ 等級邊框 + 技能名 ──
+        let cardImg = IMG.card[`${card.elemId}_${card.level}`];
+        if (imgReady(cardImg)) {
+            ctx.save();
+            if (card.isCharging) { ctx.shadowColor = elem.color; ctx.shadowBlur = 35; }
+            ctx.beginPath(); ctx.roundRect(x, drawY, cardW, cardH, 10); ctx.clip();
+            drawImgFit(cardImg, x, drawY, cardW, cardH, 'cover', 'top');  // 露出卡圖上半（元素icon＋ATK＋頭像）
+            ctx.restore();
+            drawRoundedRect(x, drawY, cardW, cardH, 10, null, trimColor, card.isCharging ? 4 : 2.5);
+            if (card.isCharging) {
+                ctx.fillStyle = 'rgba(255,255,255,0.18)';
+                drawRoundedRect(x, drawY, cardW, cardH, 10, ctx.fillStyle);
+            }
+            // 有美術圖：屬性與 ATK 已內建於卡圖，不再額外疊字
+            ctx.globalAlpha = 1.0;
+            ctx.restore();
+            return;
+        }
+
         if (card.isCharging) {
             ctx.shadowColor = elem.color;
             ctx.shadowBlur = 35;
@@ -1626,26 +1815,14 @@ function drawCards() {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(elem.icon, badgeX, badgeY + 1);
 
-        // 星星等級
-        let stars = '★'.repeat(card.level);
-        ctx.font = `bold ${isFGMode ? 9 : 12}px sans-serif`;
-        ctx.textAlign = 'left'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.5;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(stars, x + (isFGMode ? 30 : 44), badgeY);
-        ctx.fillStyle = '#facc15';
-        ctx.fillText(stars, x + (isFGMode ? 30 : 44), badgeY);
-
-        // 技能名稱（自動縮小字體避免溢出）
-        const maxTextW = cardW - (isFGMode ? 12 : 24);
-        let fontSize = isFGMode ? 12 : 18;
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        while (ctx.measureText(card.name).width > maxTextW && fontSize > 7) {
-            fontSize--;
-            ctx.font = `bold ${fontSize}px sans-serif`;
-        }
-        ctx.fillStyle = '#f8fafc';
+        // 攻擊力（即時依消除顆數變動）— 屬性僅以左上 icon 呈現，不放名稱
+        const atkVal = card.atk > 0 ? card.atk : normalAttack(card.elemId, 3, card.level);
+        ctx.font = `bold ${isFGMode ? 17 : 26}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(card.name, cx, drawY + (isFGMode ? 62 : 72));
+        ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+        ctx.strokeText(`ATK ${atkVal}`, cx, drawY + (isFGMode ? 58 : 68));
+        ctx.fillStyle = '#facc15';
+        ctx.fillText(`ATK ${atkVal}`, cx, drawY + (isFGMode ? 58 : 68));
 
         ctx.globalAlpha = 1.0;
         ctx.restore();
@@ -1687,7 +1864,12 @@ function drawAccumulator() {
 }
 
 function drawGrid() {
-    drawRoundedRect(GRID_X - 10, GRID_Y - 10, GRID_W + 20, GRID_H + 20, 16, '#0f172a', '#334155', 4);
+    // 盤面底圖（暗格 7×5）。未載入時退回原本深色框
+    if (imgReady(IMG.reelbot)) {
+        ctx.drawImage(IMG.reelbot, GRID_X, GRID_Y, GRID_W, GRID_H);
+    } else {
+        drawRoundedRect(GRID_X - 10, GRID_Y - 10, GRID_W + 20, GRID_H + 20, 16, '#0f172a', '#334155', 4);
+    }
 
     ctx.save();
     ctx.beginPath(); ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H); ctx.clip();
@@ -1709,36 +1891,38 @@ function drawGrid() {
                 let drawX = x + pad + (maxS - s) / 2;
                 let drawY = y + pad + (maxS - s) / 2;
 
-                if (gem.isMatched) {
-                    ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 15;
-                }
+                let img = gemImg(gem.id);
 
-                if (gem.id === WILD_ID) {
-                    // WILD：金色漸層外框 + 旋轉光暈
-                    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
-                    drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1a1400', '#ffd700', 3);
+                if (imgReady(img)) {
+                    // 消除中（白光）/ WILD（金光）發光
+                    if (gem.isMatched)      { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; }
+                    else if (gem.id === WILD_ID) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 16; }
+                    ctx.drawImage(img, drawX, drawY, s, s);
                     ctx.shadowBlur = 0;
-                    // 彩色 overlay
-                    let grad = ctx.createLinearGradient(drawX, drawY, drawX + s, drawY + s);
-                    grad.addColorStop(0, 'rgba(255,100,100,0.25)');
-                    grad.addColorStop(0.5, 'rgba(100,255,100,0.25)');
-                    grad.addColorStop(1, 'rgba(100,100,255,0.25)');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath(); ctx.roundRect(drawX, drawY, s, s, 12 * gem.scale); ctx.fill();
                 } else {
-                    drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1e293b', elem.color, 2);
-                    ctx.shadowBlur = 0;
+                    // ── 退回原本的程式繪製 ──
+                    if (gem.isMatched) { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 15; }
+                    if (gem.id === WILD_ID) {
+                        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
+                        drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1a1400', '#ffd700', 3);
+                        ctx.shadowBlur = 0;
+                        let grad = ctx.createLinearGradient(drawX, drawY, drawX + s, drawY + s);
+                        grad.addColorStop(0, 'rgba(255,100,100,0.25)');
+                        grad.addColorStop(0.5, 'rgba(100,255,100,0.25)');
+                        grad.addColorStop(1, 'rgba(100,100,255,0.25)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath(); ctx.roundRect(drawX, drawY, s, s, 12 * gem.scale); ctx.fill();
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = `bold ${36 * gem.scale}px sans-serif`;
+                    } else {
+                        drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1e293b', elem.color, 2);
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = `${32 * gem.scale}px Segoe UI Emoji`;
+                    }
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
                 }
-
-                if (gem.id === WILD_ID) {
-                    ctx.fillStyle = '#ffd700';
-                    ctx.font = `bold ${36 * gem.scale}px sans-serif`;
-                } else {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = `${32 * gem.scale}px Segoe UI Emoji`;
-                }
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
             }
         }
     }
@@ -1752,6 +1936,7 @@ function drawUI() {
     ctx.beginPath(); ctx.moveTo(0, 640); ctx.lineTo(1280, 640); ctx.stroke();
 
     const bottomY = 660;
+    ctx.textBaseline = 'middle';   // 按鈕文字上下置中
 
     drawRoundedRect(40, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
     ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
@@ -1783,6 +1968,7 @@ function drawUI() {
 
     drawRoundedRect(1020, bottomY, 220, 40, 10, '#1e293b', '#334155');
     ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${totalScore}`, 1130, bottomY + 20);
+    ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
 
     // FG / BG 狀態橫幅
     if (isFG) {
@@ -1818,6 +2004,7 @@ function drawUI() {
         ctx.shadowBlur = 0;
     }
 
+    ctx.textBaseline = 'middle';   // SPIN / AUTO SPIN 文字上下置中
     let spinBtnColor = currentState === STATE.IDLE && !isAutoSpinning ? (isMouseHoverSpin ? '#0284c7' : '#38bdf8') : '#475569';
     drawRoundedRect(490, 650, 140, 50, 25, spinBtnColor);
     ctx.fillStyle = 'white'; ctx.font = 'bold 22px sans-serif';
@@ -1831,6 +2018,7 @@ function drawUI() {
     } else {
         ctx.fillText("AUTO SPIN", 720, 675);
     }
+    ctx.textBaseline = 'alphabetic';   // 還原
 }
 
 function drawEffects() {
@@ -2039,6 +2227,18 @@ function update() {
                 let { elemId, count } = match;
                 matchHistory.push({ elemId, count });
 
+                // 即時更新對應卡牌的攻擊力：依本次消除顆數計算傷害（含特效），往上疊加本局累計
+                // 多次同屬性消除會累積到同一張卡，最後只發動一次攻擊（傷害＝累計值）
+                let atkCardIdx = cards.findIndex(c => c.elemId === elemId);
+                if (atkCardIdx !== -1) {
+                    let _c = cards[atkCardIdx];
+                    let a = computeAttack(elemId, count, _c.level, forceCrit && elemId !== 1 && elemId !== 2);
+                    if (a.isCrit && forceCrit) forceCrit = false;
+                    _c.atk += a.damage;
+                    if (a.isCrit) _c.atkCrit = true;
+                    if (a.effectLabel) _c.atkLabel = a.effectLabel;
+                }
+
                 let score = getScore(count, elemId);
                 winScore += score; totalScore += score;
 
@@ -2046,7 +2246,7 @@ function update() {
                 let scoreLabel = isBG
                     ? `×${getBGMultiplier()} | ${ELEMENTS[elemId].icon}×${count} = ${score}`
                     : `${ELEMENTS[elemId].icon}×${count} = ${score}`;
-                scoreTexts.push({
+                if (showScorePopup) scoreTexts.push({
                     x: 640, y: 320 + mi * 50,
                     text: scoreLabel,
                     color: isBG ? '#f59e0b' : ELEMENTS[elemId].color, life: 90
@@ -2127,9 +2327,8 @@ function update() {
                 return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
             });
         sortedElems.forEach(eid => {
-            elemGroups[eid].forEach(count => {
-                pendingRounds.push([{ elemId: parseInt(eid), count }]);
-            });
+            // 同屬性無論消除幾組，本輪只發動一次攻擊（傷害已累積在卡牌 ATK）
+            pendingRounds.push([{ elemId: parseInt(eid) }]);
         });
 
         if (pendingRounds.length > 0) {
@@ -2171,8 +2370,7 @@ function update() {
                     p.cardRef.isCharging = false;
                     p.cardRef.activated = true;
                     p.startX = p.tx; p.startY = p.ty;
-                    p.tx = p.targetMonster.side === 'left' ? 180 : 1100;
-                    p.ty = 150 + p.targetMonster.yIndex * 150;
+                    { const a = monsterAnchor(p.targetMonster); p.tx = a.x; p.ty = a.y; }
                 }
                 attacksDone = false;
             } else if (p.stage === 2) {
@@ -2199,8 +2397,7 @@ function update() {
                         }
                         if (t.hp === 0 && !t.isDead) {
                             t.isDead = true;
-                            let mx = t.side === 'left' ? 180 : 1100;
-                            let my = 100 + t.yIndex * 150;
+                            let { x: mx, y: my } = monsterAnchor(t);
                             if (!t.jackpot) {
                                 const canFGBG = !isFG
                                     && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
@@ -2227,6 +2424,12 @@ function update() {
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = 15;
+                    // 打完怪獸後，該卡攻擊力回到預設值（待該卡所有攻擊輪次都打完才歸零）
+                    if (p.cardRef && !pendingRounds.some(rd => rd.some(x => x.elemId === p.cardRef.elemId))) {
+                        p.cardRef.atk = 0;
+                        p.cardRef.atkCrit = false;
+                        p.cardRef.atkLabel = '';
+                    }
                     // 爆擊命中文字
                     if (p.isCrit) {
                         scoreTexts.push({
@@ -2246,22 +2449,19 @@ function update() {
                     }
                     // 宙斯/赫拉里程碑
                     if (p.targetMonster.jackpot > 0) {
-                        let bx = p.targetMonster.side === 'left' ? 180 : 1100;
-                        let by = 100 + p.targetMonster.yIndex * 150 + 60;
+                        let { x: bx, y: by } = monsterAnchor(p.targetMonster);
                         checkBossMilestones(monsters.indexOf(p.targetMonster), prevHp, p.targetMonster.hp, bx, by);
                     }
 
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
                         p.targetMonster.isDead = true;
-                        let omx = p.targetMonster.side === 'left' ? 180 : 1100;
-                        let omy = 100 + p.targetMonster.yIndex * 150 + 60;
+                        let { x: omx, y: omy } = monsterAnchor(p.targetMonster);
                         let overflowDmg = p.damage - prevHp;
                         let ignoreElem = false;
                         if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); forceOverflow = false; }
                         applyOverflow(p.targetMonster.side, overflowDmg, omx, omy, p.targetMonster.elemId, ignoreElem);
 
-                        let mx = p.targetMonster.side === 'left' ? 180 : 1100;
-                        let my = 100 + p.targetMonster.yIndex * 150;
+                        let mx = omx, my = omy;
                         // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
                         if (!p.targetMonster.jackpot) {
                             let effect;
@@ -2547,12 +2747,22 @@ function drawCritOverlay() {
 function gameLoop() {
     update();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!isBG) drawMonsters(); // BG 模式不顯示怪獸
-    drawCards();
-    drawGrid();
+
+    // 背景
+    if (imgReady(IMG.bg)) ctx.drawImage(IMG.bg, 0, 0, 1280, 720);
+    else { ctx.fillStyle = '#0b1020'; ctx.fillRect(0, 0, 1280, 720); }
+
+    if (!isBG) drawBigMonstersRear();   // 後景大怪（龍／巨人），會被外框遮住一部分
+    drawGrid();                          // 盤面底 + 寶石
+    if (imgReady(IMG.frame)) ctx.drawImage(IMG.frame, 0, 0, 1280, 721); // 金色外框（含柱／半身像／JP 橫幅底）
+    if (!isBG) drawBigMonstersFront();  // 前景大怪（豬／女戰士）
+    if (!isBG) drawMonsters();          // 怪物血條 UI
+    if (!isBG) drawJPBanner();          // 上方 JP 數字
+
+    if (showCards) drawCards();
     drawUI();
     drawStatsPanel();
-    if (!isBG) drawPendingFGBGSlot(); // 左上收集欄
+    if (showCollectSlot && !isBG) drawPendingFGBGSlot(); // 左上收集欄
     drawEffects();
     drawKillEffect();
     drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
@@ -2578,8 +2788,10 @@ function handleInput(clientX, clientY, isClick) {
         isMouseHoverAuto = false;
     }
 
+    const overToggle = statToggleRects.some(t => mx >= t.x && mx <= t.x + t.w && my >= t.y && my <= t.y + t.h);
+
     if (!isClick) {
-        if ((isMouseHoverSpin && currentState === STATE.IDLE && !isAutoSpinning) || isMouseHoverAuto) {
+        if ((isMouseHoverSpin && currentState === STATE.IDLE && !isAutoSpinning) || isMouseHoverAuto || overToggle) {
             canvas.style.cursor = 'pointer';
         } else {
             canvas.style.cursor = 'default';
@@ -2622,6 +2834,14 @@ function handleInput(clientX, clientY, isClick) {
         if (mx >= 160 && mx <= 260 && my >= 660 && my <= 700) {
             showInfoPanel = !showInfoPanel;
             infoPanel.classList.toggle('visible', showInfoPanel);
+        }
+        // 統計面板內的顯示開關
+        for (const t of statToggleRects) {
+            if (mx >= t.x && mx <= t.x + t.w && my >= t.y && my <= t.y + t.h) {
+                if (t.key === 'collect')      showCollectSlot = !showCollectSlot;
+                else if (t.key === 'cards')   showCards       = !showCards;
+                else if (t.key === 'popup')   showScorePopup  = !showScorePopup;
+            }
         }
         if (isMouseHoverSpin && currentState === STATE.IDLE && !isAutoSpinning) {
             startSpin();
