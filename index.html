@@ -584,6 +584,8 @@ const FORCE_MENU_ITEMS = [
     { label: '獲得JP',      type: 'jp',        color: '#fb7185' },
     { label: '必出4星卡',   type: 'card4',     color: '#ca8a04' },
     { label: '必出5星卡',   type: 'card5',     color: '#c084fc' },
+    { label: '強開FG',      type: 'forceFG',   color: '#10b981' },
+    { label: '強開BG',      type: 'forceBG',   color: '#f59e0b' },
 ];
 
 let currentState = STATE.IDLE;
@@ -2809,7 +2811,26 @@ function handleInput(clientX, clientY, isClick) {
                     const iy = my0 + i * (itemH + gap);
                     if (my >= iy && my <= iy + itemH) {
                         forceMenuOpen = false;
-                        if (item.type === 'jp') {
+                        if (item.type === 'forceFG') {
+                            // 強開FG：立即觸發 Free Game 轉場
+                            if (!isFG && !isBG) {
+                                fgSpinsRemaining = 10;
+                                pendingFGBG = 'FG';
+                                savedBoard = board.map(col => col.map(cell => ({ ...cell })));
+                                startModeTransition('🎰 FREE GAME', '10 局免費遊戲開始！', '#022c22', '#10b981');
+                                currentState = STATE.IDLE;
+                            }
+                        } else if (item.type === 'forceBG') {
+                            // 強開BG：立即觸發 Bonus Game 轉場
+                            if (!isFG && !isBG) {
+                                bgSpinsRemaining = 8;
+                                bgMultiplierIndex = 0;
+                                pendingFGBG = 'BG';
+                                savedBoard = board.map(col => col.map(cell => ({ ...cell })));
+                                startModeTransition('✨ BONUS GAME', '8 局獎勵遊戲開始！', '#1c0f00', '#f59e0b');
+                                currentState = STATE.IDLE;
+                            }
+                        } else if (item.type === 'jp') {
                             // 獲得JP：直接給予宙斯彩金並噴金幣（測試用）
                             let jp = monsters[0].jackpot || 15000;
                             winScore += jp; totalScore += jp;
