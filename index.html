@@ -518,7 +518,7 @@ const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WIL
 // === 調校系統：節奏（單位秒）與佈局（單位px）單一事實來源 ===
 // 節奏預設值對齊「節奏表 v2」（海克力斯_260706_新增視覺流程v4.3.xlsx）
 const DEFAULT_TIMING = {
-    spinRoll:         0.70,  // 滾輪滾動時長（停輪前最短滾動時間，節奏表標待定）
+    spinRoll:         0.70,  // 掉落階段時長（第1輪停輪時點下限；節奏表「滾輪滾動0.7s」佔位值，本作為圖示下落式）
     firstReelStop:    0.85,  // 第 1 輪停輪時點（自 spin 起算）
     reelStopInterval: 0.15,  // 輪與輪停輪間隔
     interSpinPause:   0.30,  // 局間停頓（自動旋轉間隔）
@@ -543,7 +543,7 @@ const DEFAULT_TIMING = {
 };
 // 面板顯示順序與中文名（依節奏表分組）
 const TIMING_META = [
-    { group: '滾輪', items: [['spinRoll','滾輪滾動時長'],['firstReelStop','第1輪停輪時點'],['reelStopInterval','停輪間隔'],['interSpinPause','局間停頓']] },
+    { group: '掉落（停輪）', items: [['spinRoll','掉落時長(下限)'],['firstReelStop','第1輪停輪時點'],['reelStopInterval','停輪間隔'],['interSpinPause','局間停頓']] },
     { group: '得分', items: [['popDim','盤面壓暗'],['scorePerIcon','每顆圖示得分演繹']] },
     { group: '卡牌攻擊', items: [['cardCharge','卡牌蓄力'],['cardGap','卡與卡間隔'],['cardReturn','卡牌歸位']] },
     { group: '受擊／擊殺', items: [['hitReact','受擊+血量'],['deathSwitch','死亡切換'],['refill','補盤'],['monsterFade','怪物淡出']] },
@@ -2341,30 +2341,29 @@ function update() {
     if (currentState === STATE.SPINNING) {
         spinTimer++;
         let allDone = true;
-        const settleFrames = Math.ceil((GRID_H + 50) / 40);   // 滑入定位所需幀數
+        const settleFrames = Math.ceil((GRID_H + 50) / 40);   // 落下定位所需幀數
         for (let c = 0; c < COLS; c++) {
+            // 停輪時點（節奏表）：第1輪 firstReelStop（spinRoll 為下限），其後每輪 +reelStopInterval
+            const stopAt = TF(Math.max(TIMING.spinRoll, TIMING.firstReelStop) + c * TIMING.reelStopInterval);
+            const settleStart = Math.max(1, stopAt - settleFrames);
             if (colStates[c] === 1) {
+                // 掉落式（非滾輪）：舊圖示整欄往下掉出畫面，欄位由左到右微錯開
                 allDone = false;
-                // 停輪時點（節奏表）：第1輪 firstReelStop（spinRoll 為下限），其後每輪 +reelStopInterval
-                const stopAt = TF(Math.max(TIMING.spinRoll, TIMING.firstReelStop) + c * TIMING.reelStopInterval);
-                const settleStart = Math.max(1, stopAt - settleFrames);
-                if (spinTimer >= settleStart) {
-                    // 進入停輪：換上最終盤面，自上方滑入定位
+                if (spinTimer > c * 4) colOffsets[c] += 40;
+                if (colOffsets[c] > GRID_H + 50) {
+                    // 掉完：換上最終盤面，藏在畫面上方等待停輪時點
                     for (let r = 0; r < ROWS; r++) {
                         board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
                     }
                     colOffsets[c] = -(GRID_H + 50);
-                    colStates[c] = 2;
-                } else {
-                    // 滾動中：圖示連續下落（每滿一格向下平移一列、頂端補新圖示）
-                    colOffsets[c] += 40;
-                    while (colOffsets[c] >= GEM_SIZE) {
-                        colOffsets[c] -= GEM_SIZE;
-                        for (let r = ROWS - 1; r > 0; r--) board[c][r] = board[c][r - 1];
-                        board[c][0] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
-                    }
+                    colStates[c] = 3;
                 }
+            } else if (colStates[c] === 3) {
+                // 空盤等待：時間到才開始落下新圖示
+                allDone = false;
+                if (spinTimer >= settleStart) colStates[c] = 2;
             } else if (colStates[c] === 2) {
+                // 新圖示自上方落下定位
                 colOffsets[c] += 40;
                 allDone = false;
                 if (colOffsets[c] >= 0) {
