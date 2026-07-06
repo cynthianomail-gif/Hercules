@@ -180,6 +180,86 @@
             transition: all 0.2s;
         }
         #infoPanelClose:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+        /* === 調校面板（節奏 / 佈局）=== */
+        #tuneBtn {
+            position: absolute;
+            top: 70px; left: 15px;
+            width: 45px; height: 45px;
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #cbd5e1;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex; justify-content: center; align-items: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 0;
+        }
+        #tuneBtn:hover { background-color: #38bdf8; color: #fff; border-color: #0284c7; }
+        #tuneBtn.active { border-color: #facc15; color: #facc15; }
+        #tunePanel {
+            display: none;
+            position: absolute;
+            top: 15px; right: 70px;
+            width: 360px; max-height: 690px;
+            background: rgba(8, 15, 30, 0.97);
+            border: 2px solid #334155;
+            border-radius: 14px;
+            z-index: 250;
+            color: #e2e8f0;
+            font-size: 13px;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #tunePanel.visible { display: flex; }
+        #tuneTabs { display: flex; gap: 6px; padding: 10px 12px 0; }
+        .tune-tab {
+            flex: 1;
+            background: #1e293b; border: 1px solid #334155;
+            color: #94a3b8; border-radius: 8px 8px 0 0;
+            padding: 6px 0; cursor: pointer; font-size: 13px;
+        }
+        .tune-tab.active { background: #0f3460; color: #38bdf8; border-color: #38bdf8; }
+        #tuneBody {
+            overflow-y: auto;
+            padding: 8px 14px 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #334155 transparent;
+        }
+        .tune-group {
+            margin: 8px 0 4px;
+            color: #38bdf8; font-size: 12px; letter-spacing: 1px;
+            border-bottom: 1px solid #1e293b; padding-bottom: 2px;
+        }
+        .tune-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+        .tune-row label { flex: 0 0 112px; color: #cbd5e1; font-size: 12px; }
+        .tune-row input[type=range] { flex: 1; min-width: 0; accent-color: #38bdf8; }
+        .tune-row input[type=number] {
+            width: 58px;
+            background: #0b1322; border: 1px solid #334155;
+            color: #f8fafc; border-radius: 6px;
+            padding: 2px 4px; font-size: 12px;
+        }
+        .tune-actions { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #1e293b; }
+        .tune-actions button {
+            flex: 1;
+            background: #1e293b; border: 1px solid #475569;
+            color: #cbd5e1; border-radius: 8px;
+            padding: 6px 0; cursor: pointer; font-size: 13px;
+        }
+        .tune-actions button:hover { background: #0f3460; border-color: #38bdf8; color: #38bdf8; }
+        .tune-hint { color: #64748b; font-size: 11px; margin: 6px 0; line-height: 1.6; }
+        .tune-obj-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+        .tune-obj-btn {
+            background: #1e293b; border: 1px solid #334155;
+            color: #cbd5e1; border-radius: 6px;
+            padding: 3px 8px; cursor: pointer; font-size: 12px;
+        }
+        .tune-obj-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+        .tune-obj-btn.selected { background: #423a06; border-color: #facc15; color: #facc15; }
     </style>
 </head>
 <body>
@@ -187,7 +267,20 @@
 <div id="game-container">
     <button id="fsBtn" title="全螢幕 (Fullscreen)">⛶</button>
     <button id="statsBtn" title="測試面板">📈</button>
+    <button id="tuneBtn" title="調校面板（節奏/佈局）">🔧</button>
     <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+    <div id="tunePanel">
+        <div id="tuneTabs">
+            <button class="tune-tab active" data-tab="timing">⏱️ 節奏</button>
+            <button class="tune-tab" data-tab="layout">📐 佈局</button>
+        </div>
+        <div id="tuneBody"></div>
+        <div class="tune-actions">
+            <button id="tuneReset">重設為預設</button>
+            <button id="tuneExport">匯出 JSON</button>
+        </div>
+    </div>
 
     <div id="infoPanel">
         <button id="infoPanelClose">✕</button>
@@ -406,8 +499,8 @@ const ROWS = 5;
 const GEM_SIZE = 96;                  // 對齊素材：每格 96px（reel_bot 672×480）
 const GRID_W = COLS * GEM_SIZE;       // 672
 const GRID_H = ROWS * GEM_SIZE;       // 480
-const GRID_X = (1280 - GRID_W) / 2;   // 304，對齊外框透明開口
-const GRID_Y = 82;                    // 82，對齊外框透明開口
+let GRID_X = (1280 - GRID_W) / 2;     // 304，對齊外框透明開口（可由調校面板調整）
+let GRID_Y = 82;                      // 82，對齊外框透明開口（可由調校面板調整）
 
 // 6 屬性（企劃書）：雷霆/聖心 為 Boss 屬性(id 1/2)，祕法/烈焰/冰霜/大地 為一般屬性
 const ELEMENTS = [
@@ -421,6 +514,90 @@ const ELEMENTS = [
 
 const WILD_ID = 6;
 const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
+
+// === 調校系統：節奏（單位秒）與佈局（單位px）單一事實來源 ===
+// 節奏預設值對齊「節奏表 v2」（海克力斯_260706_新增視覺流程v4.3.xlsx）
+const DEFAULT_TIMING = {
+    spinRoll:         0.70,  // 滾輪滾動時長（停輪前最短滾動時間，節奏表標待定）
+    firstReelStop:    0.85,  // 第 1 輪停輪時點（自 spin 起算）
+    reelStopInterval: 0.15,  // 輪與輪停輪間隔
+    interSpinPause:   0.30,  // 局間停頓（自動旋轉間隔）
+    popDim:           0.15,  // 連線後盤面壓暗淡入
+    scorePerIcon:     0.30,  // 每顆圖示得分演繹（總長 = 圖示數 × 本值）
+    cardCharge:       0.60,  // 卡牌蓄力（攻擊發射前）
+    cardGap:          0.50,  // 卡與卡攻擊間隔
+    cardReturn:       0.25,  // 卡牌歸位
+    hitReact:         0.30,  // 受擊+血量
+    deathSwitch:      0.50,  // 死亡切換（擊殺光球飛行）
+    refill:           0.30,  // 補盤（掉落）
+    monsterFade:      0.40,  // 怪物淡出（盤面效果展示）
+    wildSpawn:        0.25,  // WILD 生成（效果套用爆光）
+    wildFlyIn:        0.30,  // WILD 飛入
+    wildStagger:      0.10,  // WILD 每 +1 顆飛入錯落
+    transIn:          0.30,  // 全畫面壓黑（轉場淡入）
+    transHold:        0.40,  // 機制畫面入場（轉場停留）
+    transOut:         0.30,  // 轉場淡出
+    critFlash:        0.10,  // 爆擊閃白
+    critImage:        1.20,  // 爆擊全版圖時長
+    chaseGap:         0.30,  // 追擊間隔（受擊結束到追擊光球出發）
+};
+// 面板顯示順序與中文名（依節奏表分組）
+const TIMING_META = [
+    { group: '滾輪', items: [['spinRoll','滾輪滾動時長'],['firstReelStop','第1輪停輪時點'],['reelStopInterval','停輪間隔'],['interSpinPause','局間停頓']] },
+    { group: '得分', items: [['popDim','盤面壓暗'],['scorePerIcon','每顆圖示得分演繹']] },
+    { group: '卡牌攻擊', items: [['cardCharge','卡牌蓄力'],['cardGap','卡與卡間隔'],['cardReturn','卡牌歸位']] },
+    { group: '受擊／擊殺', items: [['hitReact','受擊+血量'],['deathSwitch','死亡切換'],['refill','補盤'],['monsterFade','怪物淡出']] },
+    { group: 'WILD', items: [['wildSpawn','WILD 生成'],['wildFlyIn','WILD 飛入'],['wildStagger','每+1顆飛入錯落']] },
+    { group: 'LV4 全畫面／轉場', items: [['transIn','全畫面壓黑'],['transHold','機制畫面入場'],['transOut','轉場淡出']] },
+    { group: '變體', items: [['critFlash','爆擊閃白'],['critImage','爆擊全版圖'],['chaseGap','追擊間隔']] },
+];
+let TIMING = { ...DEFAULT_TIMING };
+const TF = s => Math.max(1, Math.round(s * 60));   // 秒 → 幀（60fps）
+
+// 佈局預設值 = 原程式寫死座標
+const DEFAULT_LAYOUT = {
+    bigRearL:    { x: -55,  y: 60,  w: 330, h: 340 },  // 左後 紅龍插畫
+    bigRearR:    { x: 1015, y: 48,  w: 268, h: 312 },  // 右後 三頭巨人插畫
+    bigFrontL:   { x: 8,    y: 468, w: 205, h: 175 },  // 左前 野豬插畫
+    bigFrontR:   { x: 1012, y: 352, w: 252, h: 320 },  // 右前 亞馬遜插畫
+    monL1:       { x: 98,   y: 320 },                  // 左後小怪 頭像/血條錨點
+    monL2:       { x: 98,   y: 610 },                  // 左前小怪
+    monR1:       { x: 1182, y: 300 },                  // 右後小怪
+    monR2:       { x: 1182, y: 615 },                  // 右前小怪
+    bossL:       { x: 126,  y: 116 },                  // 宙斯 金框內容（徽章起點/垂直中心）
+    bossR:       { x: 1084, y: 116 },                  // 赫拉 金框內容
+    cards:       { x: 640,  y: 560 },                  // 卡牌列（水平置中錨點/頂端）
+    grid:        { x: 304,  y: 82 },                   // 盤面左上角
+    bottomUI:    { x: 0,    y: 640 },                  // 下方 UI 列
+    jpBanner:    { x: 640,  y: 33 },                   // JP 橫幅（置中）
+    accum:       { x: 640,  y: 482 },                  // 消除累計欄（中心）
+    collectSlot: { x: 40,   y: 72 },                   // FG/BG 收集欄（左上角）
+};
+// 佈局註冊表：key、面板顯示名、外框（點選/顯示用）、是否可調尺寸
+const LAYOUT_META = [
+    ['grid',        '盤面',           o => ({ x: o.x, y: o.y, w: GRID_W, h: GRID_H }), false],
+    ['bottomUI',    '下方UI列',       o => ({ x: o.x, y: o.y, w: 1280, h: 80 }), false],
+    ['bigRearL',    '左後紅龍',       o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
+    ['bigRearR',    '右後三頭巨人',   o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
+    ['bigFrontL',   '左前野豬',       o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
+    ['bigFrontR',   '右前亞馬遜',     o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
+    ['cards',       '卡牌列',         o => ({ x: o.x - 236, y: o.y - 8, w: 472, h: 104 }), false],
+    ['accum',       '消除累計欄',     o => ({ x: o.x - 250, y: o.y - 22, w: 500, h: 45 }), false],
+    ['jpBanner',    'JP橫幅',         o => ({ x: o.x - 100, y: o.y - 25, w: 200, h: 50 }), false],
+    ['collectSlot', 'FG/BG收集欄',    o => ({ x: o.x, y: o.y, w: 285, h: 26 }), false],
+    ['bossL',       '宙斯血條',       o => ({ x: o.x - 6, y: o.y - 28, w: 146, h: 56 }), false],
+    ['bossR',       '赫拉血條',       o => ({ x: o.x - 74, y: o.y - 28, w: 130, h: 56 }), false],
+    ['monL1',       '左後小怪血條',   o => ({ x: o.x - 22, y: o.y - 22, w: 150, h: 44 }), false],
+    ['monL2',       '左前小怪血條',   o => ({ x: o.x - 22, y: o.y - 22, w: 150, h: 44 }), false],
+    ['monR1',       '右後小怪血條',   o => ({ x: o.x - 128, y: o.y - 22, w: 150, h: 44 }), false],
+    ['monR2',       '右前小怪血條',   o => ({ x: o.x - 128, y: o.y - 22, w: 150, h: 44 }), false],
+];
+let LAYOUT = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+// 佈局變更後同步既有全域變數（盤面座標被大量引用，維持原名）
+function syncLayoutDerived() {
+    GRID_X = LAYOUT.grid.x;
+    GRID_Y = LAYOUT.grid.y;
+}
 
 const LEVEL_TRIM = { 1: '#64748b', 2: '#b45309', 3: '#94a3b8', 4: '#ca8a04', 5: '#c084fc' };
 
@@ -617,7 +794,9 @@ let hasHitThisSpin = false;
 // 動畫變數
 let colOffsets = [];
 let colStates = [];
-let colDelays = [];
+let spinTimer = 0;      // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
+let roundGapTimer = 0;  // 卡與卡攻擊間隔倒數
+let popDimTimer = 0;    // 消除壓暗淡入計時
 let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
@@ -1023,7 +1202,7 @@ function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false)
     particles.push({
         stage: 2, isOverflow: true,
         startX: fromX, startY: fromY, tx, ty,
-        progress: 0, color: '#f97316', delay: 90,
+        progress: 0, color: '#f97316', delay: TF(TIMING.chaseGap),
         overflowDamage: overflow, overflowElemId: elemId,
         targetMonster: target
     });
@@ -1039,13 +1218,16 @@ function applyKillEffect(effect) {
     let nonCardElems = getNonCardElems();
 
     if (effectType === 1) {
+        // WILD 飛入：自上方落下（wildFlyIn），每 +1 顆錯落 wildStagger（節奏表）
+        const wildFallSpeed = (GRID_H + 50) / TF(TIMING.refill);
+        const wildDrop = i => -(wildFallSpeed * (TF(TIMING.wildFlyIn) + i * TF(TIMING.wildStagger)));
         if (effect.big) {
             // 生成巨型WILD：2×2 區塊（固定底部兩列，重力不拆散）
             let startC = Math.floor(Math.random() * (COLS - 1));
             let startR = ROWS - 2;
             for (let dc = 0; dc < 2; dc++)
                 for (let dr = 0; dr < 2; dr++)
-                    board[startC + dc][startR + dr] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false };
+                    board[startC + dc][startR + dr] = { id: WILD_ID, yOffset: wildDrop(dc * 2 + dr), scale: 1, isMatched: false };
         } else {
             // 生成小 WILD：固定數量
             let wildCount = effect.wildCount || 1;
@@ -1055,7 +1237,7 @@ function applyKillEffect(effect) {
                     allCells.push({ c, r });
             allCells.sort(() => Math.random() - 0.5);
             for (let i = 0; i < wildCount; i++)
-                board[allCells[i].c][allCells[i].r] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false };
+                board[allCells[i].c][allCells[i].r] = { id: WILD_ID, yOffset: wildDrop(i), scale: 1, isMatched: false };
         }
 
     } else if (effectType === 2) {
@@ -1213,7 +1395,7 @@ function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
             flyingScores.push({
                 type: 'bossHit',
                 x: bossX, y: bossY - 10,
-                tx: 925, ty: 660,
+                tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
                 text: `🪙 +${reward}`,
                 color: '#ffd700',
                 life: 150, delay: 85,
@@ -1266,8 +1448,8 @@ function drawKillEffect() {
     if (killEffectPhase === 'flying') {
         const isFGBG = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6);
         // FG/BG 飛向左上收集欄中心；其他效果飛向盤面中心
-        const targetX = isFGBG ? 182 : cx;
-        const targetY = isFGBG ? 85  : cy;
+        const targetX = isFGBG ? LAYOUT.collectSlot.x + 142 : cx;
+        const targetY = isFGBG ? LAYOUT.collectSlot.y + 13  : cy;
         const ballColor = isFGBG
             ? (killEffectCurrent.type === 5 ? '#10b981' : '#f59e0b')
             : '#ffd700';
@@ -1286,7 +1468,8 @@ function drawKillEffect() {
         ctx.fillText(EFFECT_ICONS[killEffectCurrent.type], curX, curY);
 
     } else if (killEffectPhase === 'showing') {
-        let fadeIn = Math.min(1, (50 - killEffectTimer) / 12);
+        const showF = TF(TIMING.monsterFade);
+        let fadeIn = Math.min(1, (showF - killEffectTimer) / Math.max(1, Math.round(showF * 0.24)));
         // 盤面半透明遮罩
         ctx.fillStyle = `rgba(0,0,10,${0.65 * fadeIn})`;
         ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
@@ -1330,16 +1513,16 @@ function drawKillEffect() {
         if (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) {
             // FG/BG：在收集欄上畫爆光而不是蓋全盤
             const accent = killEffectCurrent.type === 5 ? '#10b981' : '#f59e0b';
-            const glow = Math.max(0, 1 - killEffectTimer / 25);
+            const glow = Math.max(0, 1 - killEffectTimer / TF(TIMING.wildSpawn));
             ctx.shadowColor = accent;
             ctx.shadowBlur  = 30 * glow;
             ctx.fillStyle   = `rgba(255,255,255,${0.5 * glow})`;
             ctx.beginPath();
-            ctx.arc(182, 85, 20 + 15 * glow, 0, Math.PI * 2);
+            ctx.arc(LAYOUT.collectSlot.x + 142, LAYOUT.collectSlot.y + 13, 20 + 15 * glow, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
         } else {
-            let flash = (killEffectTimer / 40) * 0.45;
+            let flash = (killEffectTimer / TF(TIMING.wildSpawn)) * 0.45;
             ctx.fillStyle = `rgba(255,215,0,${flash})`;
             ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
         }
@@ -1357,12 +1540,12 @@ function fireAttackRound(round) {
         let candidates = monsters.filter(m => m.elemId === elemId && m.hp > 0);
         if (candidates.length === 0) return;
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
-        const cardX = (1280 - totalW) / 2 + cardIdx * (cardW + gap) + cardW / 2;
+        const cardX = LAYOUT.cards.x - totalW / 2 + cardIdx * (cardW + gap) + cardW / 2;
         // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
         particles.push({
             stage: 1,
             startX: 640, startY: GRID_Y + GRID_H,
-            tx: cardX, ty: 570,
+            tx: cardX, ty: LAYOUT.cards.y + 10,
             progress: 0,
             color: ELEMENTS[elemId].color,
             cardRef: card,
@@ -1453,7 +1636,9 @@ function startSpin() {
 
     colStates = Array(COLS).fill(1);
     colOffsets = Array(COLS).fill(0);
-    colDelays = Array(COLS).fill(0).map((_, i) => i * 4);
+    spinTimer = 0;
+    roundGapTimer = 0;
+    popDimTimer = 0;
 }
 
 // === 繪圖 ===
@@ -1561,42 +1746,47 @@ function drawStatsPanel() {
 
 // === 四角大怪（背景裝飾，左後龍／右後巨人／左前豬／右前女戰士）===
 function drawBigMonstersRear() {
-    drawImgFit(IMG.monArt.rearL, -55, 60, 330, 340, 'contain');   // 紅龍 左後
-    drawImgFit(IMG.monArt.rearR, 1015, 48, 268, 312, 'contain');  // 三頭巨人 右後
+    const rl = LAYOUT.bigRearL, rr = LAYOUT.bigRearR;
+    drawImgFit(IMG.monArt.rearL, rl.x, rl.y, rl.w, rl.h, 'contain');   // 紅龍 左後
+    drawImgFit(IMG.monArt.rearR, rr.x, rr.y, rr.w, rr.h, 'contain');  // 三頭巨人 右後
 }
 function drawBigMonstersFront() {
-    drawImgFit(IMG.monArt.frontL, 8, 468, 205, 175, 'contain');   // 野豬 左前
-    drawImgFit(IMG.monArt.frontR, 1012, 352, 252, 320, 'contain'); // 亞馬遜 右前
+    const fl = LAYOUT.bigFrontL, fr = LAYOUT.bigFrontR;
+    drawImgFit(IMG.monArt.frontL, fl.x, fl.y, fl.w, fl.h, 'contain');   // 野豬 左前
+    drawImgFit(IMG.monArt.frontR, fr.x, fr.y, fr.w, fr.h, 'contain'); // 亞馬遜 右前
+}
+
+// === 小怪頭像圓心（佈局錨點，drawMonsters/monsterAnchor 共用）===
+function monUIAnchor(m) {
+    return LAYOUT[(m.side === 'left' ? 'monL' : 'monR') + m.yIndex];
 }
 
 // === 怪獸血條中心座標（攻擊／特效命中點，需與 drawMonsters/drawBossPlate 一致）===
 function monsterAnchor(m) {
     const left = m.side === 'left';
     if (getMonsterLevel(m) === 0) {            // Boss：金色飾框內血條中心
-        return left ? { x: 227, y: 127 } : { x: 1052, y: 127 };
+        const o = left ? LAYOUT.bossL : LAYOUT.bossR;
+        return left ? { x: o.x + 101, y: o.y + 11 } : { x: o.x - 32, y: o.y + 11 };
     }
     const r = 17, barW = 78, gap = 8;
-    const barX = left ? 98 + r + gap : 1182 - r - gap - barW;
-    let y;
-    if (!left && m.yIndex === 2)     y = 615;  // 右前 亞馬遜女戰士
-    else if (left && m.yIndex === 2) y = 610;  // 左前 野豬
-    else if (left && m.yIndex === 1) y = 320;  // 左後 紅龍
-    else                             y = 150 + m.yIndex * 150;
-    return { x: barX + barW / 2, y };
+    const a = monUIAnchor(m);
+    const barX = left ? a.x + r + gap : a.x - r - gap - barW;
+    return { x: barX + barW / 2, y: a.y };
 }
 
 // === Boss（宙斯／赫拉）血量：金色飾框內專屬排版（大數字＋細血條＋徽章）===
 function drawBossPlate(m, idx, left) {
     const ratio = Math.max(0, m.hp / m.maxHp);
     const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
-    const plateCY = 116;                 // 金色飾框內容垂直中心
+    const o = left ? LAYOUT.bossL : LAYOUT.bossR;
+    const plateCY = o.y;                 // 金色飾框內容垂直中心
     const embW = 50, embH = 46;
     const barW = 74, barH = 7;
     let embX, textX, barX;
     if (left) {                          // 左框：徽章｜數字／血條
-        embX = 126; textX = 182; barX = 182;
+        embX = o.x; textX = o.x + 56; barX = o.x + 56;
     } else {                             // 右框：數字／血條｜徽章
-        embX = 1084; textX = 1014; barX = 1015;
+        embX = o.x; textX = o.x - 70; barX = o.x - 69;
     }
     // 徽章（保留透明 PNG 原樣，不裁圓）
     if (imgReady(emb)) drawImgFit(emb, embX, plateCY - embH / 2, embW, embH, 'contain');
@@ -1631,38 +1821,17 @@ function drawMonsters() {
         // Boss（宙斯／赫拉）：金色飾框內專屬排版（大數字＋細血條＋徽章）
         if (lvl === 0) { drawBossPlate(m, idx, left); return; }
 
-        let cy = 150 + m.yIndex * 150;            // 對齊攻擊命中點 y
+        // 頭像/血條錨點統一由 LAYOUT 提供（可由調校面板拖曳）
+        const a = monUIAnchor(m);
+        let iconCX = a.x, cy = a.y;
 
         let r = 17, barW = 78, barH = 9, gap = 8;
-        let iconCX, barX, numX, numAlign, numFont = 'bold 15px sans-serif';
-        if (!left && m.yIndex === 2) {
-            // 右前方亞馬遜女戰士：血條移到角色腳下
-            iconCX = 1182;
-            cy = 615;
-            barX = iconCX - r - gap - barW;
-            numX = barX - 6;
-            numAlign = 'right';
-        } else if (left && m.yIndex === 2) {
-            // 左前方野豬：血條移到角色腳下
-            iconCX = 98;
-            cy = 610;
-            barX = iconCX + r + gap;
-            numX = barX + barW + 6;
-            numAlign = 'left';
-        } else if (left && m.yIndex === 1) {
-            // 左後方紅龍：血條往下移 20px
-            iconCX = 98;
-            cy = 320;
-            barX = iconCX + r + gap;
-            numX = barX + barW + 6;
-            numAlign = 'left';
-        } else if (left) {
-            iconCX = 98;
+        let barX, numX, numAlign, numFont = 'bold 15px sans-serif';
+        if (left) {
             barX = iconCX + r + gap;          // 血條在頭像內側（朝盤面）
             numX = barX + barW + 6;
             numAlign = 'left';
         } else {
-            iconCX = 1182;
             barX = iconCX - r - gap - barW;
             numX = barX - 6;
             numAlign = 'right';
@@ -1709,21 +1878,22 @@ function drawMonsters() {
 // === 上方 Zeus JP / Hera JP 橫幅數字 ===
 function drawJPBanner() {
     const zeus = monsters[0], hera = monsters[3];
+    const jx = LAYOUT.jpBanner.x - 640, jy = LAYOUT.jpBanner.y - 33;   // 相對原位偏移
     ctx.save();
     ctx.textBaseline = 'middle';
     ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
     // 宙斯（左）
     ctx.textAlign = 'right';
     ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('ZEUS JP', 590, 22);
+    ctx.fillText('ZEUS JP', 590 + jx, 22 + jy);
     ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText((zeus ? zeus.jackpot : 0).toLocaleString(), 600, 44);
+    ctx.fillText((zeus ? zeus.jackpot : 0).toLocaleString(), 600 + jx, 44 + jy);
     // 赫拉（右）
     ctx.textAlign = 'left';
     ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('HERA JP', 690, 22);
+    ctx.fillText('HERA JP', 690 + jx, 22 + jy);
     ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), 680, 44);
+    ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), 680 + jx, 44 + jy);
     ctx.restore();
     ctx.textBaseline = 'alphabetic';
 }
@@ -1737,8 +1907,8 @@ function drawCards() {
     const gap   = isFGMode ? 8   : 20;
     const count = Math.max(cards.length, isFGMode ? 6 : 3);
     const totalW = count * cardW + (count - 1) * gap;
-    const startX = (1280 - totalW) / 2;
-    const baseY = isFGMode ? 552 : 560; // 移到盤面下方（盤面底 562），避免擋到盤面
+    const startX = LAYOUT.cards.x - totalW / 2;
+    const baseY = LAYOUT.cards.y + (isFGMode ? -8 : 0); // FG 小卡略高（原 552/560）
 
     // 插槽背景
     for (let i = 0; i < count; i++) {
@@ -1837,25 +2007,26 @@ function drawCards() {
 }
 
 function drawAccumulator() {
-    let accumY = 460;
-    drawRoundedRect(390, accumY, 500, 45, 12, 'rgba(30, 41, 59, 0.9)', '#334155', 2);
-    
+    const ax = LAYOUT.accum.x;
+    let accumY = LAYOUT.accum.y - 22;
+    drawRoundedRect(ax - 250, accumY, 500, 45, 12, 'rgba(30, 41, 59, 0.9)', '#334155', 2);
+
     let activeAccums = [];
     for (let i = 0; i < 6; i++) {
         // 改為依據顯示用陣列來判斷是否畫出來
         if (displayAccumulatedMatches[i] > 0) activeAccums.push(i);
     }
-    
+
     if (activeAccums.length === 0) {
         ctx.fillStyle = '#64748b';
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText("當前消除累計將顯示於此...", 640, accumY + 28);
+        ctx.fillText("當前消除累計將顯示於此...", ax, accumY + 28);
         return;
     }
-    
+
     let itemW = 80;
-    let startX = 640 - (activeAccums.length * itemW) / 2;
+    let startX = ax - (activeAccums.length * itemW) / 2;
     
     activeAccums.forEach((elemId, idx) => {
         let x = startX + idx * itemW + itemW/2;
@@ -1879,77 +2050,93 @@ function drawGrid() {
     ctx.save();
     ctx.beginPath(); ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H); ctx.clip();
 
-    for (let c = 0; c < COLS; c++) {
-        for (let r = 0; r < ROWS; r++) {
-            let gem = board[c] ? board[c][r] : null;
+    function drawGem(c, r, gem) {
+        let currentYOffset = (colOffsets[c] || 0) + gem.yOffset;
+        let x = GRID_X + c * GEM_SIZE;
+        let y = GRID_Y + r * GEM_SIZE + currentYOffset;
+        let elem = gem.id === WILD_ID ? WILD_ELEM : ELEMENTS[gem.id];
 
-            if (gem && gem.id !== -1) {
-                let currentYOffset = (colOffsets[c] || 0) + gem.yOffset;
-                let x = GRID_X + c * GEM_SIZE;
-                let y = GRID_Y + r * GEM_SIZE + currentYOffset;
-                let elem = gem.id === WILD_ID ? WILD_ELEM : ELEMENTS[gem.id];
+        const pad = 4;
+        const maxS = GEM_SIZE - pad * 2;
+        const s = maxS * gem.scale;
 
-                const pad = 4;
-                const maxS = GEM_SIZE - pad * 2;
-                const s = maxS * gem.scale;
+        let drawX = x + pad + (maxS - s) / 2;
+        let drawY = y + pad + (maxS - s) / 2;
 
-                let drawX = x + pad + (maxS - s) / 2;
-                let drawY = y + pad + (maxS - s) / 2;
+        let img = gemImg(gem.id);
 
-                let img = gemImg(gem.id);
-
-                if (imgReady(img)) {
-                    // 消除中（白光）/ WILD（金光）發光
-                    if (gem.isMatched)      { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; }
-                    else if (gem.id === WILD_ID) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 16; }
-                    ctx.drawImage(img, drawX, drawY, s, s);
-                    ctx.shadowBlur = 0;
-                } else {
-                    // ── 退回原本的程式繪製 ──
-                    if (gem.isMatched) { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 15; }
-                    if (gem.id === WILD_ID) {
-                        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
-                        drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1a1400', '#ffd700', 3);
-                        ctx.shadowBlur = 0;
-                        let grad = ctx.createLinearGradient(drawX, drawY, drawX + s, drawY + s);
-                        grad.addColorStop(0, 'rgba(255,100,100,0.25)');
-                        grad.addColorStop(0.5, 'rgba(100,255,100,0.25)');
-                        grad.addColorStop(1, 'rgba(100,100,255,0.25)');
-                        ctx.fillStyle = grad;
-                        ctx.beginPath(); ctx.roundRect(drawX, drawY, s, s, 12 * gem.scale); ctx.fill();
-                        ctx.fillStyle = '#ffd700';
-                        ctx.font = `bold ${36 * gem.scale}px sans-serif`;
-                    } else {
-                        drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1e293b', elem.color, 2);
-                        ctx.shadowBlur = 0;
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = `${32 * gem.scale}px Segoe UI Emoji`;
-                    }
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
-                }
+        if (imgReady(img)) {
+            // 消除中（白光）/ WILD（金光）發光
+            if (gem.isMatched)      { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; }
+            else if (gem.id === WILD_ID) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 16; }
+            ctx.drawImage(img, drawX, drawY, s, s);
+            ctx.shadowBlur = 0;
+        } else {
+            // ── 退回原本的程式繪製 ──
+            if (gem.isMatched) { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 15; }
+            if (gem.id === WILD_ID) {
+                ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
+                drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1a1400', '#ffd700', 3);
+                ctx.shadowBlur = 0;
+                let grad = ctx.createLinearGradient(drawX, drawY, drawX + s, drawY + s);
+                grad.addColorStop(0, 'rgba(255,100,100,0.25)');
+                grad.addColorStop(0.5, 'rgba(100,255,100,0.25)');
+                grad.addColorStop(1, 'rgba(100,100,255,0.25)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.roundRect(drawX, drawY, s, s, 12 * gem.scale); ctx.fill();
+                ctx.fillStyle = '#ffd700';
+                ctx.font = `bold ${36 * gem.scale}px sans-serif`;
+            } else {
+                drawRoundedRect(drawX, drawY, s, s, 12 * gem.scale, '#1e293b', elem.color, 2);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `${32 * gem.scale}px Segoe UI Emoji`;
             }
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
         }
     }
+
+    // 第一層：未消除格
+    for (let c = 0; c < COLS; c++)
+        for (let r = 0; r < ROWS; r++) {
+            let gem = board[c] ? board[c][r] : null;
+            if (gem && gem.id !== -1 && !gem.isMatched) drawGem(c, r, gem);
+        }
+
+    // 消除演出中：盤面壓暗（節奏表），消除格畫在遮罩上層以突顯
+    if (currentState === STATE.POPPING && TIMING.popDim > 0) {
+        const dimAlpha = Math.min(1, popDimTimer / TF(TIMING.popDim)) * 0.5;
+        ctx.fillStyle = `rgba(0, 0, 15, ${dimAlpha})`;
+        ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+    }
+
+    // 第二層：消除中的格子
+    for (let c = 0; c < COLS; c++)
+        for (let r = 0; r < ROWS; r++) {
+            let gem = board[c] ? board[c][r] : null;
+            if (gem && gem.id !== -1 && gem.isMatched) drawGem(c, r, gem);
+        }
     ctx.restore();
 }
 
 function drawUI() {
+    const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列整列位移
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 640, 1280, 80);
+    ctx.fillRect(ux, uy, 1280, 80);
     ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, 640); ctx.lineTo(1280, 640); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 1280, uy); ctx.stroke();
 
-    const bottomY = 660;
+    const bottomY = uy + 20;
     ctx.textBaseline = 'middle';   // 按鈕文字上下置中
 
-    drawRoundedRect(40, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
+    drawRoundedRect(40 + ux, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
     ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText("強開 ▲", 90, bottomY + 20);
+    ctx.fillText("強開 ▲", 90 + ux, bottomY + 20);
 
     // 上拉選單
     if (forceMenuOpen) {
-        const itemH = 38, gap = 4, mw = 110, mx0 = 35;
+        const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
         const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
         const my0 = bottomY - totalH - 4;
         drawRoundedRect(mx0 - 5, my0 - 4, mw + 10, totalH + 4, 8, 'rgba(8,14,26,0.96)', '#334155');
@@ -1961,18 +2148,18 @@ function drawUI() {
         });
     }
 
-    drawRoundedRect(160, bottomY, 100, 40, 20, showInfoPanel ? '#0f3460' : '#1e293b', showInfoPanel ? '#38bdf8' : '#334155');
+    drawRoundedRect(160 + ux, bottomY, 100, 40, 20, showInfoPanel ? '#0f3460' : '#1e293b', showInfoPanel ? '#38bdf8' : '#334155');
     ctx.fillStyle = showInfoPanel ? '#38bdf8' : '#cbd5e1';
-    ctx.fillText("INFO", 210, bottomY + 20);
+    ctx.fillText("INFO", 210 + ux, bottomY + 20);
 
-    drawRoundedRect(280, bottomY, 150, 40, 20, '#1e293b', '#334155');
-    ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355, bottomY + 20);
+    drawRoundedRect(280 + ux, bottomY, 150, 40, 20, '#1e293b', '#334155');
+    ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355 + ux, bottomY + 20);
 
-    drawRoundedRect(850, bottomY, 150, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${winScore}`, 925, bottomY + 20);
+    drawRoundedRect(850 + ux, bottomY, 150, 40, 10, '#1e293b', '#334155');
+    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${winScore}`, 925 + ux, bottomY + 20);
 
-    drawRoundedRect(1020, bottomY, 220, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${totalScore}`, 1130, bottomY + 20);
+    drawRoundedRect(1020 + ux, bottomY, 220, 40, 10, '#1e293b', '#334155');
+    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${totalScore}`, 1130 + ux, bottomY + 20);
     ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
 
     // FG / BG 狀態橫幅
@@ -2011,17 +2198,17 @@ function drawUI() {
 
     ctx.textBaseline = 'middle';   // SPIN / AUTO SPIN 文字上下置中
     let spinBtnColor = currentState === STATE.IDLE && !isAutoSpinning ? (isMouseHoverSpin ? '#0284c7' : '#38bdf8') : '#475569';
-    drawRoundedRect(490, 650, 140, 50, 25, spinBtnColor);
+    drawRoundedRect(490 + ux, uy + 10, 140, 50, 25, spinBtnColor);
     ctx.fillStyle = 'white'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(currentState === STATE.IDLE && !isAutoSpinning ? "SPIN" : "...", 560, 675);
+    ctx.fillText(currentState === STATE.IDLE && !isAutoSpinning ? "SPIN" : "...", 560 + ux, uy + 35);
 
     let autoBtnColor = isAutoSpinning ? (isMouseHoverAuto ? '#dc2626' : '#ef4444') : (isMouseHoverAuto ? '#0284c7' : '#38bdf8');
-    drawRoundedRect(650, 650, 140, 50, 25, autoBtnColor);
+    drawRoundedRect(650 + ux, uy + 10, 140, 50, 25, autoBtnColor);
     ctx.fillStyle = 'white'; ctx.font = 'bold 18px sans-serif';
     if (isAutoSpinning) {
-        ctx.fillText(`STOP (${autoSpinCount})`, 720, 675);
+        ctx.fillText(`STOP (${autoSpinCount})`, 720 + ux, uy + 35);
     } else {
-        ctx.fillText("AUTO SPIN", 720, 675);
+        ctx.fillText("AUTO SPIN", 720 + ux, uy + 35);
     }
     ctx.textBaseline = 'alphabetic';   // 還原
 }
@@ -2100,12 +2287,12 @@ function drawEffects() {
 }
 
 function update() {
-    // 轉場動畫更新（淡入30幀 → 停留50幀 → 淡出30幀）
+    // 轉場動畫更新（壓黑 transIn → 停留 transHold → 淡出 transOut，見 TIMING）
     if (transitionPhase !== 'idle') {
         transitionTimer++;
         if (transitionPhase === 'in') {
-            transitionAlpha = Math.min(1, transitionTimer / 30);
-            if (transitionTimer >= 30) {
+            transitionAlpha = Math.min(1, transitionTimer / TF(TIMING.transIn));
+            if (transitionTimer >= TF(TIMING.transIn)) {
                 transitionPhase = 'hold';
                 transitionTimer = 0;
                 // ★ 畫面全黑時執行模式切換，玩家看不到任何變化
@@ -2113,10 +2300,10 @@ function update() {
             }
         } else if (transitionPhase === 'hold') {
             transitionAlpha = 1;
-            if (transitionTimer >= 50) { transitionPhase = 'out'; transitionTimer = 0; }
+            if (transitionTimer >= TF(TIMING.transHold)) { transitionPhase = 'out'; transitionTimer = 0; }
         } else if (transitionPhase === 'out') {
-            transitionAlpha = Math.max(0, 1 - transitionTimer / 30);
-            if (transitionTimer >= 30) {
+            transitionAlpha = Math.max(0, 1 - transitionTimer / TF(TIMING.transOut));
+            if (transitionTimer >= TF(TIMING.transOut)) {
                 transitionPhase = 'idle'; transitionAlpha = 0;
                 // NG 轉場結束後繼續連爆（還原盤面有待消除的情況）
                 if (shouldCheckAfterTransition) {
@@ -2144,30 +2331,41 @@ function update() {
         if (card.enterDelay > 0) {
             card.enterDelay--;
         } else {
-            card.yOffset += (card.yTarget - card.yOffset) * 0.18;
+            // 卡牌歸位：在 TIMING.cardReturn 秒內收斂到位（指數緩動）
+            const k = 1 - Math.pow(0.05, 1 / TF(TIMING.cardReturn));
+            card.yOffset += (card.yTarget - card.yOffset) * k;
             if (Math.abs(card.yOffset - card.yTarget) < 0.5) card.yOffset = card.yTarget;
         }
     });
 
     if (currentState === STATE.SPINNING) {
+        spinTimer++;
         let allDone = true;
+        const settleFrames = Math.ceil((GRID_H + 50) / 40);   // 滑入定位所需幀數
         for (let c = 0; c < COLS; c++) {
-            if (colDelays[c] > 0) {
-                colDelays[c]--;
-                allDone = false; continue;
-            }
-            if (colStates[c] === 1) { 
-                colOffsets[c] += 40; 
+            if (colStates[c] === 1) {
                 allDone = false;
-                if (colOffsets[c] > GRID_H + 50) {
+                // 停輪時點（節奏表）：第1輪 firstReelStop（spinRoll 為下限），其後每輪 +reelStopInterval
+                const stopAt = TF(Math.max(TIMING.spinRoll, TIMING.firstReelStop) + c * TIMING.reelStopInterval);
+                const settleStart = Math.max(1, stopAt - settleFrames);
+                if (spinTimer >= settleStart) {
+                    // 進入停輪：換上最終盤面，自上方滑入定位
                     for (let r = 0; r < ROWS; r++) {
                         board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
                     }
-                    colStates[c] = 2; 
                     colOffsets[c] = -(GRID_H + 50);
+                    colStates[c] = 2;
+                } else {
+                    // 滾動中：圖示連續下落（每滿一格向下平移一列、頂端補新圖示）
+                    colOffsets[c] += 40;
+                    while (colOffsets[c] >= GEM_SIZE) {
+                        colOffsets[c] -= GEM_SIZE;
+                        for (let r = ROWS - 1; r > 0; r--) board[c][r] = board[c][r - 1];
+                        board[c][0] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
+                    }
                 }
             } else if (colStates[c] === 2) {
-                colOffsets[c] += 40; 
+                colOffsets[c] += 40;
                 allDone = false;
                 if (colOffsets[c] >= 0) {
                     colOffsets[c] = 0; colStates[c] = 0;
@@ -2201,11 +2399,12 @@ function update() {
                 forcedEffectType = 0;    // 局末清除殘留強制效果
                 forceTargetLv4 = false;
                 currentState = STATE.IDLE;
-                autoSpinDelay = 60;
+                autoSpinDelay = TF(TIMING.interSpinPause);
             }
         }
 
     } else if (currentState === STATE.POPPING) {
+        popDimTimer++;
         if (popWaitTimer > 0) {
             popWaitTimer--;
             if (popWaitTimer === 0) prepareNextPop();
@@ -2264,12 +2463,12 @@ function update() {
                         const cW = cards.length === 6 ? 85 : 140;
                         const cGap = cards.length === 6 ? 8 : 20;
                         const cTotalW = cards.length * cW + (cards.length - 1) * cGap;
-                        let cardCX = (1280 - cTotalW) / 2 + cardIdx * (cW + cGap) + cW / 2;
+                        let cardCX = LAYOUT.cards.x - cTotalW / 2 + cardIdx * (cW + cGap) + cW / 2;
                         let startCX = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
                         let startCY = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
                         flyingScores.push({
                             type: 'collect', x: startCX, y: startCY,
-                            tx: cardCX, ty: 575,
+                            tx: cardCX, ty: LAYOUT.cards.y + 15,
                             text: ELEMENTS[elemId].icon, color: ELEMENTS[elemId].color,
                             life: 40, delay: 0
                         });
@@ -2280,7 +2479,9 @@ function update() {
             // BG：每輪消除後倍率遞增一級
             if (isBG) bgMultiplierIndex++;
 
-            popWaitTimer = 30;
+            // 得分演繹時長 = 得分圖示數 × 每顆時長（節奏表）
+            const popIconCount = currentMatches.reduce((s, m) => s + m.count, 0);
+            popWaitTimer = Math.max(1, Math.round(TIMING.scorePerIcon * Math.max(1, popIconCount) * 60));
         }
 
     } else if (currentState === STATE.GRAVITY) {
@@ -2288,7 +2489,8 @@ function update() {
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 if (board[c][r].yOffset < 0) {
-                    board[c][r].yOffset += 9; 
+                    // 補盤掉落速度：整盤高度在 TIMING.refill 秒內落定
+                    board[c][r].yOffset += (GRID_H + 50) / TF(TIMING.refill);
                     if (board[c][r].yOffset >= 0) board[c][r].yOffset = 0;
                     else gravityDone = false;
                 }
@@ -2354,13 +2556,13 @@ function update() {
                 if (p.progress >= 1.0) {
                     p.stage = 1.5; 
                     p.cardRef.isCharging = true;
-                    p.cardRef.chargeTimer = 35; 
+                    p.cardRef.chargeTimer = TF(TIMING.cardCharge);
                 }
                 attacksDone = false;
             } else if (p.stage === 1.5) {
                 // 爆擊：先全版顯示圖片 40 幀，再倒數發射計時器
                 if (p.isCrit) {
-                    if (p.critImageFrames === undefined) p.critImageFrames = 75;
+                    if (p.critImageFrames === undefined) p.critImageFrames = TF(TIMING.critFlash) + TF(TIMING.critImage);
                     if (p.critImageFrames > 0) {
                         p.critImageFrames--;
                         p.cardRef.isCharging = true;
@@ -2395,7 +2597,7 @@ function update() {
                         let t = p.targetMonster;
                         let prevHp = t.hp;
                         t.hp = Math.max(0, t.hp - p.overflowDamage);
-                        t.shake = 15;
+                        t.shake = TF(TIMING.hitReact);
                         // 宙斯/赫拉里程碑
                         if (t.jackpot > 0) {
                             checkBossMilestones(monsters.indexOf(t), prevHp, t.hp, p.tx, p.ty);
@@ -2414,7 +2616,7 @@ function update() {
                                 scoreTexts.push({ x: 640, y: 360, text: `🏆 JACKPOT! +${t.jackpot}`, color: '#fbbf24', life: 180 });
                             } else {
                                 // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
-                                flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925, ty: 660, text: `KILL!`, color: '#ef4444', life: 100, delay: 20 });
+                                flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20, text: `KILL!`, color: '#ef4444', life: 100, delay: 20 });
                             }
                             applyOverflow(t.side, p.overflowDamage - prevHp, p.tx, p.ty, p.overflowElemId);
                         }
@@ -2428,7 +2630,7 @@ function update() {
                     }
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
-                    p.targetMonster.shake = 15;
+                    p.targetMonster.shake = TF(TIMING.hitReact);
                     // 打完怪獸後，該卡攻擊力回到預設值（待該卡所有攻擊輪次都打完才歸零）
                     if (p.cardRef && !pendingRounds.some(rd => rd.some(x => x.elemId === p.cardRef.elemId))) {
                         p.cardRef.atk = 0;
@@ -2509,7 +2711,7 @@ function update() {
                             // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                             flyingScores.push({
                                 type: 'kill', x: mx, y: my,
-                                tx: 925, ty: 660,
+                                tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
                                 text: `KILL!`,
                                 color: '#ef4444', life: 100, delay: 20
                             });
@@ -2523,7 +2725,10 @@ function update() {
         }
         if (attacksDone && particles.length === 0) {
             if (pendingRounds.length > 0) {
-                fireAttackRound(pendingRounds.shift());
+                // 卡與卡攻擊間隔（節奏表）：前一張打完後停頓再換下一張
+                if (roundGapTimer === 0) roundGapTimer = TF(TIMING.cardGap);
+                roundGapTimer--;
+                if (roundGapTimer === 0) fireAttackRound(pendingRounds.shift());
                 // 留在 ATTACKING 等下一輪完成
             } else {
                 // 所有攻擊（含追擊）結束，統一把暫存效果轉入正式隊列
@@ -2539,8 +2744,8 @@ function update() {
     } else if (currentState === STATE.KILL_EFFECT) {
         killEffectTimer++;
         if (killEffectPhase === 'flying') {
-            killEffectProgress = Math.min(1, killEffectTimer / 40);
-            if (killEffectTimer >= 40) {
+            killEffectProgress = Math.min(1, killEffectTimer / TF(TIMING.deathSwitch));
+            if (killEffectTimer >= TF(TIMING.deathSwitch)) {
                 if (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) {
                     // FG/BG：球抵達收集欄後直接套用，跳過 showing 盤面特效
                     applyKillEffect(killEffectCurrent);
@@ -2566,7 +2771,7 @@ function update() {
                 }
             }
         } else if (killEffectPhase === 'showing') {
-            if (killEffectTimer >= 50) {
+            if (killEffectTimer >= TF(TIMING.monsterFade)) {
                 // 套用效果
                 applyKillEffect(killEffectCurrent);
                 applyGravity();
@@ -2574,8 +2779,8 @@ function update() {
                 killEffectTimer = 0;
             }
         } else if (killEffectPhase === 'applied') {
-            // FG/BG 只需 25 幀爆光，其他效果保留 40 幀
-            const doneTicks = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) ? 25 : 40;
+            // 效果套用爆光時長（WILD 生成等）
+            const doneTicks = TF(TIMING.wildSpawn);
             if (killEffectTimer >= doneTicks) {
                 killEffectPhase = 'idle';
                 killEffectCurrent = null;
@@ -2649,7 +2854,7 @@ function update() {
 
 // === 左上收集欄：常駐顯示，收集到 FG / BG 時亮起 ===
 function drawPendingFGBGSlot() {
-    const bx = 40, by = 72, bw = 285, bh = 26;
+    const bx = LAYOUT.collectSlot.x, by = LAYOUT.collectSlot.y, bw = 285, bh = 26;
 
     if (!pendingFGBG) {
         // 空欄位（常駐待機狀態）
@@ -2700,7 +2905,8 @@ function drawCritOverlay() {
     }
     if (!critP) return;
 
-    const frames = critP.critImageFrames; // 75 → 1
+    const frames = critP.critImageFrames; // 由 (閃白+全版圖) 總幀數倒數至 1
+    const imgF = TF(TIMING.critImage);    // 全版圖時長
     const cx = GRID_X + GRID_W / 2;
     const cy = GRID_Y + GRID_H / 2;
 
@@ -2709,7 +2915,7 @@ function drawCritOverlay() {
     ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H);
     ctx.clip();
 
-    if (frames > 72) {
+    if (frames > imgF) {
         // ── 白閃衝擊（3幀）：白底 + 放射速度線 ──
         ctx.globalAlpha = 1;
         ctx.fillStyle = '#ffffff';
@@ -2738,8 +2944,8 @@ function drawCritOverlay() {
             dw, dh);
 
         // 剛出現後殘留白光（7幀）快速消退，強化「砰」的感覺
-        if (frames > 65) {
-            ctx.globalAlpha = ((frames - 65) / 7) * imageAlpha;
+        if (frames > imgF - 7) {
+            ctx.globalAlpha = ((frames - (imgF - 7)) / 7) * imageAlpha;
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
         }
@@ -2772,6 +2978,7 @@ function gameLoop() {
     drawKillEffect();
     drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
     drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
+    drawLayoutOverlay(); // 佈局編輯模式：物件外框與名稱（最上層）
     requestAnimationFrame(gameLoop);
 }
 
@@ -2780,14 +2987,15 @@ function handleInput(clientX, clientY, isClick) {
     const rect = canvas.getBoundingClientRect();
     const mx = (clientX - rect.left) * (canvas.width / rect.width);
     const my = (clientY - rect.top) * (canvas.height / rect.height);
-    
-    if (mx >= 490 && mx <= 630 && my >= 650 && my <= 700) {
+    const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列位移（判定區跟著繪製走）
+
+    if (mx >= 490 + ux && mx <= 630 + ux && my >= uy + 10 && my <= uy + 60) {
         isMouseHoverSpin = true;
     } else {
         isMouseHoverSpin = false;
     }
 
-    if (mx >= 650 && mx <= 790 && my >= 650 && my <= 700) {
+    if (mx >= 650 + ux && mx <= 790 + ux && my >= uy + 10 && my <= uy + 60) {
         isMouseHoverAuto = true;
     } else {
         isMouseHoverAuto = false;
@@ -2802,13 +3010,13 @@ function handleInput(clientX, clientY, isClick) {
             canvas.style.cursor = 'default';
         }
     } else {
-        if (mx >= 40 && mx <= 140 && my >= 660 && my <= 700) {
+        if (mx >= 40 + ux && mx <= 140 + ux && my >= uy + 20 && my <= uy + 60) {
             forceMenuOpen = !forceMenuOpen;
         } else if (forceMenuOpen) {
             // 點選選單項目
-            const itemH = 38, gap = 4, mw = 110, mx0 = 35;
+            const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
             const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-            const my0 = 660 - totalH - 8;
+            const my0 = uy + 20 - totalH - 8;
             if (mx >= mx0 && mx <= mx0 + mw) {
                 FORCE_MENU_ITEMS.forEach((item, i) => {
                     const iy = my0 + i * (itemH + gap);
@@ -2862,7 +3070,7 @@ function handleInput(clientX, clientY, isClick) {
                 });
             }
         }
-        if (mx >= 160 && mx <= 260 && my >= 660 && my <= 700) {
+        if (mx >= 160 + ux && mx <= 260 + ux && my >= uy + 20 && my <= uy + 60) {
             showInfoPanel = !showInfoPanel;
             infoPanel.classList.toggle('visible', showInfoPanel);
         }
@@ -2893,14 +3101,272 @@ function handleInput(clientX, clientY, isClick) {
     }
 }
 
-canvas.addEventListener('mousemove', (e) => handleInput(e.clientX, e.clientY, false));
-canvas.addEventListener('click', (e) => handleInput(e.clientX, e.clientY, true));
+canvas.addEventListener('mousemove', (e) => { if (!layoutEditMode) handleInput(e.clientX, e.clientY, false); });
+canvas.addEventListener('click', (e) => { if (!layoutEditMode) handleInput(e.clientX, e.clientY, true); });
 // 新增：手機端觸控支援
 canvas.addEventListener('touchstart', (e) => {
+    if (layoutEditMode) return;
     e.preventDefault(); // 防止雙擊放大等預設行為
     const touch = e.touches[0];
     handleInput(touch.clientX, touch.clientY, true);
 }, { passive: false });
+
+// ============================================================
+// === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
+// ============================================================
+const TUNE_KEY = 'hercules_tuning';
+const TUNE_VERSION = 1;
+let tunePanelOpen = false;
+let tuneTab = 'timing';          // 'timing' | 'layout'
+let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
+let layoutSelected = null;       // 選中的 LAYOUT key
+let layoutDrag = null;           // { mx, my, ox, oy } 拖曳起點
+let layoutFieldRefs = {};        // 佈局分頁 x/y/w/h 數字框參照（拖曳時同步）
+
+function saveTuning() {
+    try {
+        localStorage.setItem(TUNE_KEY, JSON.stringify({ version: TUNE_VERSION, timing: TIMING, layout: LAYOUT }));
+    } catch (e) { /* 隱私模式等寫入失敗：略過 */ }
+}
+function loadTuning() {
+    try {
+        const d = JSON.parse(localStorage.getItem(TUNE_KEY) || 'null');
+        if (!d || d.version !== TUNE_VERSION) return;   // 版本不符自動作廢
+        if (d.timing) for (const k in DEFAULT_TIMING) {
+            const v = d.timing[k];
+            if (typeof v === 'number' && isFinite(v)) TIMING[k] = Math.min(5, Math.max(0, v));
+        }
+        if (d.layout) for (const k in DEFAULT_LAYOUT) {
+            const o = d.layout[k];
+            if (o && typeof o === 'object') for (const p in DEFAULT_LAYOUT[k]) {
+                if (typeof o[p] === 'number' && isFinite(o[p])) LAYOUT[k][p] = Math.round(o[p]);
+            }
+        }
+    } catch (e) { /* 資料損毀：退回預設 */ }
+    syncLayoutDerived();
+}
+
+const tuneBtn   = document.getElementById('tuneBtn');
+const tunePanel = document.getElementById('tunePanel');
+const tuneBody  = document.getElementById('tuneBody');
+
+function buildTimingTab() {
+    tuneBody.innerHTML = '';
+    const hint = document.createElement('div');
+    hint.className = 'tune-hint';
+    hint.textContent = '單位：秒。預設值對齊節奏表 v2，調整立即生效（下一次演出採用）。';
+    tuneBody.appendChild(hint);
+    TIMING_META.forEach(g => {
+        const h = document.createElement('div');
+        h.className = 'tune-group'; h.textContent = g.group;
+        tuneBody.appendChild(h);
+        g.items.forEach(([key, label]) => {
+            const row = document.createElement('div'); row.className = 'tune-row';
+            const lab = document.createElement('label'); lab.textContent = label;
+            const rng = document.createElement('input');
+            rng.type = 'range'; rng.min = '0'; rng.max = '5'; rng.step = '0.05'; rng.value = TIMING[key];
+            const num = document.createElement('input');
+            num.type = 'number'; num.min = '0'; num.max = '5'; num.step = '0.05'; num.value = TIMING[key];
+            const apply = v => {
+                v = Math.min(5, Math.max(0, parseFloat(v) || 0));
+                TIMING[key] = v;
+                rng.value = v; num.value = v;
+                saveTuning();
+            };
+            rng.addEventListener('input', () => apply(rng.value));
+            num.addEventListener('change', () => apply(num.value));
+            row.appendChild(lab); row.appendChild(rng); row.appendChild(num);
+            tuneBody.appendChild(row);
+        });
+    });
+}
+
+function buildLayoutTab() {
+    tuneBody.innerHTML = '';
+    layoutFieldRefs = {};
+    const hint = document.createElement('div');
+    hint.className = 'tune-hint';
+    hint.textContent = '直接在畫面上點選物件拖曳；方向鍵微調 1px、Shift+方向鍵 10px。編輯中點畫布不會觸發 SPIN。';
+    tuneBody.appendChild(hint);
+
+    const list = document.createElement('div'); list.className = 'tune-obj-list';
+    LAYOUT_META.forEach(([key, label]) => {
+        const b = document.createElement('button');
+        b.className = 'tune-obj-btn' + (key === layoutSelected ? ' selected' : '');
+        b.textContent = label;
+        b.addEventListener('click', () => { layoutSelected = key; buildLayoutTab(); });
+        list.appendChild(b);
+    });
+    tuneBody.appendChild(list);
+
+    if (layoutSelected) {
+        const meta = LAYOUT_META.find(m => m[0] === layoutSelected);
+        const o = LAYOUT[layoutSelected];
+        const h = document.createElement('div');
+        h.className = 'tune-group'; h.textContent = `選中：${meta[1]}`;
+        tuneBody.appendChild(h);
+        const props = meta[3] ? ['x', 'y', 'w', 'h'] : ['x', 'y'];
+        props.forEach(p => {
+            const row = document.createElement('div'); row.className = 'tune-row';
+            const lab = document.createElement('label'); lab.textContent = p.toUpperCase();
+            const num = document.createElement('input');
+            num.type = 'number'; num.step = '1'; num.value = o[p];
+            num.addEventListener('change', () => {
+                const v = parseInt(num.value, 10);
+                if (isFinite(v)) { o[p] = v; syncLayoutDerived(); saveTuning(); }
+            });
+            layoutFieldRefs[p] = num;
+            row.appendChild(lab); row.appendChild(num);
+            tuneBody.appendChild(row);
+        });
+    }
+}
+
+function refreshTuneBody() {
+    layoutEditMode = tunePanelOpen && tuneTab === 'layout';
+    if (!layoutEditMode) { layoutDrag = null; canvas.style.cursor = 'default'; }
+    if (tuneTab === 'timing') buildTimingTab(); else buildLayoutTab();
+}
+function syncLayoutFields() {
+    if (!layoutSelected) return;
+    const o = LAYOUT[layoutSelected];
+    for (const p in layoutFieldRefs) layoutFieldRefs[p].value = o[p];
+}
+
+tuneBtn.addEventListener('click', () => {
+    tunePanelOpen = !tunePanelOpen;
+    tunePanel.classList.toggle('visible', tunePanelOpen);
+    tuneBtn.classList.toggle('active', tunePanelOpen);
+    refreshTuneBody();
+});
+tunePanel.querySelectorAll('.tune-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        tuneTab = tab.dataset.tab;
+        tunePanel.querySelectorAll('.tune-tab').forEach(t => t.classList.toggle('active', t === tab));
+        refreshTuneBody();
+    });
+});
+document.getElementById('tuneReset').addEventListener('click', () => {
+    if (tuneTab === 'timing') {
+        Object.keys(DEFAULT_TIMING).forEach(k => { TIMING[k] = DEFAULT_TIMING[k]; });
+    } else {
+        const def = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+        Object.keys(def).forEach(k => { LAYOUT[k] = def[k]; });
+        syncLayoutDerived();
+    }
+    saveTuning();
+    refreshTuneBody();
+});
+document.getElementById('tuneExport').addEventListener('click', (e) => {
+    const data = tuneTab === 'timing' ? { timing: TIMING } : { layout: LAYOUT };
+    const text = JSON.stringify(data, null, 2);
+    const done = () => {
+        const btn = e.target;
+        const orig = btn.textContent;
+        btn.textContent = '已複製 ✓';
+        setTimeout(() => { btn.textContent = orig; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => { window.prompt('複製以下 JSON：', text); });
+    } else {
+        window.prompt('複製以下 JSON：', text);
+    }
+});
+
+// --- 佈局編輯：畫布點選 / 拖曳 / 方向鍵 ---
+function tuneCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        mx: (e.clientX - rect.left) * (canvas.width / rect.width),
+        my: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+function layoutHitTest(mx, my) {
+    // 從註冊表尾端往前找（後註冊的視為上層、通常較小）
+    for (let i = LAYOUT_META.length - 1; i >= 0; i--) {
+        const [key, , boxFn] = LAYOUT_META[i];
+        const b = boxFn(LAYOUT[key]);
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return key;
+    }
+    return null;
+}
+canvas.addEventListener('mousedown', (e) => {
+    if (!layoutEditMode) return;
+    const { mx, my } = tuneCanvasPos(e);
+    const hit = layoutHitTest(mx, my);
+    if (hit) {
+        layoutSelected = hit;
+        layoutDrag = { mx, my, ox: LAYOUT[hit].x, oy: LAYOUT[hit].y };
+        buildLayoutTab();
+    } else {
+        layoutSelected = null;
+        layoutDrag = null;
+        buildLayoutTab();
+    }
+});
+window.addEventListener('mousemove', (e) => {
+    if (!layoutEditMode) return;
+    if (layoutDrag && layoutSelected) {
+        const { mx, my } = tuneCanvasPos(e);
+        LAYOUT[layoutSelected].x = Math.round(layoutDrag.ox + mx - layoutDrag.mx);
+        LAYOUT[layoutSelected].y = Math.round(layoutDrag.oy + my - layoutDrag.my);
+        syncLayoutDerived();
+        syncLayoutFields();
+    } else if (e.target === canvas) {
+        const { mx, my } = tuneCanvasPos(e);
+        canvas.style.cursor = layoutHitTest(mx, my) ? 'move' : 'default';
+    }
+});
+window.addEventListener('mouseup', () => {
+    if (layoutDrag) { layoutDrag = null; saveTuning(); }
+});
+window.addEventListener('keydown', (e) => {
+    if (!layoutEditMode || !layoutSelected) return;
+    if (e.target instanceof HTMLInputElement) return;   // 面板輸入框打字不攔截
+    const step = e.shiftKey ? 10 : 1;
+    let dx = 0, dy = 0;
+    if (e.key === 'ArrowLeft') dx = -step;
+    else if (e.key === 'ArrowRight') dx = step;
+    else if (e.key === 'ArrowUp') dy = -step;
+    else if (e.key === 'ArrowDown') dy = step;
+    else return;
+    e.preventDefault();
+    LAYOUT[layoutSelected].x += dx;
+    LAYOUT[layoutSelected].y += dy;
+    syncLayoutDerived();
+    syncLayoutFields();
+    saveTuning();
+});
+
+// --- 佈局編輯：畫布覆蓋層（外框 + 名稱） ---
+function drawLayoutOverlay() {
+    if (!layoutEditMode) return;
+    ctx.save();
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    LAYOUT_META.forEach(([key, label, boxFn]) => {
+        const o = LAYOUT[key];
+        const b = boxFn(o);
+        const sel = key === layoutSelected;
+        ctx.setLineDash(sel ? [] : [6, 4]);
+        ctx.lineWidth = sel ? 2.5 : 1.5;
+        ctx.strokeStyle = sel ? '#facc15' : 'rgba(56,189,248,0.75)';
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.setLineDash([]);
+        const text = label + (sel ? `  (${o.x}, ${o.y})` : '');
+        const tx = Math.max(2, Math.min(b.x + 2, 1160));
+        const ty = b.y - 16 < 2 ? b.y + 2 : b.y - 16;
+        ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+        ctx.fillStyle = sel ? '#facc15' : 'rgba(56,189,248,0.95)';
+        ctx.fillText(text, tx, ty);
+        ctx.shadowBlur = 0;
+    });
+    ctx.restore();
+    ctx.textBaseline = 'alphabetic';
+}
+
+// 啟動時載入已保存的調校值（損毀/版本不符自動退回預設）
+loadTuning();
 
 // === 啟動遊戲 ===
 initMonsters();
