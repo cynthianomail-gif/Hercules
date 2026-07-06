@@ -849,6 +849,7 @@ let hasHitThisSpin = false;
 let colOffsets = [];
 let colStates = [];
 let colBounce = [];         // 各欄落定回彈計時（squash）
+let spinOldBoard = null;    // 掉落中的舊盤面（隨新圖示一同下落離場）
 let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
 let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
 let popDimTimer = 0;        // 消除壓暗淡入計時
@@ -1714,8 +1715,14 @@ function startSpin() {
         monsters[0].isDead = false;
     }
 
-    colStates = Array(COLS).fill(1);
-    colOffsets = Array(COLS).fill(0);
+    // 掉落式（節奏表 v4）：7 輪同時啟動，各輪只差掉落速度（快慢），依序落定
+    // 舊盤面隨著一起往下掉出畫面，新盤面緊接在上方連續落下（無滾動、無空等）
+    spinOldBoard = board.map(col => col.map(cell => ({ ...cell, isMatched: false })));
+    for (let c = 0; c < COLS; c++)
+        for (let r = 0; r < ROWS; r++)
+            board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
+    colStates = Array(COLS).fill(2);                    // 2 = 掉落中
+    colOffsets = Array(COLS).fill(-(GRID_H + 50));      // 新盤面自畫面上方開始
     colBounce = Array(COLS).fill(0);
     spinTimer = 0;
     roundGapTimer = 0;
@@ -2154,8 +2161,8 @@ function drawGrid() {
         ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     }
 
-    function drawGem(c, r, gem) {
-        let currentYOffset = (colOffsets[c] || 0) + gem.yOffset;
+    function drawGem(c, r, gem, extraY = 0) {
+        let currentYOffset = (colOffsets[c] || 0) + gem.yOffset + extraY;
         let x = GRID_X + c * GEM_SIZE;
         let y = GRID_Y + r * GEM_SIZE + currentYOffset;
         let elem = gem.id === WILD_ID ? WILD_ELEM : ELEMENTS[gem.id];
@@ -2204,6 +2211,17 @@ function drawGrid() {
             }
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(elem.icon, drawX + s / 2, drawY + s / 2 + 2);
+        }
+    }
+
+    // 掉落中：舊盤面跟在新圖示下方（相距一個盤面高）一起往下掉出畫面
+    if (currentState === STATE.SPINNING && spinOldBoard) {
+        for (let c = 0; c < COLS; c++) {
+            if (colStates[c] === 0) continue;   // 該欄已落定，舊圖示已出畫面
+            for (let r = 0; r < ROWS; r++) {
+                const gem = spinOldBoard[c] && spinOldBoard[c][r];
+                if (gem && gem.id !== -1) drawGem(c, r, gem, GRID_H + 50);
+            }
         }
     }
 
@@ -2499,38 +2517,21 @@ function update() {
     if (currentState === STATE.SPINNING) {
         spinTimer++;
         let allDone = true;
-        const settleFrames = Math.ceil((GRID_H + 50) / 40);   // 落下定位所需幀數
         for (let c = 0; c < COLS; c++) {
-            // 落定時點（節奏表 v4）：第1輪 firstReelStop，其後每輪 +reelStopInterval
-            const stopAt = TF(TIMING.firstReelStop + c * TIMING.reelStopInterval);
-            const settleStart = Math.max(1, stopAt - settleFrames);
-            if (colStates[c] === 1) {
-                // 掉落式（同天使奧丁）：7 輪同時啟動，舊圖示整欄往下掉出畫面
+            if (colStates[c] !== 0) {
                 allDone = false;
-                colOffsets[c] += 40;
-                if (colOffsets[c] > GRID_H + 50) {
-                    // 掉完：換上最終盤面，藏在畫面上方等待停輪時點
-                    for (let r = 0; r < ROWS; r++) {
-                        board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
-                    }
-                    colOffsets[c] = -(GRID_H + 50);
-                    colStates[c] = 3;
-                }
-            } else if (colStates[c] === 3) {
-                // 空盤等待：時間到才開始落下新圖示
-                allDone = false;
-                if (spinTimer >= settleStart) colStates[c] = 2;
-            } else if (colStates[c] === 2) {
-                // 新圖示自上方落下定位
-                colOffsets[c] += 40;
-                allDone = false;
-                if (colOffsets[c] >= 0) {
+                // 掉落式（節奏表 v4）：各輪同時啟動，只差掉落速度——
+                // 位置依「經過幀數 ÷ 落定時間」直接計算（第1輪 0.7s，其後每輪 +0.15s）
+                const stopAt = TF(TIMING.firstReelStop + c * TIMING.reelStopInterval);
+                colOffsets[c] = -(GRID_H + 50) * Math.max(0, 1 - spinTimer / stopAt);
+                if (spinTimer >= stopAt) {
                     colOffsets[c] = 0; colStates[c] = 0;
                     colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
                 }
             }
         }
         if (allDone) {
+            spinOldBoard = null;   // 舊盤面已完全掉出畫面
             if (forceKill || forceCrit || forceCoinBurst || forceGuaranteeMatch) injectGuaranteedMatches();
             if (forceCoinBurst) forceCoinBurst = false;       // 注入完畢，清除旗標
             if (forceGuaranteeMatch) forceGuaranteeMatch = false;
