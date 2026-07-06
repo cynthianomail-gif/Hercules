@@ -849,7 +849,8 @@ let hasHitThisSpin = false;
 let colOffsets = [];
 let colStates = [];
 let colBounce = [];         // 各欄落定回彈計時（squash）
-let spinOldBoard = null;    // 掉落中的舊盤面（隨新圖示一同下落離場）
+let spinOldBoard = null;    // 掉落中的舊盤面（先直接掉出畫面清場）
+let spinOldDrop = 0;        // 舊盤面已下墜距離（px）
 let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
 let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
 let popDimTimer = 0;        // 消除壓暗淡入計時
@@ -1715,14 +1716,15 @@ function startSpin() {
         monsters[0].isDead = false;
     }
 
-    // 掉落式（節奏表 v4）：7 輪同時啟動，各輪只差掉落速度（快慢），依序落定
-    // 舊盤面隨著一起往下掉出畫面，新盤面緊接在上方連續落下（無滾動、無空等）
+    // 掉落式（節奏表 v4）：舊盤面圖示直接掉出畫面清場，新圖示再各自掉入
+    // 7 輪同時啟動、只差掉落速度（第1輪 0.7s 落定，每輪 +0.15s）
     spinOldBoard = board.map(col => col.map(cell => ({ ...cell, isMatched: false })));
+    spinOldDrop = 0;
     for (let c = 0; c < COLS; c++)
         for (let r = 0; r < ROWS; r++)
             board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
     colStates = Array(COLS).fill(2);                    // 2 = 掉落中
-    colOffsets = Array(COLS).fill(-(GRID_H + 50));      // 新盤面自畫面上方開始
+    colOffsets = Array(COLS).fill(-(GRID_H + 50));      // 新盤面藏在畫面上方
     colBounce = Array(COLS).fill(0);
     spinTimer = 0;
     roundGapTimer = 0;
@@ -2214,13 +2216,12 @@ function drawGrid() {
         }
     }
 
-    // 掉落中：舊盤面跟在新圖示下方（相距一個盤面高）一起往下掉出畫面
+    // 掉落中：舊盤面圖示直接往下掉出畫面（清場；位置獨立於新圖示的 colOffsets）
     if (currentState === STATE.SPINNING && spinOldBoard) {
         for (let c = 0; c < COLS; c++) {
-            if (colStates[c] === 0) continue;   // 該欄已落定，舊圖示已出畫面
             for (let r = 0; r < ROWS; r++) {
                 const gem = spinOldBoard[c] && spinOldBoard[c][r];
-                if (gem && gem.id !== -1) drawGem(c, r, gem, GRID_H + 50);
+                if (gem && gem.id !== -1) drawGem(c, r, gem, spinOldDrop - (colOffsets[c] || 0));
             }
         }
     }
@@ -2517,21 +2518,30 @@ function update() {
     if (currentState === STATE.SPINNING) {
         spinTimer++;
         let allDone = true;
+        // 舊盤面圖示直接往下掉出畫面（清場，固定快速）
+        const clearF = Math.ceil((GRID_H + 50) / 40);
+        if (spinOldBoard) {
+            spinOldDrop += 40;
+            if (spinOldDrop > GRID_H + 50) spinOldBoard = null;
+        }
         for (let c = 0; c < COLS; c++) {
             if (colStates[c] !== 0) {
                 allDone = false;
-                // 掉落式（節奏表 v4）：各輪同時啟動，只差掉落速度——
-                // 位置依「經過幀數 ÷ 落定時間」直接計算（第1輪 0.7s，其後每輪 +0.15s）
-                const stopAt = TF(TIMING.firstReelStop + c * TIMING.reelStopInterval);
-                colOffsets[c] = -(GRID_H + 50) * Math.max(0, 1 - spinTimer / stopAt);
+                // 新圖示：清場後各自掉入，各輪同時啟動、只差掉落速度——
+                // 落定時點 = 第1輪 0.7s，其後每輪 +0.15s（節奏表 v4）
+                const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 1);
                 if (spinTimer >= stopAt) {
                     colOffsets[c] = 0; colStates[c] = 0;
                     colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
+                } else if (spinTimer <= clearF) {
+                    colOffsets[c] = -(GRID_H + 50);         // 清場期間藏在畫面上方
+                } else {
+                    colOffsets[c] = -(GRID_H + 50) * (1 - (spinTimer - clearF) / (stopAt - clearF));
                 }
             }
         }
         if (allDone) {
-            spinOldBoard = null;   // 舊盤面已完全掉出畫面
+            spinOldBoard = null;   // 保險：舊盤面移除
             if (forceKill || forceCrit || forceCoinBurst || forceGuaranteeMatch) injectGuaranteedMatches();
             if (forceCoinBurst) forceCoinBurst = false;       // 注入完畢，清除旗標
             if (forceGuaranteeMatch) forceGuaranteeMatch = false;
