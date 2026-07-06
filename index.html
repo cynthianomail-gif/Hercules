@@ -515,42 +515,96 @@ const ELEMENTS = [
 const WILD_ID = 6;
 const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
 
-// === 調校系統：節奏（單位秒）與佈局（單位px）單一事實來源 ===
-// 節奏預設值對齊「節奏表 v2」（海克力斯_260706_新增視覺流程v4.3.xlsx）
+// === 調校系統：節奏（單位秒，另註明者除外）與佈局（單位px）單一事實來源 ===
+// 預設值對齊「節奏表 v4」＋「演繹節奏總表」＋「演出細節定義表」（海克力斯_260706_新增視覺流程v4_4.xlsx）
 const DEFAULT_TIMING = {
-    spinRoll:         0.70,  // 掉落階段時長（第1輪停輪時點下限；節奏表「滾輪滾動0.7s」佔位值，本作為圖示下落式）
-    firstReelStop:    0.85,  // 第 1 輪停輪時點（自 spin 起算）
-    reelStopInterval: 0.15,  // 輪與輪停輪間隔
-    interSpinPause:   0.30,  // 局間停頓（自動旋轉間隔）
-    popDim:           0.15,  // 連線後盤面壓暗淡入
-    scorePerIcon:     0.30,  // 每顆圖示得分演繹（總長 = 圖示數 × 本值）
+    // 掉落（本作為圖示掉落式・同天使奧丁：7 輪同時啟動下落、依序落定）
+    firstReelStop:    0.70,  // 第 1 輪啟動-落定（節奏表標待定）
+    reelStopInterval: 0.15,  // 每輪落定間隔（第7輪 = 0.7 + 6×0.15 = 1.6s）
+    landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
+    interSpinPause:   0.30,  // 局間停頓
+    interBoardPause:  0.30,  // 盤間停頓（補盤後再判定連線前）
+    // 消除／得分
+    popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
+    popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
+    scorePerIcon:     0.30,  // 得分框依序亮起，每顆圖示得分演繹
+    popDissolve:      0.20,  // 得分圖示消散（化為能量）
+    energyFly:        0.30,  // 能量飛向卡牌攻擊力圓圈
+    // 補盤
+    refillPerCell:    0.15,  // 補盤掉落每格時間（總長 = 0.15 × 落下格數）
+    refillStagger:    0.05,  // 補盤每欄錯落
+    // 卡牌攻擊
+    cardPullUp:       0.30,  // 卡牌上拉
+    cardPullDist:     22,    // 卡牌上拉幅度（px，細節表 A/B/C 方案待定）
+    attackDim:        0.15,  // 卡牌觸發時盤面／他卡壓暗
     cardCharge:       0.60,  // 卡牌蓄力（攻擊發射前）
-    cardGap:          0.50,  // 卡與卡攻擊間隔
-    cardReturn:       0.25,  // 卡牌歸位
-    hitReact:         0.30,  // 受擊+血量
-    deathSwitch:      0.50,  // 死亡切換（擊殺光球飛行）
-    refill:           0.30,  // 補盤（掉落）
-    monsterFade:      0.40,  // 怪物淡出（盤面效果展示）
-    wildSpawn:        0.25,  // WILD 生成（效果套用爆光）
-    wildFlyIn:        0.30,  // WILD 飛入
+    cardGap:          0.50,  // 多卡觸發：卡與卡攻擊間隔
+    cardReturn:       0.25,  // 卡牌攻擊完畢歸位
+    // 受擊／擊殺
+    hitReact:         0.30,  // 受擊+血量（血條位移）
+    hitFlash:         0.15,  // 受擊閃紅（本體疊乘紅色，1 次）
+    hitFlashAlpha:    0.50,  // 閃紅濃度 0~1（細節表：疊乘紅色50%，RD 參數）
+    hitShakeAmp:      4,     // 受擊震動幅度（±px，細節表 ±4px，RD 參數）
+    deathSwitch:      0.50,  // 死亡切換（含灰化過渡）
+    effectFly:        0.40,  // 怪物淡出＋機制光效飛向盤面
+    effectShow:       0.40,  // 機制展示（盤面遮罩＋機制名稱）
+    effectDimAlpha:   0.70,  // 機制展示遮罩不透明度 0~1（細節表：壓黑約70%，RD 參數）
+    respawnFade:      0.40,  // 更換怪獸淡入
+    // WILD／機制
+    wildSpawn:        0.25,  // WILD 於原座標生成
+    wildFlyIn:        0.30,  // WILD 飛入（每顆）
     wildStagger:      0.10,  // WILD 每 +1 顆飛入錯落
+    wildShake:        0.15,  // WILD 著陸盤面震動
+    bigWildSpawn:     0.30,  // 巨型 WILD 生成
+    bigWildFly:       0.40,  // 巨型 WILD 飛入
+    bigWildShake:     0.25,  // 巨型 WILD 著陸震動
+    newIconPop:       0.20,  // 生成／轉換：新圖示帶閃光放大出現
+    coinBurst:        0.60,  // 直接給分：噴錢演繹
+    // LV4 全畫面／轉場
     transIn:          0.30,  // 全畫面壓黑（轉場淡入）
     transHold:        0.40,  // 機制畫面入場（轉場停留）
     transOut:         0.30,  // 轉場淡出
-    critFlash:        0.10,  // 爆擊閃白
-    critImage:        1.20,  // 爆擊全版圖時長
-    chaseGap:         0.30,  // 追擊間隔（受擊結束到追擊光球出發）
+    // BG 倍數遞增
+    bgMultFade:       0.05,  // 舊倍數淡出
+    bgMultFly:        0.10,  // 新倍數飛入
+    bgMultScale:      0.05,  // 新倍數縮放（先放大後縮回）
+    bgRefill:         0.10,  // BG 補盤（每格）
+    // 變體
+    critFlash:        0.10,  // 爆擊：觸發瞬間閃白
+    critImage:        0.50,  // 爆擊：角色動畫
+    chaseGap:         0.30,  // 追擊：與前次攻擊間隔
 };
-// 面板顯示順序與中文名（依節奏表分組）
+// 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
-    { group: '掉落（停輪）', items: [['spinRoll','掉落時長(下限)'],['firstReelStop','第1輪停輪時點'],['reelStopInterval','停輪間隔'],['interSpinPause','局間停頓']] },
-    { group: '得分', items: [['popDim','盤面壓暗'],['scorePerIcon','每顆圖示得分演繹']] },
-    { group: '卡牌攻擊', items: [['cardCharge','卡牌蓄力'],['cardGap','卡與卡間隔'],['cardReturn','卡牌歸位']] },
-    { group: '受擊／擊殺', items: [['hitReact','受擊+血量'],['deathSwitch','死亡切換'],['refill','補盤'],['monsterFade','怪物淡出']] },
-    { group: 'WILD', items: [['wildSpawn','WILD 生成'],['wildFlyIn','WILD 飛入'],['wildStagger','每+1顆飛入錯落']] },
-    { group: 'LV4 全畫面／轉場', items: [['transIn','全畫面壓黑'],['transHold','機制畫面入場'],['transOut','轉場淡出']] },
-    { group: '變體', items: [['critFlash','爆擊閃白'],['critImage','爆擊全版圖'],['chaseGap','追擊間隔']] },
+    { group: '掉落（停輪）', items: [
+        ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'], ['landBounce','落定回彈'],
+        ['interSpinPause','局間停頓'], ['interBoardPause','盤間停頓']] },
+    { group: '消除／得分', items: [
+        ['popDim','盤面壓暗'], ['popDimAlpha','壓暗強度(0~1)', 0, 1, 0.05], ['scorePerIcon','每顆得分演繹'],
+        ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
+    { group: '補盤', items: [
+        ['refillPerCell','每格掉落時間'], ['refillStagger','每欄錯落']] },
+    { group: '卡牌攻擊', items: [
+        ['cardPullUp','卡牌上拉'], ['cardPullDist','上拉幅度(px)', 0, 100, 1], ['attackDim','攻擊時壓暗'],
+        ['cardCharge','卡牌蓄力'], ['cardGap','卡與卡間隔'], ['cardReturn','卡牌歸位']] },
+    { group: '受擊／擊殺', items: [
+        ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
+        ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
+        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入']] },
+    { group: 'WILD／機制', items: [
+        ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
+        ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
+        ['newIconPop','新圖示出現'], ['coinBurst','噴錢演繹']] },
+    { group: 'LV4 全畫面／轉場', items: [
+        ['transIn','全畫面壓黑'], ['transHold','機制畫面入場'], ['transOut','轉場淡出']] },
+    { group: 'BG 倍數遞增', items: [
+        ['bgMultFade','舊倍數淡出'], ['bgMultFly','新倍數飛入'], ['bgMultScale','倍數縮放'], ['bgRefill','BG補盤(每格)']] },
+    { group: '變體', items: [
+        ['critFlash','爆擊閃白'], ['critImage','爆擊角色動畫'], ['chaseGap','追擊間隔']] },
 ];
+// 各參數範圍表（載入時鉗制用）：key → [min, max]
+const TIMING_RANGE = {};
+TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !== undefined ? it[2] : 0, it[3] !== undefined ? it[3] : 5]; }));
 let TIMING = { ...DEFAULT_TIMING };
 const TF = s => Math.max(1, Math.round(s * 60));   // 秒 → 幀（60fps）
 
@@ -794,9 +848,16 @@ let hasHitThisSpin = false;
 // 動畫變數
 let colOffsets = [];
 let colStates = [];
-let spinTimer = 0;      // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
-let roundGapTimer = 0;  // 卡與卡攻擊間隔倒數
-let popDimTimer = 0;    // 消除壓暗淡入計時
+let colBounce = [];         // 各欄落定回彈計時（squash）
+let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
+let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
+let popDimTimer = 0;        // 消除壓暗淡入計時
+let attackDimAlpha = 0;     // 卡牌觸發時盤面壓暗（0~1 漸變）
+let boardShakeTimer = 0;    // WILD 著陸盤面震動倒數
+let pendingBoardShake = 0;  // 待觸發的震動時長（幀，WILD 著陸時啟動）
+let checkPauseTimer = 0;    // 盤間停頓（補盤後再判定連線前）
+let bgMultAnimT = 999;      // BG 倍數更新動畫經過幀數
+let bgMultPrev = 1;         // BG 前一個倍數（淡出用）
 let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
@@ -940,7 +1001,8 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
         side: m.side, yIndex: m.yIndex,
         elemId: newElem, hp: blocks, maxHp: blocks,
         name: md.name, isDead: false, shake: 0,
-        jackpot: 0, reward: 0
+        jackpot: 0, reward: 0,
+        flashT: 0, fadeIn: TF(TIMING.respawnFade)   // 更換怪獸淡入（節奏總表 0.4s）
     };
 }
 
@@ -1108,7 +1170,10 @@ function findMatches() {
 }
 
 function applyGravity() {
+    // 補盤每欄錯落（節奏總表 0.05s）：右欄新圖示多墊一段起始距離，落定時間依欄遞延
+    const fallSpeed = GEM_SIZE / TF(isBG ? TIMING.bgRefill : TIMING.refillPerCell);
     for (let c = 0; c < COLS; c++) {
+        const staggerDist = c * fallSpeed * TF(TIMING.refillStagger);
         let emptySpaces = 0;
         for (let r = ROWS - 1; r >= 0; r--) {
             if (board[c][r].id === -1) {
@@ -1122,7 +1187,7 @@ function applyGravity() {
         for (let i = 0; i < emptySpaces; i++) {
             board[c][i] = {
                 id: Math.floor(Math.random() * 6),
-                yOffset: -(emptySpaces) * GEM_SIZE - 50,
+                yOffset: -(emptySpaces) * GEM_SIZE - 50 - staggerDist,
                 scale: 1,
                 isMatched: false
             };
@@ -1218,9 +1283,11 @@ function applyKillEffect(effect) {
     let nonCardElems = getNonCardElems();
 
     if (effectType === 1) {
-        // WILD 飛入：自上方落下（wildFlyIn），每 +1 顆錯落 wildStagger（節奏表）
-        const wildFallSpeed = (GRID_H + 50) / TF(TIMING.refill);
-        const wildDrop = i => -(wildFallSpeed * (TF(TIMING.wildFlyIn) + i * TF(TIMING.wildStagger)));
+        // WILD 飛入：自上方落下（wildFlyIn／bigWildFly），每 +1 顆錯落 wildStagger（節奏表）
+        const wildFallSpeed = GEM_SIZE / TF(TIMING.refillPerCell);
+        const flyF = TF(effect.big ? TIMING.bigWildFly : TIMING.wildFlyIn);
+        const wildDrop = i => -(wildFallSpeed * (flyF + i * TF(TIMING.wildStagger)));
+        pendingBoardShake = TF(effect.big ? TIMING.bigWildShake : TIMING.wildShake);   // 著陸震動
         if (effect.big) {
             // 生成巨型WILD：2×2 區塊（固定底部兩列，重力不拆散）
             let startC = Math.floor(Math.random() * (COLS - 1));
@@ -1241,7 +1308,7 @@ function applyKillEffect(effect) {
         }
 
     } else if (effectType === 2) {
-        // 生成圖示：固定數量的卡牌色寶石
+        // 生成圖示：固定數量的卡牌色寶石（新圖示放大出現 = newIconPop）
         let sendCount = effect.gemCount || 5;
         let targets = [];
         for (let c = 0; c < COLS; c++)
@@ -1250,27 +1317,33 @@ function applyKillEffect(effect) {
                     targets.push({ c, r });
         targets.sort(() => Math.random() - 0.5);
         let count = Math.min(sendCount, targets.length);
-        for (let i = 0; i < count; i++)
+        for (let i = 0; i < count; i++) {
             board[targets[i].c][targets[i].r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
+            board[targets[i].c][targets[i].r].scale = 0.2;
+        }
 
     } else if (effectType === 3) {
-        // 轉換圖示：將指定種數(預設全部)的非卡牌色轉換成卡牌色
+        // 轉換圖示：將指定種數(預設全部)的非卡牌色轉換成卡牌色（新圖示放大出現）
         let shuffled = [...nonCardElems].sort(() => Math.random() - 0.5);
         let typesToConvert = effect.convertCount !== undefined ? shuffled.slice(0, effect.convertCount) : shuffled;
         for (let c = 0; c < COLS; c++)
             for (let r = 0; r < ROWS; r++)
-                if (typesToConvert.includes(board[c][r].id))
+                if (typesToConvert.includes(board[c][r].id)) {
                     board[c][r].id = cardElems[Math.floor(Math.random() * cardElems.length)];
+                    board[c][r].scale = 0.2;
+                }
 
     } else if (effectType === 8) {
-        // 轉換圖示(弱)：使用 showing 階段預先決定的 from/to（1種）
+        // 轉換圖示(弱)：使用 showing 階段預先決定的 from/to（1種，新圖示放大出現）
         let fromId = killEffectCurrent ? killEffectCurrent.fromElemId : null;
         let toId   = killEffectCurrent ? killEffectCurrent.toElemId   : null;
         if (fromId !== null && toId !== undefined) {
             for (let c = 0; c < COLS; c++)
                 for (let r = 0; r < ROWS; r++)
-                    if (board[c][r].id === fromId)
+                    if (board[c][r].id === fromId) {
                         board[c][r].id = toId;
+                        board[c][r].scale = 0.2;
+                    }
         }
 
     } else if (effectType === 4) {
@@ -1303,10 +1376,17 @@ function applyKillEffect(effect) {
         scoreTexts.push({ x: 640, y: 320, text: `🎡 輪盤！ ×${mult} = +${reward}`, color: '#ffd700', life: 150, fontSize: 40 });
 
     } else if (effectType === 10) {
-        // 直接給分：依等級倍率
+        // 直接給分：依等級倍率（噴錢演繹 = coinBurst，數字飛入公版）
         let mult = effect.multiplier || 3;
         let reward = betAmount * mult;
         winScore += reward; totalScore += reward;
+        spawnCoinBurst(effect.fromX || 640, effect.fromY || 360, 26);
+        flyingScores.push({
+            type: 'bossHit', x: effect.fromX || 640, y: (effect.fromY || 360) - 10,
+            tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
+            text: `🪙 +${reward}`, color: '#ffd700',
+            life: TF(TIMING.coinBurst) + 60, delay: TF(TIMING.coinBurst)
+        });
     }
 }
 
@@ -1352,7 +1432,7 @@ function startModeTransition(text, subText, bgColor, accentColor) {
 
 function startKillEffect(effect) {
     killEffectCurrent = effect;
-    killEffectPhase = 'flying';
+    killEffectPhase = 'pre';   // 死亡切換停留（含灰化過渡）→ 光效飛行
     killEffectTimer = 0;
     killEffectProgress = 0;
     currentState = STATE.KILL_EFFECT;
@@ -1363,7 +1443,7 @@ function spawnCoinBurst(cx, cy, count) {
     for (let i = 0; i < count; i++) {
         let angle = Math.random() * Math.PI * 2;
         let speed = 0.4 + Math.random() * 1.8;
-        let life  = 70 + Math.floor(Math.random() * 50);
+        let life  = TF(TIMING.coinBurst) + Math.floor(Math.random() * TF(TIMING.coinBurst));   // 噴錢演繹時長
         coinBursts.push({
             x: cx + (Math.random() - 0.5) * 50,
             y: cy + (Math.random() - 0.5) * 20,
@@ -1468,10 +1548,10 @@ function drawKillEffect() {
         ctx.fillText(EFFECT_ICONS[killEffectCurrent.type], curX, curY);
 
     } else if (killEffectPhase === 'showing') {
-        const showF = TF(TIMING.monsterFade);
+        const showF = TF(TIMING.effectShow);
         let fadeIn = Math.min(1, (showF - killEffectTimer) / Math.max(1, Math.round(showF * 0.24)));
-        // 盤面半透明遮罩
-        ctx.fillStyle = `rgba(0,0,10,${0.65 * fadeIn})`;
+        // 盤面半透明遮罩（不透明度 = effectDimAlpha，細節表 RD 參數）
+        ctx.fillStyle = `rgba(0,0,10,${TIMING.effectDimAlpha * fadeIn})`;
         ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
         // 大圖示
         ctx.globalAlpha = fadeIn;
@@ -1636,9 +1716,12 @@ function startSpin() {
 
     colStates = Array(COLS).fill(1);
     colOffsets = Array(COLS).fill(0);
+    colBounce = Array(COLS).fill(0);
     spinTimer = 0;
     roundGapTimer = 0;
     popDimTimer = 0;
+    checkPauseTimer = 0;
+    attackDimAlpha = 0;
 }
 
 // === 繪圖 ===
@@ -1745,15 +1828,28 @@ function drawStatsPanel() {
 }
 
 // === 四角大怪（背景裝飾，左後龍／右後巨人／左前豬／右前女戰士）===
+// 大怪插畫：受擊閃紅（疊乘紅色，濃度 RD 參數）＋水平震動（±hitShakeAmp px）＋換怪淡入
+function drawBigArt(img, o, m) {
+    if (!imgReady(img)) return;
+    let dx = 0;
+    if (m && m.shake > 0) dx = (Math.random() - 0.5) * 2 * TIMING.hitShakeAmp;
+    ctx.save();
+    if (m && m.fadeIn > 0) ctx.globalAlpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
+    drawImgFit(img, o.x + dx, o.y, o.w, o.h, 'contain');
+    if (m && m.flashT > 0) {   // 閃紅：紅色濾鏡疊繪一次
+        ctx.globalAlpha = TIMING.hitFlashAlpha * (m.flashT / TF(TIMING.hitFlash));
+        ctx.filter = 'sepia(1) saturate(8) hue-rotate(-50deg) brightness(1.2)';
+        drawImgFit(img, o.x + dx, o.y, o.w, o.h, 'contain');
+    }
+    ctx.restore();
+}
 function drawBigMonstersRear() {
-    const rl = LAYOUT.bigRearL, rr = LAYOUT.bigRearR;
-    drawImgFit(IMG.monArt.rearL, rl.x, rl.y, rl.w, rl.h, 'contain');   // 紅龍 左後
-    drawImgFit(IMG.monArt.rearR, rr.x, rr.y, rr.w, rr.h, 'contain');  // 三頭巨人 右後
+    drawBigArt(IMG.monArt.rearL, LAYOUT.bigRearL, monsters[1]);   // 紅龍 左後（side left / yIndex 1）
+    drawBigArt(IMG.monArt.rearR, LAYOUT.bigRearR, monsters[4]);   // 三頭巨人 右後（right / yIndex 1）
 }
 function drawBigMonstersFront() {
-    const fl = LAYOUT.bigFrontL, fr = LAYOUT.bigFrontR;
-    drawImgFit(IMG.monArt.frontL, fl.x, fl.y, fl.w, fl.h, 'contain');   // 野豬 左前
-    drawImgFit(IMG.monArt.frontR, fr.x, fr.y, fr.w, fr.h, 'contain'); // 亞馬遜 右前
+    drawBigArt(IMG.monArt.frontL, LAYOUT.bigFrontL, monsters[2]);   // 野豬 左前（left / yIndex 2）
+    drawBigArt(IMG.monArt.frontR, LAYOUT.bigFrontR, monsters[5]);   // 亞馬遜 右前（right / yIndex 2）
 }
 
 // === 小怪頭像圓心（佈局錨點，drawMonsters/monsterAnchor 共用）===
@@ -1824,6 +1920,8 @@ function drawMonsters() {
         // 頭像/血條錨點統一由 LAYOUT 提供（可由調校面板拖曳）
         const a = monUIAnchor(m);
         let iconCX = a.x, cy = a.y;
+        ctx.save();
+        if (m.fadeIn > 0) ctx.globalAlpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
 
         let r = 17, barW = 78, barH = 9, gap = 8;
         let barX, numX, numAlign, numFont = 'bold 15px sans-serif';
@@ -1836,7 +1934,7 @@ function drawMonsters() {
             numX = barX - 6;
             numAlign = 'right';
         }
-        if (m.shake > 0) { cy += (Math.random() - 0.5) * 5; m.shake--; }
+        if (m.shake > 0) { cy += (Math.random() - 0.5) * 2 * TIMING.hitShakeAmp; m.shake--; }
         const accent = lvl === 0 ? '#fbbf24' : elem.color;
 
         // 圓形頭像（Boss 用宙斯/赫拉大頭像，小怪用屬性頭像）
@@ -1872,6 +1970,7 @@ function drawMonsters() {
         ctx.fillText(`${m.hp}/${m.maxHp}`, numX, cy);
         ctx.shadowBlur = 0;
         ctx.textBaseline = 'alphabetic';
+        ctx.restore();
     });
 }
 
@@ -2050,6 +2149,11 @@ function drawGrid() {
     ctx.save();
     ctx.beginPath(); ctx.rect(GRID_X, GRID_Y, GRID_W, GRID_H); ctx.clip();
 
+    // WILD 著陸盤面震動（細節表：震動強度依機制等級）
+    if (boardShakeTimer > 0) {
+        ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+    }
+
     function drawGem(c, r, gem) {
         let currentYOffset = (colOffsets[c] || 0) + gem.yOffset;
         let x = GRID_X + c * GEM_SIZE;
@@ -2069,7 +2173,13 @@ function drawGrid() {
             // 消除中（白光）/ WILD（金光）發光
             if (gem.isMatched)      { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; }
             else if (gem.id === WILD_ID) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 16; }
-            ctx.drawImage(img, drawX, drawY, s, s);
+            // 落定回彈：輕微 squash 約5%（細節表，可調 0 關閉）
+            let sh = s;
+            if (colBounce[c] > 0 && !gem.isMatched) {
+                const p = colBounce[c] / TF(TIMING.landBounce);
+                sh = s * (1 - 0.05 * Math.sin(Math.PI * p));
+            }
+            ctx.drawImage(img, drawX, drawY + (s - sh), s, sh);
             ctx.shadowBlur = 0;
         } else {
             // ── 退回原本的程式繪製 ──
@@ -2104,11 +2214,13 @@ function drawGrid() {
             if (gem && gem.id !== -1 && !gem.isMatched) drawGem(c, r, gem);
         }
 
-    // 消除演出中：盤面壓暗（節奏表），消除格畫在遮罩上層以突顯
-    if (currentState === STATE.POPPING && TIMING.popDim > 0) {
-        const dimAlpha = Math.min(1, popDimTimer / TF(TIMING.popDim)) * 0.5;
+    // 盤面壓暗：消除演出中（popDim 淡入）或卡牌攻擊中（attackDim），強度 = popDimAlpha（RD 參數）
+    const popPhase = (currentState === STATE.POPPING && TIMING.popDim > 0)
+        ? Math.min(1, popDimTimer / TF(TIMING.popDim)) : 0;
+    const dimAlpha = Math.max(popPhase, attackDimAlpha) * TIMING.popDimAlpha;
+    if (dimAlpha > 0.01) {
         ctx.fillStyle = `rgba(0, 0, 15, ${dimAlpha})`;
-        ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+        ctx.fillRect(GRID_X - 8, GRID_Y - 8, GRID_W + 16, GRID_H + 16);
     }
 
     // 第二層：消除中的格子
@@ -2189,10 +2301,35 @@ function drawUI() {
         // 標題列
         ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px sans-serif';
         ctx.fillText(`✨ BONUS GAME　剩餘 ${bgSpinsRemaining} 局`, 640, bpY + 22);
-        // 倍率大字
-        ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 52px sans-serif';
+        // 倍率大字（BG 倍數遞增演繹：舊淡出 → 新飛入 → 先放大後縮回，節奏表）
+        const fadeF = TF(TIMING.bgMultFade), flyF = TF(TIMING.bgMultFly), scaleF = TF(TIMING.bgMultScale);
+        const t = bgMultAnimT;
+        ctx.font = 'bold 52px sans-serif';
         ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 22;
+        if (t < fadeF) {
+            // 舊倍數淡出（與新倍數飛入並行）
+            ctx.save();
+            ctx.globalAlpha = 1 - t / fadeF;
+            ctx.fillStyle = '#b45309';
+            ctx.fillText(`×${bgMultPrev}`, 640, bpY + 85);
+            ctx.restore();
+        }
+        ctx.save();
+        if (t < flyF) {
+            // 新倍數飛入：自上方落下＋淡入
+            ctx.globalAlpha = t / flyF;
+            ctx.translate(0, -24 * (1 - t / flyF));
+        } else if (t < flyF + scaleF) {
+            // 先放大後縮回
+            const q = (t - flyF) / scaleF;
+            const sc = 1 + 0.3 * Math.sin(Math.PI * q);
+            ctx.translate(640, bpY + 85);
+            ctx.scale(sc, sc);
+            ctx.translate(-640, -(bpY + 85));
+        }
+        ctx.fillStyle = '#fbbf24';
         ctx.fillText(`×${getBGMultiplier()}`, 640, bpY + 85);
+        ctx.restore();
         ctx.shadowBlur = 0;
     }
 
@@ -2314,11 +2451,31 @@ function update() {
         }
     }
 
+    // === 演出計時器（v4.4 細節）===
+    for (let c = 0; c < colBounce.length; c++) if (colBounce[c] > 0) colBounce[c]--;   // 落定回彈
+    if (boardShakeTimer > 0) boardShakeTimer--;                                        // WILD 著陸震動
+    bgMultAnimT++;                                                                     // BG 倍數動畫
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; }); // 閃紅／換怪淡入
+    // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
+    {
+        const dimTarget = (currentState === STATE.ATTACKING && cards.some(cd => cd.isCharging || cd.activated)) ? 1 : 0;
+        const dimStep = 1 / TF(TIMING.attackDim);
+        attackDimAlpha = Math.max(0, Math.min(1, attackDimAlpha + (dimTarget > attackDimAlpha ? dimStep : -dimStep)));
+    }
+    // 生成／轉換機制：新圖示放大出現（scale < 1 的非消除格逐漸長回）
+    if (board.length) {
+        const popStep = 1 / TF(TIMING.newIconPop);
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
+            const g = board[c] && board[c][r];
+            if (g && g.id !== -1 && !g.isMatched && g.scale < 1) g.scale = Math.min(1, g.scale + popStep);
+        }
+    }
+
     cards.forEach(card => {
         if (card.isCharging) {
             card.scale = Math.min(1.15, card.scale + 0.05);
             card.shake = 8;
-            card.yTarget = -22;
+            card.yTarget = -TIMING.cardPullDist;   // 卡牌上拉幅度（細節表 A/B/C 待定，RD 參數）
         } else if (card.activated) {
             card.scale = Math.max(1, card.scale - 0.05);
             card.shake = 0;
@@ -2331,8 +2488,9 @@ function update() {
         if (card.enterDelay > 0) {
             card.enterDelay--;
         } else {
-            // 卡牌歸位：在 TIMING.cardReturn 秒內收斂到位（指數緩動）
-            const k = 1 - Math.pow(0.05, 1 / TF(TIMING.cardReturn));
+            // 卡牌上拉（cardPullUp）／歸位（cardReturn）：各自秒數內收斂到位（指數緩動）
+            const dur = card.isCharging ? TIMING.cardPullUp : TIMING.cardReturn;
+            const k = 1 - Math.pow(0.05, 1 / TF(dur));
             card.yOffset += (card.yTarget - card.yOffset) * k;
             if (Math.abs(card.yOffset - card.yTarget) < 0.5) card.yOffset = card.yTarget;
         }
@@ -2343,13 +2501,13 @@ function update() {
         let allDone = true;
         const settleFrames = Math.ceil((GRID_H + 50) / 40);   // 落下定位所需幀數
         for (let c = 0; c < COLS; c++) {
-            // 停輪時點（節奏表）：第1輪 firstReelStop（spinRoll 為下限），其後每輪 +reelStopInterval
-            const stopAt = TF(Math.max(TIMING.spinRoll, TIMING.firstReelStop) + c * TIMING.reelStopInterval);
+            // 落定時點（節奏表 v4）：第1輪 firstReelStop，其後每輪 +reelStopInterval
+            const stopAt = TF(TIMING.firstReelStop + c * TIMING.reelStopInterval);
             const settleStart = Math.max(1, stopAt - settleFrames);
             if (colStates[c] === 1) {
-                // 掉落式（非滾輪）：舊圖示整欄往下掉出畫面，欄位由左到右微錯開
+                // 掉落式（同天使奧丁）：7 輪同時啟動，舊圖示整欄往下掉出畫面
                 allDone = false;
-                if (spinTimer > c * 4) colOffsets[c] += 40;
+                colOffsets[c] += 40;
                 if (colOffsets[c] > GRID_H + 50) {
                     // 掉完：換上最終盤面，藏在畫面上方等待停輪時點
                     for (let r = 0; r < ROWS; r++) {
@@ -2368,6 +2526,7 @@ function update() {
                 allDone = false;
                 if (colOffsets[c] >= 0) {
                     colOffsets[c] = 0; colStates[c] = 0;
+                    colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
                 }
             }
         }
@@ -2379,6 +2538,8 @@ function update() {
         }
 
     } else if (currentState === STATE.CHECKING) {
+        // 盤間停頓（節奏表）：補盤後停頓再判定下一次連線
+        if (checkPauseTimer > 0) { checkPauseTimer--; return; }
         let matchedGroups = findMatches();
         if (matchedGroups.length > 0) {
             matchQueue = [...matchedGroups];
@@ -2410,13 +2571,14 @@ function update() {
             return;
         }
 
-        // 掃描全盤縮小所有 isMatched 格子
+        // 掃描全盤縮小所有 isMatched 格子（消散時長 = TIMING.popDissolve）
         let allShrunk = true;
+        const dissolveStep = 1 / TF(TIMING.popDissolve);
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 let gem = board[c][r];
                 if (gem.isMatched) {
-                    gem.scale -= 0.04;
+                    gem.scale -= dissolveStep;
                     if (gem.scale > 0) allShrunk = false;
                     else { gem.id = -1; gem.isMatched = false; }
                 }
@@ -2469,14 +2631,18 @@ function update() {
                             type: 'collect', x: startCX, y: startCY,
                             tx: cardCX, ty: LAYOUT.cards.y + 15,
                             text: ELEMENTS[elemId].icon, color: ELEMENTS[elemId].color,
-                            life: 40, delay: 0
+                            life: TF(TIMING.energyFly) + 20, delay: mi * 3   // 多顆錯落起飛（細節表 0.05s）
                         });
                     }
                 }
             });
 
-            // BG：每輪消除後倍率遞增一級
-            if (isBG) bgMultiplierIndex++;
+            // BG：每輪消除後倍率遞增一級（觸發倍數更新演繹：舊淡出→新飛入→縮放）
+            if (isBG) {
+                bgMultPrev = getBGMultiplier();
+                bgMultiplierIndex++;
+                bgMultAnimT = 0;
+            }
 
             // 得分演繹時長 = 得分圖示數 × 每顆時長（節奏表）
             const popIconCount = currentMatches.reduce((s, m) => s + m.count, 0);
@@ -2485,22 +2651,29 @@ function update() {
 
     } else if (currentState === STATE.GRAVITY) {
         let gravityDone = true;
+        // 補盤掉落速度：每格 refillPerCell 秒（BG 用 bgRefill，節奏表）
+        const fallSpeed = GEM_SIZE / TF(isBG ? TIMING.bgRefill : TIMING.refillPerCell);
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 if (board[c][r].yOffset < 0) {
-                    // 補盤掉落速度：整盤高度在 TIMING.refill 秒內落定
-                    board[c][r].yOffset += (GRID_H + 50) / TF(TIMING.refill);
-                    if (board[c][r].yOffset >= 0) board[c][r].yOffset = 0;
+                    board[c][r].yOffset += fallSpeed;
+                    if (board[c][r].yOffset >= 0) {
+                        board[c][r].yOffset = 0;
+                        // WILD 著陸瞬間觸發盤面震動（細節表）
+                        if (pendingBoardShake > 0 && board[c][r].id === WILD_ID) boardShakeTimer = pendingBoardShake;
+                    }
                     else gravityDone = false;
                 }
             }
         }
         if (gravityDone) {
+            pendingBoardShake = 0;
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
             if (pendingKillEffects.length > 0) {
                 startKillEffect(pendingKillEffects.shift());
             } else {
                 // 無論 pendingFGBG 是否有值，都先繼續 CHECKING 讓連爆打完
+                checkPauseTimer = TF(TIMING.interBoardPause);   // 盤間停頓
                 currentState = STATE.CHECKING;
             }
         }
@@ -2597,6 +2770,7 @@ function update() {
                         let prevHp = t.hp;
                         t.hp = Math.max(0, t.hp - p.overflowDamage);
                         t.shake = TF(TIMING.hitReact);
+                        t.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
                         // 宙斯/赫拉里程碑
                         if (t.jackpot > 0) {
                             checkBossMilestones(monsters.indexOf(t), prevHp, t.hp, p.tx, p.ty);
@@ -2630,6 +2804,7 @@ function update() {
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = TF(TIMING.hitReact);
+                    p.targetMonster.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
                     // 打完怪獸後，該卡攻擊力回到預設值（待該卡所有攻擊輪次都打完才歸零）
                     if (p.cardRef && !pendingRounds.some(rd => rd.some(x => x.elemId === p.cardRef.elemId))) {
                         p.cardRef.atk = 0;
@@ -2742,9 +2917,15 @@ function update() {
         }
     } else if (currentState === STATE.KILL_EFFECT) {
         killEffectTimer++;
-        if (killEffectPhase === 'flying') {
-            killEffectProgress = Math.min(1, killEffectTimer / TF(TIMING.deathSwitch));
+        if (killEffectPhase === 'pre') {
+            // 死亡切換（節奏表 0.5s）：怪物維持死亡狀態停留，之後才淡出＋光效飛行
             if (killEffectTimer >= TF(TIMING.deathSwitch)) {
+                killEffectPhase = 'flying';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'flying') {
+            killEffectProgress = Math.min(1, killEffectTimer / TF(TIMING.effectFly));
+            if (killEffectTimer >= TF(TIMING.effectFly)) {
                 if (killEffectCurrent.type === 5 || killEffectCurrent.type === 6) {
                     // FG/BG：球抵達收集欄後直接套用，跳過 showing 盤面特效
                     applyKillEffect(killEffectCurrent);
@@ -2770,7 +2951,7 @@ function update() {
                 }
             }
         } else if (killEffectPhase === 'showing') {
-            if (killEffectTimer >= TF(TIMING.monsterFade)) {
+            if (killEffectTimer >= TF(TIMING.effectShow)) {
                 // 套用效果
                 applyKillEffect(killEffectCurrent);
                 applyGravity();
@@ -2778,8 +2959,9 @@ function update() {
                 killEffectTimer = 0;
             }
         } else if (killEffectPhase === 'applied') {
-            // 效果套用爆光時長（WILD 生成等）
-            const doneTicks = TF(TIMING.wildSpawn);
+            // 效果套用爆光時長（WILD／巨型 WILD 生成）
+            const isBigWild = killEffectCurrent.type === 1 && killEffectCurrent.big;
+            const doneTicks = TF(isBigWild ? TIMING.bigWildSpawn : TIMING.wildSpawn);
             if (killEffectTimer >= doneTicks) {
                 killEffectPhase = 'idle';
                 killEffectCurrent = null;
@@ -2798,10 +2980,12 @@ function update() {
         let fs = flyingScores[i];
         if (fs.delay > 0) {
             fs.delay--;
-            if (fs.type === 'kill') fs.y -= 0.5; 
+            if (fs.type === 'kill') fs.y -= 0.5;
         } else {
-            fs.x += (fs.tx - fs.x) * 0.15; 
-            fs.y += (fs.ty - fs.y) * 0.15;
+            // 能量飛卡（collect）飛行時間 = TIMING.energyFly；其餘沿用固定速度
+            const k = fs.type === 'collect' ? 1 - Math.pow(0.02, 1 / TF(TIMING.energyFly)) : 0.15;
+            fs.x += (fs.tx - fs.x) * k;
+            fs.y += (fs.ty - fs.y) * k;
         }
         fs.life--;
         if (fs.life <= 0) {
@@ -3114,7 +3298,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 1;
+const TUNE_VERSION = 2;   // v2：參數集對齊節奏表 v4.4（舊版儲存自動作廢）
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
@@ -3133,7 +3317,8 @@ function loadTuning() {
         if (!d || d.version !== TUNE_VERSION) return;   // 版本不符自動作廢
         if (d.timing) for (const k in DEFAULT_TIMING) {
             const v = d.timing[k];
-            if (typeof v === 'number' && isFinite(v)) TIMING[k] = Math.min(5, Math.max(0, v));
+            const [lo, hi] = TIMING_RANGE[k] || [0, 5];
+            if (typeof v === 'number' && isFinite(v)) TIMING[k] = Math.min(hi, Math.max(lo, v));
         }
         if (d.layout) for (const k in DEFAULT_LAYOUT) {
             const o = d.layout[k];
@@ -3153,21 +3338,22 @@ function buildTimingTab() {
     tuneBody.innerHTML = '';
     const hint = document.createElement('div');
     hint.className = 'tune-hint';
-    hint.textContent = '單位：秒。預設值對齊節奏表 v2，調整立即生效（下一次演出採用）。';
+    hint.textContent = '單位：秒（標註 px／0~1 者除外）。預設值對齊節奏表 v4.4，調整立即生效（下一次演出採用）。';
     tuneBody.appendChild(hint);
     TIMING_META.forEach(g => {
         const h = document.createElement('div');
         h.className = 'tune-group'; h.textContent = g.group;
         tuneBody.appendChild(h);
-        g.items.forEach(([key, label]) => {
+        g.items.forEach(([key, label, mn, mx, st]) => {
+            const min = mn !== undefined ? mn : 0, max = mx !== undefined ? mx : 5, step = st !== undefined ? st : 0.05;
             const row = document.createElement('div'); row.className = 'tune-row';
             const lab = document.createElement('label'); lab.textContent = label;
             const rng = document.createElement('input');
-            rng.type = 'range'; rng.min = '0'; rng.max = '5'; rng.step = '0.05'; rng.value = TIMING[key];
+            rng.type = 'range'; rng.min = String(min); rng.max = String(max); rng.step = String(step); rng.value = TIMING[key];
             const num = document.createElement('input');
-            num.type = 'number'; num.min = '0'; num.max = '5'; num.step = '0.05'; num.value = TIMING[key];
+            num.type = 'number'; num.min = String(min); num.max = String(max); num.step = String(step); num.value = TIMING[key];
             const apply = v => {
-                v = Math.min(5, Math.max(0, parseFloat(v) || 0));
+                v = Math.min(max, Math.max(min, parseFloat(v) || 0));
                 TIMING[key] = v;
                 rng.value = v; num.value = v;
                 saveTuning();
