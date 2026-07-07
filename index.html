@@ -2619,20 +2619,25 @@ function update() {
                     }
                 }
             }
-        } else
-        for (let c = 0; c < COLS; c++) {
-            if (colStates[c] !== 0) {
-                allDone = false;
-                // 新圖示：清場後各自掉入，各輪同時啟動、只差掉落速度——
-                // 落定時點 = 第1輪 1.3s，其後每輪 +0.15s（節奏表 v4.6）
-                const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 1);
-                if (spinTimer >= stopAt) {
-                    colOffsets[c] = 0; colStates[c] = 0;
-                    colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
-                } else if (spinTimer <= clearF) {
-                    colOffsets[c] = -(GRID_H + 50);         // 清場期間藏在畫面上方
-                } else {
-                    colOffsets[c] = -(GRID_H + 50) * (1 - (spinTimer - clearF) / (stopAt - clearF));
+        } else {
+            // 新圖示掉入速度＝補盤掉落速度；v4.6 的時間只控制「何時開始掉」與「何時落定」。
+            const dropDistance = GRID_H + 50;
+            const fallSpeed = GEM_SIZE / TF(TIMING.refillPerCell);
+            const fallFrames = Math.ceil(dropDistance / fallSpeed);
+            for (let c = 0; c < COLS; c++) {
+                if (colStates[c] !== 0) {
+                    allDone = false;
+                    // 舊圖示清空後先保持空盤；輪到該欄時再用補盤速度快速掉入。
+                    const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 2);
+                    const startFall = Math.max(clearF + 1, stopAt - fallFrames);
+                    if (spinTimer >= stopAt) {
+                        colOffsets[c] = 0; colStates[c] = 0;
+                        colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
+                    } else if (spinTimer <= startFall) {
+                        colOffsets[c] = -dropDistance;          // 尚未輪到：藏在畫面上方（盤面維持清空）
+                    } else {
+                        colOffsets[c] = -dropDistance * (1 - (spinTimer - startFall) / (stopAt - startFall));
+                    }
                 }
             }
         }
