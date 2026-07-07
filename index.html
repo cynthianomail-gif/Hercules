@@ -2610,9 +2610,10 @@ function update() {
         let allDone = true;
         // 舊盤面圖示直接往下掉出畫面（清場時長 = TIMING.spinClear）
         const clearF = TF(TIMING.spinClear);
+        const wasClearingOld = !!spinOldBoard;
         if (spinOldBoard) {
             spinOldDrop += (GRID_H + 50) / (spinSkip ? spinSkip.total : clearF);
-            if (spinOldDrop > GRID_H + 50) spinOldBoard = null;
+            if (spinOldDrop >= GRID_H + 50) spinOldBoard = null;
         }
         if (spinSkip) {
             // 跳過1（定案）：點擊後全輪齊停，skipStop 內同步滑入落定
@@ -2630,6 +2631,14 @@ function update() {
                         colStates[c] = 0;
                         colBounce[c] = TF(TIMING.landBounce);
                     }
+                }
+            }
+        } else if (wasClearingOld) {
+            // 舊圖示還在清場的這一幀，新圖示一律保持藏在盤面上方；下一幀才允許掉入。
+            allDone = false;
+            for (let c = 0; c < COLS; c++) {
+                if (colStates[c] !== 0) {
+                    for (let r = 0; r < ROWS; r++) board[c][r].yOffset = -(r + 1) * GEM_SIZE - 50;
                 }
             }
         } else {
