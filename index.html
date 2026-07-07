@@ -403,7 +403,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'drop-sequence-live-tuning-20260707';
+const APP_BUILD = 'drop-blank-then-plop-20260707b';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -528,7 +528,8 @@ const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WIL
 const DEFAULT_TIMING = {
     // 掉落（本作為圖示掉落式・同天使奧丁：清場 → 7 輪同時啟動掉入、依序落定）
     spinClear:        0.25,  // 清場：舊盤面圖示直接掉出畫面底部
-    firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s）
+    spinDropIn:       0.30,  // 新圖示掉入時長（每欄「啪」地快速掉進來落定，短＝掉落感）
+    firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s；即「何時落定」）
     reelStopInterval: 0.15,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.15 = 2.2s）
     landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
     skipStop:         0.30,  // 跳過1（定案）：下落期間點擊，全輪齊停落定
@@ -590,7 +591,7 @@ const DEFAULT_TIMING = {
 // 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
     { group: '掉落（停輪）', items: [
-        ['spinClear','清場掉出'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
+        ['spinClear','清場掉出'], ['spinDropIn','掉入時長'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
         ['interSpinPause','局間停頓(無連線)'], ['winSpinPause','局間停頓(有得分)'], ['interBoardPause','連鎖間停頓']] },
     { group: '消除／得分', items: [
@@ -2646,39 +2647,34 @@ function update() {
                 }
             }
         } else if (wasClearingOld) {
-            // 舊圖示還在清場的這一幀，新圖示一律保持藏在盤面上方；下一幀才允許掉入。
+            // 舊圖示還在清場的這一幀，新圖示整欄藏在盤面正上方（盤面留白），下一幀才允許掉入。
             allDone = false;
-            for (let c = 0; c < COLS; c++) {
-                if (colStates[c] !== 0) {
-                    for (let r = 0; r < ROWS; r++) board[c][r].yOffset = -(r + 1) * GEM_SIZE - 50;
-                }
-            }
+            const hideY = -(GRID_H + 40);
+            for (let c = 0; c < COLS; c++)
+                if (colStates[c] !== 0)
+                    for (let r = 0; r < ROWS; r++) board[c][r].yOffset = hideY;
         } else {
-            // 新圖示各自掉進目標格；v4.6 的時間控制每欄最後一顆的落定點。
-            const fallSpeed = GEM_SIZE / TF(TIMING.refillPerCell);
-            const cellStagger = TF(TIMING.refillStagger);
+            // 掉落式（非滾輪）：清場後盤面留白，每欄在自己的落定時點「啪」地快速掉入落定。
+            // firstReelStop/reelStopInterval 控制「何時落定」；spinDropIn 控制「掉多快」。
+            const dropFrames = TF(TIMING.spinDropIn);   // 掉入時長（短、可調）
+            const hideY = -(GRID_H + 40);               // 整欄藏在盤面正上方（全部圖示都在格線之上，盤面淨空）
             for (let c = 0; c < COLS; c++) {
                 if (colStates[c] !== 0) {
                     allDone = false;
                     const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 2);
+                    const startFall = Math.max(clearF + 1, stopAt - dropFrames);
                     if (spinTimer >= stopAt) {
                         for (let r = 0; r < ROWS; r++) board[c][r].yOffset = 0;
                         colStates[c] = 0;
                         colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
+                    } else if (spinTimer <= startFall) {
+                        // 尚未輪到：整欄藏在盤面正上方（盤面留白，看不到任何圖示）
+                        for (let r = 0; r < ROWS; r++) board[c][r].yOffset = hideY;
                     } else {
-                        for (let r = 0; r < ROWS; r++) {
-                            const startOffset = -(r + 1) * GEM_SIZE - 50;
-                            const fallFrames = Math.ceil((-startOffset) / fallSpeed);
-                            const cellStopAt = Math.max(clearF + 2, stopAt - (ROWS - 1 - r) * cellStagger);
-                            const startFall = Math.max(clearF + 1, cellStopAt - fallFrames);
-                            if (spinTimer <= startFall) {
-                                board[c][r].yOffset = startOffset;    // 清場後仍先藏著，盤面保持空
-                            } else if (spinTimer >= cellStopAt) {
-                                board[c][r].yOffset = 0;
-                            } else {
-                                board[c][r].yOffset = Math.min(0, startOffset + fallSpeed * (spinTimer - startFall));
-                            }
-                        }
+                        // 快速掉入：整欄自正上方一起滑下、easeOut（快入慢停）落定，看得到 5 顆圖示掉進來
+                        const p = (spinTimer - startFall) / (stopAt - startFall);   // 0→1
+                        const ease = 1 - Math.pow(1 - p, 3);
+                        for (let r = 0; r < ROWS; r++) board[c][r].yOffset = hideY * (1 - ease);
                     }
                 }
             }
@@ -3490,7 +3486,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 4;   // v4: drop sequence + live tuning; older saved tuning is discarded.
+const TUNE_VERSION = 5;   // v5: 清場→留白→整欄快速掉入；新增 spinDropIn。舊存檔自動作廢。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
