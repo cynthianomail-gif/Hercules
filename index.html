@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'detail-effects-atk-tiers-countup-20260707n';
+const APP_BUILD = 'group-score-at-center-20260707o';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -2722,15 +2722,22 @@ function drawEffects() {
 
     scoreTexts.forEach(st => {
         if (!st.fixed) st.y -= 0.6;
+        // 放大彈出（得分以組為單位顯示於該組中央）：出生時 0.4→1.25→1.0
+        let scale = 1;
+        if (st.pop && st.life0) {
+            const age = st.life0 - st.life, popF = 9;
+            if (age < popF) scale = 0.4 + 0.85 * (age / popF);
+            else if (age < popF * 1.7) scale = 1.25 - 0.25 * ((age - popF) / (popF * 0.7));
+        }
+        ctx.save();
         ctx.fillStyle = st.color;
-        ctx.globalAlpha = Math.min(1, st.life / 60);
-        ctx.font = `bold ${st.fontSize || 56}px sans-serif`;
+        ctx.globalAlpha = Math.min(1, st.life / 30);
+        ctx.font = `bold ${Math.round((st.fontSize || 56) * scale)}px sans-serif`;
         ctx.textAlign = 'center';
-        
-        ctx.strokeStyle = '#000000'; ctx.lineWidth = 6;
+        ctx.lineJoin = 'round'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 6;
         ctx.strokeText(st.text, st.x, st.y);
         ctx.fillText(st.text, st.x, st.y);
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
     });
 }
 
@@ -3030,14 +3037,15 @@ function update() {
                 let score = getScore(count, elemId);
                 winScore += score; totalScore += score;
 
-                // 分數文字：BG 模式顯示倍率
-                let scoreLabel = isBG
-                    ? `×${getBGMultiplier()} | ${ELEMENTS[elemId].icon}×${count} = ${score}`
-                    : `${ELEMENTS[elemId].icon}×${count} = ${score}`;
+                // 得分數字以「組」為單位顯示於該組中央、放大彈出（03 定案）
+                const gcx = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                const gcy = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                const scoreLabel = isBG ? `×${getBGMultiplier()}｜+${score}` : `+${score}`;
                 if (showScorePopup) scoreTexts.push({
-                    x: 640, y: 320 + mi * 50,
+                    x: gcx, y: gcy,
                     text: scoreLabel,
-                    color: isBG ? '#f59e0b' : ELEMENTS[elemId].color, life: 90
+                    color: isBG ? '#fde047' : '#ffffff',
+                    fontSize: 40, life: 70, life0: 70, pop: true, fixed: true
                 });
 
                 // 寶石飛向對應卡片（BG 無卡牌跳過；FG 使用6卡版面）
