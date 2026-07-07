@@ -1738,15 +1738,19 @@ function startSpin() {
         monsters[0].isDead = false;
     }
 
-    // 掉落式（節奏表 v4）：舊盤面圖示直接掉出畫面清場，新圖示再各自掉入
-    // 7 輪同時啟動、只差掉落速度（第1輪 0.7s 落定，每輪 +0.15s）
+    // 掉落式：舊圖示直接掉出畫面 → 盤面清空 → 新圖示各自掉進目標格
     spinOldBoard = board.map(col => col.map(cell => ({ ...cell, isMatched: false })));
     spinOldDrop = 0;
     for (let c = 0; c < COLS; c++)
         for (let r = 0; r < ROWS; r++)
-            board[c][r] = { id: Math.floor(Math.random() * 6), yOffset: 0, scale: 1, isMatched: false };
+            board[c][r] = {
+                id: Math.floor(Math.random() * 6),
+                yOffset: -(r + 1) * GEM_SIZE - 50,
+                scale: 1,
+                isMatched: false
+            };
     colStates = Array(COLS).fill(2);                    // 2 = 掉落中
-    colOffsets = Array(COLS).fill(-(GRID_H + 50));      // 新盤面藏在畫面上方
+    colOffsets = Array(COLS).fill(0);                   // spin 入場改用每顆圖示自己的 yOffset
     colBounce = Array(COLS).fill(0);
     spinTimer = 0;
     spinSkip = null;
@@ -1763,7 +1767,12 @@ function startSpin() {
 // LV1~3 擊殺演出可快轉；LV4／FG／BG／輪盤（涉及彩金）不可跳過
 function triggerSkip() {
     if (currentState === STATE.SPINNING && !spinSkip) {
-        spinSkip = { t: 0, total: TF(TIMING.skipStop), from: colOffsets.slice(), oldFrom: spinOldDrop };
+        spinSkip = {
+            t: 0,
+            total: TF(TIMING.skipStop),
+            fromBoard: board.map(col => col.map(cell => cell.yOffset)),
+            oldFrom: spinOldDrop
+        };
     } else if (currentState === STATE.POPPING && popScoreTimer > 1) {
         for (let c = 0; c < COLS; c++)
             for (let r = 0; r < ROWS; r++)
@@ -2612,31 +2621,43 @@ function update() {
             for (let c = 0; c < COLS; c++) {
                 if (colStates[c] !== 0) {
                     allDone = false;
-                    colOffsets[c] = spinSkip.from[c] * (1 - k);
+                    for (let r = 0; r < ROWS; r++) {
+                        const fromY = spinSkip.fromBoard?.[c]?.[r] ?? board[c][r].yOffset;
+                        board[c][r].yOffset = fromY * (1 - k);
+                    }
                     if (k >= 1) {
-                        colOffsets[c] = 0; colStates[c] = 0;
+                        for (let r = 0; r < ROWS; r++) board[c][r].yOffset = 0;
+                        colStates[c] = 0;
                         colBounce[c] = TF(TIMING.landBounce);
                     }
                 }
             }
         } else {
-            // 新圖示掉入速度＝補盤掉落速度；v4.6 的時間只控制「何時開始掉」與「何時落定」。
-            const dropDistance = GRID_H + 50;
+            // 新圖示各自掉進目標格；v4.6 的時間控制每欄最後一顆的落定點。
             const fallSpeed = GEM_SIZE / TF(TIMING.refillPerCell);
-            const fallFrames = Math.ceil(dropDistance / fallSpeed);
+            const cellStagger = TF(TIMING.refillStagger);
             for (let c = 0; c < COLS; c++) {
                 if (colStates[c] !== 0) {
                     allDone = false;
-                    // 舊圖示清空後先保持空盤；輪到該欄時再用補盤速度快速掉入。
                     const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 2);
-                    const startFall = Math.max(clearF + 1, stopAt - fallFrames);
                     if (spinTimer >= stopAt) {
-                        colOffsets[c] = 0; colStates[c] = 0;
+                        for (let r = 0; r < ROWS; r++) board[c][r].yOffset = 0;
+                        colStates[c] = 0;
                         colBounce[c] = TF(TIMING.landBounce);   // 落定回彈（細節表：squash 約5%）
-                    } else if (spinTimer <= startFall) {
-                        colOffsets[c] = -dropDistance;          // 尚未輪到：藏在畫面上方（盤面維持清空）
                     } else {
-                        colOffsets[c] = -dropDistance * (1 - (spinTimer - startFall) / (stopAt - startFall));
+                        for (let r = 0; r < ROWS; r++) {
+                            const startOffset = -(r + 1) * GEM_SIZE - 50;
+                            const fallFrames = Math.ceil((-startOffset) / fallSpeed);
+                            const cellStopAt = Math.max(clearF + 2, stopAt - (ROWS - 1 - r) * cellStagger);
+                            const startFall = Math.max(clearF + 1, cellStopAt - fallFrames);
+                            if (spinTimer <= startFall) {
+                                board[c][r].yOffset = startOffset;    // 清場後仍先藏著，盤面保持空
+                            } else if (spinTimer >= cellStopAt) {
+                                board[c][r].yOffset = 0;
+                            } else {
+                                board[c][r].yOffset = Math.min(0, startOffset + fallSpeed * (spinTimer - startFall));
+                            }
+                        }
                     }
                 }
             }
