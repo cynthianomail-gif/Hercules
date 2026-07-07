@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'group-score-at-center-20260707o';
+const APP_BUILD = 'group-score-param-noplus-20260707p';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -619,6 +619,7 @@ const DEFAULT_TIMING = {
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
     scorePerIcon:     0.30,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
+    scorePop:         0.70,  // 得分數字（該組中央）彈出＋停留時長
     groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
     popDissolve:      0.20,  // 得分圖示消散（化為能量）
     energyFly:        0.30,  // 能量飛向卡牌攻擊力圓圈
@@ -686,7 +687,7 @@ const TIMING_META = [
         ['interSpinPause','局間停頓(無連線)'], ['winSpinPause','局間停頓(有得分)'], ['interBoardPause','連鎖間停頓']] },
     { group: '消除／得分', items: [
         ['popDim','盤面壓暗'], ['popDimAlpha','壓暗強度(0~1)', 0, 1, 0.05], ['scorePerIcon','每組得分演繹'],
-        ['groupGap','多組組間錯落'], ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
+        ['scorePop','得分數字彈出'], ['groupGap','多組組間錯落'], ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
     { group: '補盤', items: [
         ['refillPerCell','每格掉落時間'], ['refillStagger','每欄錯落']] },
     { group: '卡牌攻擊', items: [
@@ -728,7 +729,7 @@ const GANTT_START_PRESET = {
     spinClear: 0.00, spinDropIn: 0.25, firstReelStop: 0.00, reelStopInterval: 0.00,
     landBounce: 1.30, skipStop: 0.00, interSpinPause: 0.00, winSpinPause: 0.00, interBoardPause: 0.00,
     // 消除／得分（節奏表：壓暗→得分演繹→消散→能量飛卡→數字更新，連續時間軸）
-    popDim: 0.00, scorePerIcon: 0.15, groupGap: 0.15, popDissolve: 0.45, energyFly: 0.65,
+    popDim: 0.00, scorePerIcon: 0.15, scorePop: 0.15, groupGap: 0.15, popDissolve: 0.45, energyFly: 0.65,
     // 補盤
     refillPerCell: 0.00, refillStagger: 0.00,
     // 卡牌攻擊（接續消除段：數字更新→上拉→受擊→歸位）
@@ -2722,10 +2723,10 @@ function drawEffects() {
 
     scoreTexts.forEach(st => {
         if (!st.fixed) st.y -= 0.6;
-        // 放大彈出（得分以組為單位顯示於該組中央）：出生時 0.4→1.25→1.0
+        // 放大彈出（得分以組為單位顯示於該組中央）：出生時 0.4→1.25→1.0，彈出時間隨顯示時長縮放
         let scale = 1;
         if (st.pop && st.life0) {
-            const age = st.life0 - st.life, popF = 9;
+            const age = st.life0 - st.life, popF = Math.max(4, Math.round(st.life0 * 0.3));
             if (age < popF) scale = 0.4 + 0.85 * (age / popF);
             else if (age < popF * 1.7) scale = 1.25 - 0.25 * ((age - popF) / (popF * 0.7));
         }
@@ -3040,12 +3041,13 @@ function update() {
                 // 得分數字以「組」為單位顯示於該組中央、放大彈出（03 定案）
                 const gcx = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
                 const gcy = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
-                const scoreLabel = isBG ? `×${getBGMultiplier()}｜+${score}` : `+${score}`;
+                const scoreLabel = isBG ? `×${getBGMultiplier()}｜${score}` : `${score}`;
+                const scorePopLife = TF(TIMING.scorePop);
                 if (showScorePopup) scoreTexts.push({
                     x: gcx, y: gcy,
                     text: scoreLabel,
                     color: isBG ? '#fde047' : '#ffffff',
-                    fontSize: 40, life: 70, life0: 70, pop: true, fixed: true
+                    fontSize: 40, life: scorePopLife, life0: scorePopLife, pop: true, fixed: true
                 });
 
                 // 寶石飛向對應卡片（BG 無卡牌跳過；FG 使用6卡版面）
@@ -3769,7 +3771,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 7;   // v7: 補齊演出細節參數（組間錯落/徽章閃爍/ATK分級/目標預亮/光束/跑分等）。舊存檔自動作廢。
+const TUNE_VERSION = 8;   // v8: 新增得分數字彈出 scorePop 參數。舊存檔自動作廢。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
