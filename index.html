@@ -855,6 +855,7 @@ let spinOldDrop = 0;        // 舊盤面已下墜距離（px）
 let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
 let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
 let popDimTimer = 0;        // 消除壓暗淡入計時
+let popScoreTimer = 0;      // 得分演繹倒數（圖示保持亮、尚未消散）
 let attackDimAlpha = 0;     // 卡牌觸發時盤面壓暗（0~1 漸變）
 let boardShakeTimer = 0;    // WILD 著陸盤面震動倒數
 let pendingBoardShake = 0;  // 待觸發的震動時長（幀，WILD 著陸時啟動）
@@ -1251,6 +1252,8 @@ function prepareNextPop() {
     currentMatches = [{ elemId: batch[0].elemId, cells: mergedCells, count: mergedCells.length }];
     currentState = STATE.POPPING;
     popWaitTimer = 0;
+    // 得分演繹（節奏表）：圖示先保持亮度做演繹（每顆 scorePerIcon），之後才消散
+    popScoreTimer = Math.max(1, Math.round(TIMING.scorePerIcon * mergedCells.length * 60));
 }
 
 // === 溢出傷害：找相同屬性的目標（不限同側），光球抵達才扣血 ===
@@ -1730,6 +1733,7 @@ function startSpin() {
     spinTimer = 0;
     roundGapTimer = 0;
     popDimTimer = 0;
+    popScoreTimer = 0;
     checkPauseTimer = 0;
     attackDimAlpha = 0;
 }
@@ -2227,11 +2231,19 @@ function drawGrid() {
         }
     }
 
-    // 第一層：未消除格
+    // 得分圖示不壓暗（細節表 #2）：當前批次（isMatched）＋排隊中的後續連線批次都保持亮度
+    let brightSet = null;
+    if (currentState === STATE.POPPING && matchQueue.length > 0) {
+        brightSet = new Set();
+        matchQueue.forEach(m => m.cells.forEach(cell => brightSet.add(cell.c + ',' + cell.r)));
+    }
+    const isBright = (c, r, gem) => gem.isMatched || (brightSet !== null && brightSet.has(c + ',' + r));
+
+    // 第一層：未得分格（會被壓暗）
     for (let c = 0; c < COLS; c++)
         for (let r = 0; r < ROWS; r++) {
             let gem = board[c] ? board[c][r] : null;
-            if (gem && gem.id !== -1 && !gem.isMatched) drawGem(c, r, gem);
+            if (gem && gem.id !== -1 && !isBright(c, r, gem)) drawGem(c, r, gem);
         }
 
     // 盤面壓暗：消除演出中（popDim 淡入）或卡牌攻擊中（attackDim），強度 = popDimAlpha（RD 參數）
@@ -2243,11 +2255,11 @@ function drawGrid() {
         ctx.fillRect(GRID_X - 8, GRID_Y - 8, GRID_W + 16, GRID_H + 16);
     }
 
-    // 第二層：消除中的格子
+    // 第二層：得分格維持 100% 亮度、蓋在遮罩上層（提升顯示層級）
     for (let c = 0; c < COLS; c++)
         for (let r = 0; r < ROWS; r++) {
             let gem = board[c] ? board[c][r] : null;
-            if (gem && gem.id !== -1 && gem.isMatched) drawGem(c, r, gem);
+            if (gem && gem.id !== -1 && isBright(c, r, gem)) drawGem(c, r, gem);
         }
     ctx.restore();
 }
@@ -2582,6 +2594,11 @@ function update() {
             if (popWaitTimer === 0) prepareNextPop();
             return;
         }
+        // 階段1：得分演繹——得分圖示保持亮度（壓暗遮罩上層），時間到才進入消散
+        if (popScoreTimer > 0) {
+            popScoreTimer--;
+            return;
+        }
 
         // 掃描全盤縮小所有 isMatched 格子（消散時長 = TIMING.popDissolve）
         let allShrunk = true;
@@ -2656,9 +2673,8 @@ function update() {
                 bgMultAnimT = 0;
             }
 
-            // 得分演繹時長 = 得分圖示數 × 每顆時長（節奏表）
-            const popIconCount = currentMatches.reduce((s, m) => s + m.count, 0);
-            popWaitTimer = Math.max(1, Math.round(TIMING.scorePerIcon * Math.max(1, popIconCount) * 60));
+            // 消散完畢 → 等能量飛抵卡牌（節奏表：消除 0.2 → 能量飛卡 0.3）再接下一批
+            popWaitTimer = TF(TIMING.energyFly);
         }
 
     } else if (currentState === STATE.GRAVITY) {
