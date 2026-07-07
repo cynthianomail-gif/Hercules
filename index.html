@@ -207,7 +207,7 @@
             display: none;
             position: absolute;
             top: 15px; right: 70px;
-            width: 360px; max-height: 690px;
+            width: 420px; max-height: 690px;
             background: rgba(8, 15, 30, 0.97);
             border: 2px solid #334155;
             border-radius: 14px;
@@ -246,15 +246,92 @@
             color: #f8fafc; border-radius: 6px;
             padding: 2px 4px; font-size: 12px;
         }
-        .tune-actions { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #1e293b; }
+        .tune-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 10px 14px;
+            border-top: 1px solid #1e293b;
+        }
         .tune-actions button {
-            flex: 1;
             background: #1e293b; border: 1px solid #475569;
             color: #cbd5e1; border-radius: 8px;
             padding: 6px 0; cursor: pointer; font-size: 13px;
         }
         .tune-actions button:hover { background: #0f3460; border-color: #38bdf8; color: #38bdf8; }
+        #tuneApplySpin {
+            grid-column: 1 / -1;
+            background: #0f766e;
+            border-color: #14b8a6;
+            color: #f0fdfa;
+            font-weight: 700;
+        }
+        #tuneApplySpin:hover { background: #0d9488; border-color: #5eead4; color: #fff; }
+        #tuneStatus {
+            grid-column: 1 / -1;
+            min-height: 16px;
+            color: #64748b;
+            font-size: 11px;
+            line-height: 16px;
+            text-align: center;
+        }
+        #tuneStatus.ok { color: #86efac; }
+        #tuneStatus.wait { color: #fde68a; }
         .tune-hint { color: #64748b; font-size: 11px; margin: 6px 0; line-height: 1.6; }
+        .gantt-editor {
+            margin: 8px 0 12px;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+        }
+        .gantt-row {
+            display: grid;
+            grid-template-columns: 96px minmax(120px, 1fr) 44px 44px;
+            gap: 5px;
+            align-items: center;
+            margin: 6px 0;
+            color: #cbd5e1;
+            font-size: 11px;
+        }
+        .gantt-row > label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gantt-track {
+            position: relative;
+            height: 20px;
+            border-radius: 6px;
+            background: repeating-linear-gradient(90deg, #0f172a 0, #0f172a 23px, #1e293b 24px);
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .gantt-bar {
+            position: absolute;
+            top: 3px;
+            height: 14px;
+            min-width: 8px;
+            border-radius: 5px;
+            cursor: grab;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+        }
+        .gantt-bar:active { cursor: grabbing; }
+        .gantt-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.35);
+            cursor: ew-resize;
+        }
+        .gantt-row input {
+            width: 42px;
+            box-sizing: border-box;
+            background: #0b1322;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            border-radius: 5px;
+            padding: 2px 3px;
+            font-size: 11px;
+        }
         .tune-obj-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
         .tune-obj-btn {
             background: #1e293b; border: 1px solid #334155;
@@ -280,8 +357,10 @@
         </div>
         <div id="tuneBody"></div>
         <div class="tune-actions">
+            <button id="tuneApplySpin">套用並試轉</button>
             <button id="tuneReset">重設為預設</button>
             <button id="tuneExport">匯出 JSON</button>
+            <div id="tuneStatus" aria-live="polite"></div>
         </div>
     </div>
 
@@ -403,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'drop-blank-then-plop-20260707b';
+const APP_BUILD = 'gantt-sequenced-defaults-20260707m';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -527,8 +606,8 @@ const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WIL
 // 預設值對齊「節奏表 v4」＋「演繹節奏總表」＋「演出細節定義表」（海克力斯_260706_新增視覺流程v4_4.xlsx）
 const DEFAULT_TIMING = {
     // 掉落（本作為圖示掉落式・同天使奧丁：清場 → 7 輪同時啟動掉入、依序落定）
-    spinClear:        0.25,  // 清場：舊盤面圖示直接掉出畫面底部
-    spinDropIn:       0.30,  // 新圖示掉入時長（每欄「啪」地快速掉進來落定，短＝掉落感）
+    spinClear:        0.25,  // 舊版保留欄位：清場速度已改由 spinDropIn 統一控制
+    spinDropIn:       0.30,  // 每欄圖示離場/掉入時長（舊圖示離開與新圖示落下共用）
     firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s；即「何時落定」）
     reelStopInterval: 0.15,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.15 = 2.2s）
     landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
@@ -539,7 +618,7 @@ const DEFAULT_TIMING = {
     // 消除／得分
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
-    scorePerIcon:     0.30,  // 得分框依序亮起，每顆圖示得分演繹
+    scorePerIcon:     0.30,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
     popDissolve:      0.20,  // 得分圖示消散（化為能量）
     energyFly:        0.30,  // 能量飛向卡牌攻擊力圓圈
     // 補盤
@@ -591,11 +670,11 @@ const DEFAULT_TIMING = {
 // 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
     { group: '掉落（停輪）', items: [
-        ['spinClear','清場掉出'], ['spinDropIn','掉入時長'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
+        ['spinDropIn','離場/掉入時長'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
         ['interSpinPause','局間停頓(無連線)'], ['winSpinPause','局間停頓(有得分)'], ['interBoardPause','連鎖間停頓']] },
     { group: '消除／得分', items: [
-        ['popDim','盤面壓暗'], ['popDimAlpha','壓暗強度(0~1)', 0, 1, 0.05], ['scorePerIcon','每顆得分演繹'],
+        ['popDim','盤面壓暗'], ['popDimAlpha','壓暗強度(0~1)', 0, 1, 0.05], ['scorePerIcon','每組得分演繹'],
         ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
     { group: '補盤', items: [
         ['refillPerCell','每格掉落時間'], ['refillStagger','每欄錯落']] },
@@ -621,6 +700,49 @@ const TIMING_META = [
 const TIMING_RANGE = {};
 TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !== undefined ? it[2] : 0, it[3] !== undefined ? it[3] : 5]; }));
 let TIMING = { ...DEFAULT_TIMING };
+const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha']);
+const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
+function isGanttTimingKey(key) {
+    return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
+}
+// 各演繹在「所屬階段時間軸」上的起點（秒），依節奏表 v4.6 逐段排序。
+// 每個分組是一條獨立的階段時間軸（t=0 為該階段開始）；同組內起點＋時長＝甘特圖色條位置。
+// ★ 消除／得分段（popDim→scorePerIcon→popDissolve→energyFly→atkUpdate）為 runtime 實際採用，
+//   其餘多為規劃視覺用（實際時長仍由 TIMING 控制）。
+const GANTT_START_PRESET = {
+    // 掉落（停輪）：清場→掉入→(第1輪落定/間隔為時間點) →落定回彈
+    spinClear: 0.00, spinDropIn: 0.25, firstReelStop: 0.00, reelStopInterval: 0.00,
+    landBounce: 1.30, skipStop: 0.00, interSpinPause: 0.00, winSpinPause: 0.00, interBoardPause: 0.00,
+    // 消除／得分（節奏表：壓暗→得分演繹→消散→能量飛卡→數字更新，連續時間軸）
+    popDim: 0.00, scorePerIcon: 0.15, popDissolve: 0.45, energyFly: 0.65,
+    // 補盤
+    refillPerCell: 0.00, refillStagger: 0.00,
+    // 卡牌攻擊（接續消除段：數字更新→上拉→受擊→歸位）
+    atkUpdate: 0.95, cardPullUp: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.75,
+    // 受擊／擊殺
+    hitReact: 1.45, hitFlash: 1.45, deathSwitch: 1.75, effectFly: 2.25, effectShow: 2.65, respawnFade: 3.05,
+    // WILD／機制（各機制為互斥分支，起點自 0 起排）
+    wildSpawn: 0.00, wildFlyIn: 0.25, wildStagger: 0.25, wildShake: 0.55,
+    bigWildSpawn: 0.00, bigWildFly: 0.30, bigWildShake: 0.70,
+    newIconPop: 0.30, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60,
+    // LV4 全畫面／轉場
+    transIn: 0.00, transHold: 0.30, transOut: 0.70,
+    // BG 倍數遞增（舊退場∥新更新→縮放→補盤）
+    bgMultFade: 0.00, bgMultFly: 0.00, bgMultScale: 0.10, bgRefill: 0.15,
+    // 變體
+    critFlash: 0.00, critImage: 0.10, chaseGap: 0.00,
+};
+const DEFAULT_TIMING_START = {};
+TIMING_META.forEach(g => {
+    g.items.forEach(([key]) => {
+        if (!isGanttTimingKey(key)) return;
+        DEFAULT_TIMING_START[key] = GANTT_START_PRESET[key] !== undefined ? GANTT_START_PRESET[key] : 0;
+    });
+});
+let TIMING_START = { ...DEFAULT_TIMING_START };
+function TS(key) {
+    return Math.max(0, TIMING_START[key] || 0);
+}
 const TF = s => Math.max(1, Math.round(s * 60));   // 秒 → 幀（60fps）
 
 // 流程架構（流程架構B提案）：A = 現行（每波消除後立刻攻擊）；B = 連鎖累積後一次結算
@@ -867,14 +989,16 @@ let hasHitThisSpin = false;
 let colOffsets = [];
 let colStates = [];
 let colBounce = [];         // 各欄落定回彈計時（squash）
-let spinOldBoard = null;    // 掉落中的舊盤面（先直接掉出畫面清場）
-let spinOldDrop = 0;        // 舊盤面已下墜距離（px）
+let spinOldBoard = null;    // 掉落中的舊盤面（每欄依序掉出畫面清場）
+let spinOldDrops = [];      // 舊盤面各欄已下墜距離（px）
 let spinSkip = null;        // 跳過1（定案）：{ t, total, from[] } 全輪齊停落定
 let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
 let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
 let popDimTimer = 0;        // 消除壓暗淡入計時
-let popScoreTimer = 0;      // 得分演繹倒數（圖示保持亮、尚未消散）
-let popScoreTotal = 0;      // 得分演繹總長（逐顆亮起進度計算用）
+let popPhaseT = 0;          // 消除相位時鐘（POPPING 開始後幀數；甘特圖起點為絕對相對此）
+let popResolved = false;    // 本批是否已結算（得分/能量飛卡/數字更新只觸發一次）
+let popScoreTimer = 0;      // 相容用（drawGrid 舊參照）
+let popScoreTotal = 0;      // 得分演繹總長（同組圖示同步亮起）
 let attackDimAlpha = 0;     // 卡牌觸發時盤面壓暗（0~1 漸變）
 let boardShakeTimer = 0;    // WILD 著陸盤面震動倒數
 let pendingBoardShake = 0;  // 待觸發的震動時長（幀，WILD 著陸時啟動）
@@ -885,6 +1009,7 @@ let tickCounter = 0;        // 全域幀計數（呼吸光等循環動畫用）
 let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
+let pendingCardUpdates = []; // 甘特圖排程：能量抵達後才更新卡牌 ATK
 let pendingRounds = []; // 待發射的攻擊輪次
 let pendingKillEffects = [];  // 怪獸死亡後待套用的盤面效果
 let deferredKillEffects = []; // 暫存：等所有攻擊（含追擊）結束後才轉入
@@ -1272,10 +1397,11 @@ function prepareNextPop() {
     currentMatches = [{ elemId: batch[0].elemId, cells: mergedCells, count: mergedCells.length }];
     currentState = STATE.POPPING;
     popWaitTimer = 0;
-    // 得分演繹（定案）：得分框依序亮起（左到右、上到下），每顆 scorePerIcon，之後才消散
-    const ordered = [...mergedCells].sort((a, b) => a.c - b.c || a.r - b.r);
-    ordered.forEach((cell, i) => { board[cell.c][cell.r].lightAt = Math.round(i * TIMING.scorePerIcon * 60); });
-    popScoreTotal = Math.max(1, Math.round(TIMING.scorePerIcon * mergedCells.length * 60));
+    popPhaseT = 0;          // 消除相位時鐘歸零（甘特圖起點皆相對此）
+    popResolved = false;
+    // 得分演繹：同一組連線圖示一起亮，不再用「圖示數 × 時長」逐顆排隊。
+    mergedCells.forEach(cell => { board[cell.c][cell.r].lightAt = 0; });
+    popScoreTotal = TF(TIMING.scorePerIcon);
     popScoreTimer = popScoreTotal;
 }
 
@@ -1684,10 +1810,13 @@ function injectGuaranteedMatches() {
 }
 
 function startSpin() {
+    commitFocusedTuningInput();
+    loadTuning();
     currentState = STATE.SPINNING;
     winScore = 0;
     matchHistory = [];
     pendingRounds = [];
+    pendingCardUpdates = [];
     pendingKillEffects = [];
     deferredKillEffects = [];
     pendingFGBG = null;
@@ -1746,7 +1875,7 @@ function startSpin() {
 
     // 掉落式：舊圖示直接掉出畫面 → 盤面清空 → 新圖示各自掉進目標格
     spinOldBoard = board.map(col => col.map(cell => ({ ...cell, isMatched: false })));
-    spinOldDrop = 0;
+    spinOldDrops = Array(COLS).fill(0);
     for (let c = 0; c < COLS; c++)
         for (let r = 0; r < ROWS; r++)
             board[c][r] = {
@@ -1762,6 +1891,8 @@ function startSpin() {
     spinSkip = null;
     roundGapTimer = 0;
     popDimTimer = 0;
+    popPhaseT = 0;
+    popResolved = false;
     popScoreTimer = 0;
     checkPauseTimer = 0;
     attackDimAlpha = 0;
@@ -1777,13 +1908,13 @@ function triggerSkip() {
             t: 0,
             total: TF(TIMING.skipStop),
             fromBoard: board.map(col => col.map(cell => cell.yOffset)),
-            oldFrom: spinOldDrop
+            oldFrom: spinOldDrops.slice()
         };
-    } else if (currentState === STATE.POPPING && popScoreTimer > 1) {
-        for (let c = 0; c < COLS; c++)
-            for (let r = 0; r < ROWS; r++)
-                if (board[c][r].isMatched) board[c][r].lightAt = 0;
-        popScoreTimer = 1;
+    } else if (currentState === STATE.POPPING && !popResolved) {
+        // 跳過2：直接推進相位到消散開始（略過壓暗/得分演繹的等待）
+        const scoreEndF = TF(TS('scorePerIcon')) + popScoreTotal;
+        const dissolveStartF = Math.max(TF(TS('popDissolve')), scoreEndF);
+        popPhaseT = Math.max(popPhaseT, dissolveStartF);
     } else if (currentState === STATE.KILL_EFFECT && killEffectCurrent
         && killEffectCurrent.type !== 5 && killEffectCurrent.type !== 6 && killEffectCurrent.type !== 9) {
         killEffectTimer = 100000;   // 直接推進到本階段結束
@@ -2230,7 +2361,10 @@ function drawGrid() {
         ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     }
 
-    const popElapsed = popScoreTotal - popScoreTimer;   // 得分演繹經過幀數（逐顆亮起判定）
+    // 得分框亮起：相位到達得分起點後開始（相對甘特圖 scorePerIcon 起點）
+    const popScoreStartF = TF(TS('scorePerIcon'));
+    const popScoreActive = currentState !== STATE.POPPING || popPhaseT >= popScoreStartF;
+    const popElapsed = Math.max(0, popPhaseT - popScoreStartF);   // 得分演繹經過幀數（同組同步亮起）
     function drawGem(c, r, gem, extraY = 0) {
         let currentYOffset = (colOffsets[c] || 0) + gem.yOffset + extraY;
         let x = GRID_X + c * GEM_SIZE;
@@ -2241,8 +2375,8 @@ function drawGrid() {
         const maxS = GEM_SIZE - pad * 2;
         let s = maxS * gem.scale;
 
-        // 得分框亮起（定案）：依序亮起＋圖示高亮＋震動；亮起前僅維持原亮度不加光
-        const lit = gem.isMatched && popElapsed >= (gem.lightAt || 0);
+        // 得分框亮起：同組圖示同步高亮＋震動，時間到後才消散
+        const lit = popScoreActive && gem.isMatched && popElapsed >= (gem.lightAt || 0);
         if (lit) {
             const sinceLit = popElapsed - (gem.lightAt || 0);
             const pulseF = Math.max(1, Math.round(TIMING.scorePerIcon * 0.5 * 60));
@@ -2296,12 +2430,13 @@ function drawGrid() {
         }
     }
 
-    // 掉落中：舊盤面圖示直接往下掉出畫面（清場；位置獨立於新圖示的 colOffsets）
+    // 掉落中：舊盤面圖示每欄依序往下掉出畫面（位置獨立於新圖示的 colOffsets）
     if (currentState === STATE.SPINNING && spinOldBoard) {
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 const gem = spinOldBoard[c] && spinOldBoard[c][r];
-                if (gem && gem.id !== -1) drawGem(c, r, gem, spinOldDrop - (colOffsets[c] || 0));
+                const oldDrop = spinOldDrops[c] || 0;
+                if (gem && gem.id !== -1) drawGem(c, r, gem, oldDrop - (colOffsets[c] || 0));
             }
         }
     }
@@ -2322,8 +2457,9 @@ function drawGrid() {
         }
 
     // 盤面壓暗：消除演出中（popDim 淡入）或卡牌攻擊中（attackDim），強度 = popDimAlpha（RD 參數）
-    const popPhase = (currentState === STATE.POPPING && TIMING.popDim > 0)
-        ? Math.min(1, popDimTimer / TF(TIMING.popDim)) : 0;
+    const popDimElapsed = Math.max(0, popDimTimer - TF(TS('popDim')));
+    const popPhase = (currentState === STATE.POPPING && TIMING.popDim > 0 && popDimElapsed > 0)
+        ? Math.min(1, popDimElapsed / TF(TIMING.popDim)) : 0;
     const dimAlpha = Math.max(popPhase, attackDimAlpha) * TIMING.popDimAlpha;
     if (dimAlpha > 0.01) {
         ctx.fillStyle = `rgba(0, 0, 15, ${dimAlpha})`;
@@ -2537,6 +2673,42 @@ function drawEffects() {
     });
 }
 
+function updatePendingCardUpdates() {
+    for (let i = pendingCardUpdates.length - 1; i >= 0; i--) {
+        const u = pendingCardUpdates[i];
+        if (u.delay > 0) {
+            u.delay--;
+            continue;
+        }
+        const card = u.card;
+        if (card) {
+            card.atk += u.damage;
+            card.atkPunchT = TF(TIMING.atkUpdate);
+            if (u.isCrit) card.atkCrit = true;
+            if (u.effectLabel) card.atkLabel = u.effectLabel;
+        }
+        pendingCardUpdates.splice(i, 1);
+    }
+}
+
+function updateFlyingScores() {
+    for (let i = flyingScores.length - 1; i >= 0; i--) {
+        let fs = flyingScores[i];
+        if (fs.delay > 0) {
+            fs.delay--;
+            if (fs.type === 'kill') fs.y -= 0.5;
+        } else {
+            const k = fs.type === 'collect' ? 1 - Math.pow(0.02, 1 / TF(TIMING.energyFly))
+                    : fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly))
+                    : 0.15;
+            fs.x += (fs.tx - fs.x) * k;
+            fs.y += (fs.ty - fs.y) * k;
+        }
+        fs.life--;
+        if (fs.life <= 0) flyingScores.splice(i, 1);
+    }
+}
+
 function update() {
     // 轉場動畫更新（壓黑 transIn → 停留 transHold → 淡出 transOut，見 TIMING）
     if (transitionPhase !== 'idle') {
@@ -2621,12 +2793,38 @@ function update() {
     if (currentState === STATE.SPINNING) {
         spinTimer++;
         let allDone = true;
-        // 舊盤面圖示直接往下掉出畫面（清場時長 = TIMING.spinClear）
-        const clearF = TF(TIMING.spinClear);
+        // 舊盤面圖示每欄依序往下掉出畫面；離場速度與新圖示掉入速度共用 spinDropIn。
+        const clearF = TF(TIMING.spinDropIn);
+        const reelIntervalF = TF(TIMING.reelStopInterval);
+        const oldClearDoneAt = clearF + reelIntervalF * (COLS - 1);
+        const oldExitY = GRID_H + 50;
         const wasClearingOld = !!spinOldBoard;
         if (spinOldBoard) {
-            spinOldDrop += (GRID_H + 50) / (spinSkip ? spinSkip.total : clearF);
-            if (spinOldDrop >= GRID_H + 50) spinOldBoard = null;
+            let allOldGone = true;
+            if (spinSkip) {
+                const k = Math.min(1, (spinSkip.t + 1) / spinSkip.total);
+                for (let c = 0; c < COLS; c++) {
+                    const from = spinSkip.oldFrom?.[c] ?? spinOldDrops[c] ?? 0;
+                    spinOldDrops[c] = from + (oldExitY - from) * k;
+                    if (spinOldDrops[c] < oldExitY) allOldGone = false;
+                }
+            } else {
+                for (let c = 0; c < COLS; c++) {
+                    const startAt = c * reelIntervalF;
+                    const p = (spinTimer - startAt) / clearF;
+                    if (p <= 0) {
+                        spinOldDrops[c] = 0;
+                        allOldGone = false;
+                    } else if (p >= 1) {
+                        spinOldDrops[c] = oldExitY;
+                    } else {
+                        const ease = 1 - Math.pow(1 - p, 3);
+                        spinOldDrops[c] = oldExitY * ease;
+                        allOldGone = false;
+                    }
+                }
+            }
+            if (allOldGone) spinOldBoard = null;
         }
         if (spinSkip) {
             // 跳過1（定案）：點擊後全輪齊停，skipStop 內同步滑入落定
@@ -2647,7 +2845,7 @@ function update() {
                 }
             }
         } else if (wasClearingOld) {
-            // 舊圖示還在清場的這一幀，新圖示整欄藏在盤面正上方（盤面留白），下一幀才允許掉入。
+            // 舊圖示還在依序清場，新圖示整欄藏在盤面正上方（盤面留白），清完才允許掉入。
             allDone = false;
             const hideY = -(GRID_H + 40);
             for (let c = 0; c < COLS; c++)
@@ -2661,8 +2859,11 @@ function update() {
             for (let c = 0; c < COLS; c++) {
                 if (colStates[c] !== 0) {
                     allDone = false;
-                    const stopAt = Math.max(TF(TIMING.firstReelStop + c * TIMING.reelStopInterval), clearF + 2);
-                    const startFall = Math.max(clearF + 1, stopAt - dropFrames);
+                    const stopAt = Math.max(
+                        TF(TIMING.firstReelStop + c * TIMING.reelStopInterval),
+                        oldClearDoneAt + dropFrames + c * reelIntervalF
+                    );
+                    const startFall = Math.max(oldClearDoneAt + 1, stopAt - dropFrames);
                     if (spinTimer >= stopAt) {
                         for (let r = 0; r < ROWS; r++) board[c][r].yOffset = 0;
                         colStates[c] = 0;
@@ -2721,50 +2922,47 @@ function update() {
         }
 
     } else if (currentState === STATE.POPPING) {
+        // 消除相位時鐘（絕對起點，對齊甘特圖）：壓暗→得分演繹→消散→能量飛卡→數字更新
         popDimTimer++;
-        if (popWaitTimer > 0) {
-            popWaitTimer--;
-            if (popWaitTimer === 0) prepareNextPop();
-            return;
-        }
-        // 階段1：得分演繹——得分圖示保持亮度（壓暗遮罩上層），時間到才進入消散
-        if (popScoreTimer > 0) {
-            popScoreTimer--;
+        popPhaseT++;
+
+        const scoreStartF    = TF(TS('scorePerIcon'));
+        const scoreEndF      = scoreStartF + popScoreTotal;
+        const dissolveStartF = Math.max(TF(TS('popDissolve')), scoreEndF);   // 得分演繹結束後才消散（安全夾）
+        const energyStartF   = TF(TS('energyFly'));
+        const atkStartF      = TF(TS('atkUpdate'));
+        const phaseEndF      = Math.max(dissolveStartF + TF(TIMING.popDissolve),
+                                        energyStartF + TF(TIMING.energyFly),
+                                        atkStartF + TF(TIMING.atkUpdate));
+
+        // 尚未到消散時點：圖示保持亮（得分演繹中）。飛行物/卡牌更新仍推進（每幀一次），相位前進
+        if (popPhaseT < dissolveStartF) {
+            updatePendingCardUpdates();
+            updateFlyingScores();
             return;
         }
 
-        // 掃描全盤縮小所有 isMatched 格子（消散時長 = TIMING.popDissolve）
-        let allShrunk = true;
-        const dissolveStep = 1 / TF(TIMING.popDissolve);
-        for (let c = 0; c < COLS; c++) {
-            for (let r = 0; r < ROWS; r++) {
-                let gem = board[c][r];
-                if (gem.isMatched) {
-                    gem.scale -= dissolveStep;
-                    if (gem.scale > 0) allShrunk = false;
-                    else { gem.id = -1; gem.isMatched = false; }
-                }
-            }
-        }
-
-        if (allShrunk) {
+        // 消散起點的同一幀結算（得分、能量飛卡、數字更新皆照甘特圖絕對起點排程），只做一次
+        if (!popResolved) {
+            popResolved = true;
             if (!hasHitThisSpin) { hasHitThisSpin = true; stats.hits++; }
 
             currentMatches.forEach((match, mi) => {
                 let { elemId, count } = match;
                 matchHistory.push({ elemId, count });
 
-                // 即時更新對應卡牌的攻擊力：依本次消除顆數計算傷害（含特效），往上疊加本局累計
-                // 多次同屬性消除會累積到同一張卡，最後只發動一次攻擊（傷害＝累計值）
                 let atkCardIdx = cards.findIndex(c => c.elemId === elemId);
                 if (atkCardIdx !== -1) {
                     let _c = cards[atkCardIdx];
                     let a = computeAttack(elemId, count, _c.level, forceCrit && elemId !== 1 && elemId !== 2);
                     if (a.isCrit && forceCrit) forceCrit = false;
-                    _c.atk += a.damage;
-                    _c.atkPunchT = TF(TIMING.atkUpdate);   // 數字更新：放大 1.3 倍縮回（細節表）
-                    if (a.isCrit) _c.atkCrit = true;
-                    if (a.effectLabel) _c.atkLabel = a.effectLabel;
+                    pendingCardUpdates.push({
+                        delay: Math.max(0, atkStartF - dissolveStartF),   // 數字更新：等能量飛抵才更新
+                        card: _c,
+                        damage: a.damage,
+                        isCrit: a.isCrit,
+                        effectLabel: a.effectLabel || ''
+                    });
                 }
 
                 let score = getScore(count, elemId);
@@ -2790,11 +2988,12 @@ function update() {
                         let cardCX = LAYOUT.cards.x - cTotalW / 2 + cardIdx * (cW + cGap) + cW / 2;
                         let startCX = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
                         let startCY = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                        const flyDelay = Math.max(0, energyStartF - dissolveStartF) + mi * 3;   // 能量飛卡：相對消散起點
                         flyingScores.push({
                             type: 'collect', x: startCX, y: startCY,
                             tx: cardCX, ty: LAYOUT.cards.y + 15,
                             text: ELEMENTS[elemId].icon, color: ELEMENTS[elemId].color,
-                            life: TF(TIMING.energyFly) + 20, delay: mi * 3   // 多顆錯落起飛（細節表 0.05s）
+                            life: flyDelay + TF(TIMING.energyFly) + 20, delay: flyDelay
                         });
                     }
                 }
@@ -2806,9 +3005,25 @@ function update() {
                 bgMultiplierIndex++;
                 bgMultAnimT = 0;
             }
+        }
 
-            // 消散完畢 → 等能量飛抵卡牌（節奏表：消除 0.2 → 能量飛卡 0.3）再接下一批
-            popWaitTimer = TF(TIMING.energyFly);
+        // 消散動畫（到達消散起點後逐幀縮小 isMatched 格）
+        let allShrunk = true;
+        const dissolveStep = 1 / TF(TIMING.popDissolve);
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                let gem = board[c][r];
+                if (gem.isMatched) {
+                    gem.scale -= dissolveStep;
+                    if (gem.scale > 0) allShrunk = false;
+                    else { gem.id = -1; gem.isMatched = false; }
+                }
+            }
+        }
+
+        // 相位跑完＋消散完＋卡牌數字更新排空 → 接下一批
+        if (allShrunk && popPhaseT >= phaseEndF && pendingCardUpdates.length === 0) {
+            prepareNextPop();
         }
 
     } else if (currentState === STATE.GRAVITY) {
@@ -3160,24 +3375,8 @@ function update() {
         }
     }
 
-    for (let i = flyingScores.length - 1; i >= 0; i--) {
-        let fs = flyingScores[i];
-        if (fs.delay > 0) {
-            fs.delay--;
-            if (fs.type === 'kill') fs.y -= 0.5;
-        } else {
-            // 能量飛卡（collect）＝ energyFly；給分數字飛入公版（bossHit）＝ scoreFly；其餘固定速度
-            const k = fs.type === 'collect' ? 1 - Math.pow(0.02, 1 / TF(TIMING.energyFly))
-                    : fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly))
-                    : 0.15;
-            fs.x += (fs.tx - fs.x) * k;
-            fs.y += (fs.ty - fs.y) * k;
-        }
-        fs.life--;
-        if (fs.life <= 0) {
-            flyingScores.splice(i, 1);
-        }
-    }
+    updatePendingCardUpdates();
+    updateFlyingScores();
 
     for (let i = scoreTexts.length - 1; i >= 0; i--) {
         scoreTexts[i].life--;
@@ -3379,6 +3578,7 @@ function handleInput(clientX, clientY, isClick) {
             canvas.style.cursor = 'default';
         }
     } else {
+        const stateBeforeClick = currentState;
         if (mx >= 40 + ux && mx <= 140 + ux && my >= uy + 20 && my <= uy + 60) {
             forceMenuOpen = !forceMenuOpen;
         } else if (forceMenuOpen) {
@@ -3467,8 +3667,8 @@ function handleInput(clientX, clientY, isClick) {
                 }
             }
         }
-        // 跳過（節奏表定案）：下落中點擊全輪齊停；得分演繹點擊直接消除；LV1~3 擊殺演出快轉
-        triggerSkip();
+        // 跳過（節奏表定案）：點擊前已在演出中才跳過；開始 SPIN 的同一下不可立刻齊停。
+        if (currentState === stateBeforeClick) triggerSkip();
     }
 }
 
@@ -3486,7 +3686,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 5;   // v5: 清場→留白→整欄快速掉入；新增 spinDropIn。舊存檔自動作廢。
+const TUNE_VERSION = 6;   // v6: 甘特圖起點依節奏表 v4.6 排序＋消除鏈絕對相位時鐘。舊存檔自動作廢。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
@@ -3501,9 +3701,11 @@ function saveTuning() {
             build: APP_BUILD,
             flow: flowMode,
             timing: TIMING,
+            timeline: TIMING_START,
             layout: LAYOUT
         }));
-    } catch (e) { /* 隱私模式等寫入失敗：略過 */ }
+        return true;
+    } catch (e) { return false; }
 }
 function loadTuning() {
     try {
@@ -3517,6 +3719,10 @@ function loadTuning() {
             const v = d.timing[k];
             const [lo, hi] = TIMING_RANGE[k] || [0, 5];
             if (typeof v === 'number' && isFinite(v)) TIMING[k] = Math.min(hi, Math.max(lo, v));
+        }
+        if (d.timeline) for (const k in DEFAULT_TIMING_START) {
+            const v = d.timeline[k];
+            if (typeof v === 'number' && isFinite(v)) TIMING_START[k] = Math.min(5, Math.max(0, v));
         }
         if (d.layout) for (const k in DEFAULT_LAYOUT) {
             const o = d.layout[k];
@@ -3540,13 +3746,8 @@ function reassignCurrentPopLightTimings() {
         .sort((a, b) => a.c - b.c || a.r - b.r);
     if (cells.length === 0) return;
 
-    const oldTotal = Math.max(1, popScoreTotal);
-    const elapsedRatio = Math.min(1, Math.max(0, (oldTotal - popScoreTimer) / oldTotal));
-    cells.forEach((cell, i) => {
-        board[cell.c][cell.r].lightAt = Math.round(i * TIMING.scorePerIcon * 60);
-    });
-    popScoreTotal = Math.max(1, Math.round(TIMING.scorePerIcon * cells.length * 60));
-    popScoreTimer = Math.max(0, popScoreTotal - Math.round(popScoreTotal * elapsedRatio));
+    cells.forEach(cell => { board[cell.c][cell.r].lightAt = 0; });
+    popScoreTotal = TF(TIMING.scorePerIcon);   // 得分演繹總長改變，相位時鐘自動沿用新值
 }
 
 function applyRuntimeTimingChange(key, oldValue, newValue) {
@@ -3579,16 +3780,148 @@ function setTimingValue(key, rawValue, min, max) {
     saveTuning();
     return next;
 }
+function setTimingStartValue(key, rawValue) {
+    const parsed = parseFloat(rawValue);
+    const next = Math.min(5, Math.max(0, Number.isFinite(parsed) ? parsed : 0));
+    TIMING_START[key] = next;
+    saveTuning();
+    return next;
+}
 
 const tuneBtn   = document.getElementById('tuneBtn');
 const tunePanel = document.getElementById('tunePanel');
 const tuneBody  = document.getElementById('tuneBody');
+const tuneStatus = document.getElementById('tuneStatus');
+let tuneStatusTimer = null;
+
+function setTuneStatus(text, state = 'ok') {
+    clearTimeout(tuneStatusTimer);
+    tuneStatus.textContent = text;
+    tuneStatus.className = state;
+    tuneStatusTimer = setTimeout(() => {
+        tuneStatus.textContent = '';
+        tuneStatus.className = '';
+    }, 1800);
+}
+
+function commitFocusedTuningInput() {
+    const active = document.activeElement;
+    if (active && active instanceof HTMLInputElement && tunePanel.contains(active)) {
+        active.dispatchEvent(new Event('change', { bubbles: true }));
+        active.blur();
+    }
+}
+
+function applyTuningAndTestSpin() {
+    commitFocusedTuningInput();
+    syncLayoutDerived();
+    syncLayoutFields();
+    layoutDrag = null;
+    const saved = saveTuning();
+    if (currentState === STATE.IDLE && !isAutoSpinning) {
+        startSpin();
+        setTuneStatus(saved ? '已套用 ✓ 後續SPIN皆用這組' : '已套用；瀏覽器未保存', saved ? 'ok' : 'wait');
+    } else {
+        setTuneStatus(saved ? '已套用 ✓ 後續SPIN皆用這組' : '已套用；瀏覽器未保存', 'wait');
+    }
+}
+
+function buildNumberTimingRow(key, label, min, max, step) {
+    const row = document.createElement('div'); row.className = 'tune-row';
+    const lab = document.createElement('label'); lab.textContent = label;
+    const rng = document.createElement('input');
+    rng.type = 'range'; rng.min = String(min); rng.max = String(max); rng.step = String(step); rng.value = TIMING[key];
+    const num = document.createElement('input');
+    num.type = 'number'; num.min = String(min); num.max = String(max); num.step = String(step); num.value = TIMING[key];
+    const apply = (v, syncNumber = true) => {
+        v = setTimingValue(key, v, min, max);
+        rng.value = v;
+        if (syncNumber) num.value = v;
+        return v;
+    };
+    rng.addEventListener('input', () => apply(rng.value));
+    num.addEventListener('input', () => {
+        const raw = num.value.trim();
+        if (raw === '' || raw === '-' || raw === '.' || raw.endsWith('.')) return;
+        apply(raw, false);
+    });
+    num.addEventListener('change', () => { num.value = apply(num.value, true); });
+    row.appendChild(lab); row.appendChild(rng); row.appendChild(num);
+    return row;
+}
+
+function buildGanttTimingRow(key, label, min, max, step, color, timelineMax) {
+    const row = document.createElement('div');
+    row.className = 'gantt-row';
+    const lab = document.createElement('label');
+    lab.textContent = label;
+    const track = document.createElement('div');
+    track.className = 'gantt-track';
+    const bar = document.createElement('div');
+    bar.className = 'gantt-bar';
+    bar.style.background = color;
+    const handle = document.createElement('div');
+    handle.className = 'gantt-handle';
+    const startNum = document.createElement('input');
+    startNum.type = 'number'; startNum.min = '0'; startNum.max = '5'; startNum.step = String(step);
+    startNum.title = '起點';
+    const durNum = document.createElement('input');
+    durNum.type = 'number'; durNum.min = String(min); durNum.max = String(max); durNum.step = String(step);
+    durNum.title = '時長';
+
+    const sync = () => {
+        const start = TS(key);
+        const dur = TIMING[key];
+        startNum.value = start;
+        durNum.value = dur;
+        const left = Math.max(0, Math.min(100, start / timelineMax * 100));
+        const width = Math.max(1.5, Math.min(100 - left, dur / timelineMax * 100));
+        bar.style.left = `${left}%`;
+        bar.style.width = `${width}%`;
+        bar.title = `${label}：${start.toFixed(2)}s → ${(start + dur).toFixed(2)}s`;
+    };
+    const applyStart = v => { setTimingStartValue(key, v); sync(); };
+    const applyDuration = v => { setTimingValue(key, v, min, max); sync(); };
+    startNum.addEventListener('change', () => applyStart(startNum.value));
+    durNum.addEventListener('change', () => applyDuration(durNum.value));
+
+    const beginDrag = (e, mode) => {
+        e.preventDefault();
+        const rect = track.getBoundingClientRect();
+        const startX = e.clientX;
+        const baseStart = TS(key);
+        const baseDur = TIMING[key];
+        const onMove = ev => {
+            const delta = (ev.clientX - startX) / rect.width * timelineMax;
+            const snapped = Math.round(delta / step) * step;
+            if (mode === 'resize') applyDuration(baseDur + snapped);
+            else applyStart(baseStart + snapped);
+        };
+        const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    };
+    bar.addEventListener('pointerdown', e => beginDrag(e, 'move'));
+    handle.addEventListener('pointerdown', e => beginDrag(e, 'resize'));
+
+    bar.appendChild(handle);
+    track.appendChild(bar);
+    row.appendChild(lab);
+    row.appendChild(track);
+    row.appendChild(startNum);
+    row.appendChild(durNum);
+    sync();
+    return row;
+}
 
 function buildTimingTab() {
     tuneBody.innerHTML = '';
     const hint = document.createElement('div');
     hint.className = 'tune-hint';
-    hint.textContent = '單位：秒（標註 px／0~1 者除外）。預設值對齊節奏表 v4.6，調整立即生效（下一次演出採用）。';
+    hint.textContent = '甘特圖：拖曳色條改起點，拖右緣改時長。右側兩欄為起點/時長；px 與 0~1 強度仍用數值滑桿。';
     tuneBody.appendChild(hint);
 
     // 流程架構切換（流程架構B提案）：A = 每波消除後立刻攻擊；B = 連鎖累積後一次結算
@@ -3608,30 +3941,21 @@ function buildTimingTab() {
         const h = document.createElement('div');
         h.className = 'tune-group'; h.textContent = g.group;
         tuneBody.appendChild(h);
+        const timelineMax = 5;
+        const gantt = document.createElement('div');
+        gantt.className = 'gantt-editor';
+        let hasGantt = false;
         g.items.forEach(([key, label, mn, mx, st]) => {
             const min = mn !== undefined ? mn : 0, max = mx !== undefined ? mx : 5, step = st !== undefined ? st : 0.05;
-            const row = document.createElement('div'); row.className = 'tune-row';
-            const lab = document.createElement('label'); lab.textContent = label;
-            const rng = document.createElement('input');
-            rng.type = 'range'; rng.min = String(min); rng.max = String(max); rng.step = String(step); rng.value = TIMING[key];
-            const num = document.createElement('input');
-            num.type = 'number'; num.min = String(min); num.max = String(max); num.step = String(step); num.value = TIMING[key];
-            const apply = (v, syncNumber = true) => {
-                v = setTimingValue(key, v, min, max);
-                rng.value = v;
-                if (syncNumber) num.value = v;
-                return v;
-            };
-            rng.addEventListener('input', () => apply(rng.value));
-            num.addEventListener('input', () => {
-                const raw = num.value.trim();
-                if (raw === '' || raw === '-' || raw === '.' || raw.endsWith('.')) return;
-                apply(raw, false);
-            });
-            num.addEventListener('change', () => { num.value = apply(num.value, true); });
-            row.appendChild(lab); row.appendChild(rng); row.appendChild(num);
-            tuneBody.appendChild(row);
+            if (isGanttTimingKey(key)) {
+                const color = TIMING_COLORS[hasGantt ? gantt.children.length % TIMING_COLORS.length : 0];
+                gantt.appendChild(buildGanttTimingRow(key, label, min, max, step, color, timelineMax));
+                hasGantt = true;
+            } else {
+                tuneBody.appendChild(buildNumberTimingRow(key, label, min, max, step));
+            }
         });
+        if (hasGantt) tuneBody.appendChild(gantt);
     });
 }
 
@@ -3702,9 +4026,13 @@ tunePanel.querySelectorAll('.tune-tab').forEach(tab => {
         refreshTuneBody();
     });
 });
+const tuneApplySpinBtn = document.getElementById('tuneApplySpin');
+tuneApplySpinBtn.addEventListener('pointerdown', commitFocusedTuningInput);
+tuneApplySpinBtn.addEventListener('click', applyTuningAndTestSpin);
 document.getElementById('tuneReset').addEventListener('click', () => {
     if (tuneTab === 'timing') {
         Object.keys(DEFAULT_TIMING).forEach(k => { TIMING[k] = DEFAULT_TIMING[k]; });
+        Object.keys(DEFAULT_TIMING_START).forEach(k => { TIMING_START[k] = DEFAULT_TIMING_START[k]; });
     } else {
         const def = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
         Object.keys(def).forEach(k => { LAYOUT[k] = def[k]; });
@@ -3714,7 +4042,7 @@ document.getElementById('tuneReset').addEventListener('click', () => {
     refreshTuneBody();
 });
 document.getElementById('tuneExport').addEventListener('click', (e) => {
-    const data = tuneTab === 'timing' ? { flow: flowMode, timing: TIMING } : { layout: LAYOUT };
+    const data = tuneTab === 'timing' ? { flow: flowMode, timing: TIMING, timeline: TIMING_START } : { layout: LAYOUT };
     const text = JSON.stringify(data, null, 2);
     const done = () => {
         const btn = e.target;
