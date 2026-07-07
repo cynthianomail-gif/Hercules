@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'gantt-sequenced-defaults-20260707m';
+const APP_BUILD = 'detail-effects-atk-tiers-countup-20260707n';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -619,6 +619,7 @@ const DEFAULT_TIMING = {
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
     scorePerIcon:     0.30,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
+    groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
     popDissolve:      0.20,  // 得分圖示消散（化為能量）
     energyFly:        0.30,  // 能量飛向卡牌攻擊力圓圈
     // 補盤
@@ -626,8 +627,11 @@ const DEFAULT_TIMING = {
     refillStagger:    0.05,  // 補盤每欄錯落
     // 卡牌攻擊（v4.6 定案：不射光束、不撞擊，直接於怪物上出受擊特效）
     atkUpdate:        0.20,  // 攻擊力數字更新（能量抵達後，數字放大 1.3 倍縮回）
+    atkTier2Mult:     3,     // ATK 達卡面初始值 ×N → 數字強度2（藍字外框），非時間值
+    atkTier3Mult:     5,     // ATK 達卡面初始值 ×N → 數字強度3（紅字外框），非時間值
     cardPullUp:       0.30,  // 卡牌上拉
     cardPullDist:     60,    // 卡牌上拉幅度（px，定案：露出約 2/3 牌面）
+    badgeFlash:       0.20,  // 觸發時卡牌與怪物屬性徽章同步閃爍 2 次
     attackDim:        0.15,  // 卡牌觸發時盤面／他卡壓暗
     cardGap:          0.50,  // 多卡觸發：卡與卡攻擊間隔
     cardReturn:       0.25,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
@@ -636,11 +640,13 @@ const DEFAULT_TIMING = {
     hitFlash:         0.15,  // 受擊閃紅（本體疊乘紅色，1 次）
     hitFlashAlpha:    0.50,  // 閃紅濃度 0~1（細節表：疊乘紅色50%，RD 參數）
     hitShakeAmp:      4,     // 受擊震動幅度（±px，細節表 ±4px，RD 參數）
+    hitTiers:         3,     // 受擊特效分級階數（依攻擊數值區間，至少3階），非時間值
     deathSwitch:      0.50,  // 死亡切換（含灰化過渡）
     effectFly:        0.40,  // 怪物淡出＋機制光效飛向盤面
     effectShow:       0.40,  // 機制展示（盤面遮罩＋機制名稱）
     effectDimAlpha:   0.70,  // 機制展示遮罩不透明度 0~1（細節表：壓黑約70%，RD 參數）
     respawnFade:      0.40,  // 更換怪獸淡入
+    fgbgCollect:      0.40,  // LV4 擊殺：FG/BG 獎勵圖示飛入 UI 收集欄（11-2 新定案）
     // WILD／機制
     wildSpawn:        0.25,  // WILD 於原座標生成
     wildFlyIn:        0.30,  // WILD 飛入（每顆）
@@ -649,11 +655,16 @@ const DEFAULT_TIMING = {
     bigWildSpawn:     0.30,  // 巨型 WILD 生成
     bigWildFly:       0.40,  // 巨型 WILD 飛入
     bigWildShake:     0.25,  // 巨型 WILD 著陸震動
+    targetPreLight:   0.20,  // 生成／轉換／清除：目標格預先亮起（12-1-3~5）
+    beamFly:          0.30,  // 生成／轉換／清除：能量光束飛往盤面
+    beamStagger:      0.05,  // 多道光束錯落
+    iconShrink:       0.15,  // 轉換：原圖示縮小消失
     newIconPop:       0.20,  // 生成／轉換：新圖示帶閃光放大出現
     clearSmoke:       0.25,  // 清除圖示：煙霧消散
     coinBurst:        0.60,  // 直接給分：噴錢演繹
     scoreFly:         0.40,  // 直接給分：得分數字飛入公版
-    // LV4 全畫面／轉場
+    scoreCountUp:     1.00,  // 公版得分跑分滾動（依金額分級 0.5~1.5s）
+    // LV4 全畫面／轉場（原全畫面壓黑機制已取消，保留參數供 FG/BG 轉場沿用）
     transIn:          0.30,  // 全畫面壓黑（轉場淡入）
     transHold:        0.40,  // 機制畫面入場（轉場停留）
     transOut:         0.30,  // 轉場淡出
@@ -675,20 +686,22 @@ const TIMING_META = [
         ['interSpinPause','局間停頓(無連線)'], ['winSpinPause','局間停頓(有得分)'], ['interBoardPause','連鎖間停頓']] },
     { group: '消除／得分', items: [
         ['popDim','盤面壓暗'], ['popDimAlpha','壓暗強度(0~1)', 0, 1, 0.05], ['scorePerIcon','每組得分演繹'],
-        ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
+        ['groupGap','多組組間錯落'], ['popDissolve','圖示消散'], ['energyFly','能量飛卡']] },
     { group: '補盤', items: [
         ['refillPerCell','每格掉落時間'], ['refillStagger','每欄錯落']] },
     { group: '卡牌攻擊', items: [
-        ['atkUpdate','數字更新'], ['cardPullUp','卡牌上拉'], ['cardPullDist','上拉幅度(px)', 0, 100, 1],
+        ['atkUpdate','數字更新'], ['atkTier2Mult','藍字門檻(×倍)', 1, 10, 0.5], ['atkTier3Mult','紅字門檻(×倍)', 1, 20, 0.5],
+        ['cardPullUp','卡牌上拉'], ['cardPullDist','上拉幅度(px)', 0, 100, 1], ['badgeFlash','徽章同步閃爍'],
         ['attackDim','攻擊時壓暗'], ['cardGap','卡與卡間隔'], ['cardReturn','卡牌歸位']] },
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
-        ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
-        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入']] },
+        ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
+        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入']] },
     { group: 'WILD／機制', items: [
         ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
         ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
-        ['newIconPop','新圖示出現'], ['clearSmoke','清除煙霧'], ['coinBurst','噴錢演繹'], ['scoreFly','給分數字飛入']] },
+        ['targetPreLight','目標格預亮'], ['beamFly','能量光束飛行'], ['beamStagger','光束錯落'], ['iconShrink','原圖縮小'],
+        ['newIconPop','新圖示出現'], ['clearSmoke','清除煙霧'], ['coinBurst','噴錢演繹'], ['scoreFly','給分數字飛入'], ['scoreCountUp','公版跑分', 0, 2, 0.05]] },
     { group: 'LV4 全畫面／轉場', items: [
         ['transIn','全畫面壓黑'], ['transHold','機制畫面入場'], ['transOut','轉場淡出']] },
     { group: 'BG 倍數遞增', items: [
@@ -700,7 +713,8 @@ const TIMING_META = [
 const TIMING_RANGE = {};
 TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !== undefined ? it[2] : 0, it[3] !== undefined ? it[3] : 5]; }));
 let TIMING = { ...DEFAULT_TIMING };
-const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha']);
+const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
+    'atkTier2Mult', 'atkTier3Mult', 'hitTiers']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -714,17 +728,17 @@ const GANTT_START_PRESET = {
     spinClear: 0.00, spinDropIn: 0.25, firstReelStop: 0.00, reelStopInterval: 0.00,
     landBounce: 1.30, skipStop: 0.00, interSpinPause: 0.00, winSpinPause: 0.00, interBoardPause: 0.00,
     // 消除／得分（節奏表：壓暗→得分演繹→消散→能量飛卡→數字更新，連續時間軸）
-    popDim: 0.00, scorePerIcon: 0.15, popDissolve: 0.45, energyFly: 0.65,
+    popDim: 0.00, scorePerIcon: 0.15, groupGap: 0.15, popDissolve: 0.45, energyFly: 0.65,
     // 補盤
     refillPerCell: 0.00, refillStagger: 0.00,
     // 卡牌攻擊（接續消除段：數字更新→上拉→受擊→歸位）
-    atkUpdate: 0.95, cardPullUp: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.75,
+    atkUpdate: 0.95, cardPullUp: 1.15, badgeFlash: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.75,
     // 受擊／擊殺
-    hitReact: 1.45, hitFlash: 1.45, deathSwitch: 1.75, effectFly: 2.25, effectShow: 2.65, respawnFade: 3.05,
+    hitReact: 1.45, hitFlash: 1.45, deathSwitch: 1.75, effectFly: 2.25, effectShow: 2.65, respawnFade: 3.05, fgbgCollect: 2.25,
     // WILD／機制（各機制為互斥分支，起點自 0 起排）
     wildSpawn: 0.00, wildFlyIn: 0.25, wildStagger: 0.25, wildShake: 0.55,
     bigWildSpawn: 0.00, bigWildFly: 0.30, bigWildShake: 0.70,
-    newIconPop: 0.30, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60,
+    targetPreLight: 0.00, beamFly: 0.20, beamStagger: 0.20, iconShrink: 0.50, newIconPop: 0.50, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60, scoreCountUp: 0.60,
     // LV4 全畫面／轉場
     transIn: 0.00, transHold: 0.30, transOut: 0.70,
     // BG 倍數遞增（舊退場∥新更新→縮放→補盤）
@@ -974,6 +988,8 @@ let bossHitMilestones = {}; // { monIdx: Set<hpLost> } 每局觸發紀錄
 let totalScore = 0;
 let winScore = 0;
 let betAmount = 100;
+let displayWin = 0;         // 公版跑分顯示值（滾動逼近 winScore）
+let displaySession = 0;     // 公版跑分顯示值（滾動逼近 totalScore）
 let matchHistory = []; // 本次 spin 每組消除紀錄 {elemId, count}
 let showStatsPanel = false; // 預設關閉，避免遮住上方 JP 橫幅；點左上 📊 可開啟
 let showInfoPanel = false;
@@ -2146,6 +2162,16 @@ function drawMonsters() {
         if (imgReady(portrait)) drawImgFit(portrait, iconCX - r, cy - r, r * 2, r * 2, 'cover');
         else { ctx.fillStyle = '#fff'; ctx.font = '18px Segoe UI Emoji'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(elem.icon, iconCX, cy + 1); }
         ctx.restore();
+        // 屬性徽章同步閃爍（與觸發卡牌同步，提示對應）
+        const mbf = badgeFlashAlpha(m.badgeFlashT);
+        if (mbf > 0.02) {
+            ctx.save();
+            ctx.globalAlpha = mbf;
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+            ctx.shadowColor = accent; ctx.shadowBlur = 18;
+            ctx.beginPath(); ctx.arc(iconCX, cy, r + 3, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
 
         // 細血條（無分格，純漸減）
         const ratio = Math.max(0, m.hp / m.maxHp);
@@ -2192,6 +2218,46 @@ function drawJPBanner() {
     ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), 680 + jx, 44 + jy);
     ctx.restore();
     ctx.textBaseline = 'alphabetic';
+}
+
+// 觸發時屬性徽章同步閃爍 2 次（提示卡↔怪對應）
+function badgeFlashAlpha(t) {
+    if (!t || t <= 0) return 0;
+    const p = 1 - t / TF(TIMING.badgeFlash);        // 0→1
+    return Math.abs(Math.sin(p * Math.PI * 2));      // 2 次閃爍
+}
+function drawCardBadgeFlash(card, x, drawY, cardW, isFGMode) {
+    const a = badgeFlashAlpha(card.badgeFlashT);
+    if (a <= 0.02) return;
+    const elem = ELEMENTS[card.elemId] || WILD_ELEM;
+    const bx = x + (isFGMode ? 16 : 24), by = drawY + (isFGMode ? 13 : 17), br = (isFGMode ? 9 : 12) + 4;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5;
+    ctx.shadowColor = elem.color; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+}
+
+// 卡牌動態攻擊力數字（含 punch 放大 + 強度分級變色）——藝術卡與備援卡共用
+function drawCardAtk(card, x, drawY, cardW, cardH, isFGMode) {
+    const base = normalAttack(card.elemId, 3, card.level);
+    const atkVal = card.atk > 0 ? card.atk : base;
+    // 強度分級（細節表 05）：達 ×atkTier3Mult → 紅字外框；達 ×atkTier2Mult → 藍字外框
+    let fill = '#facc15', outline = 'rgba(0,0,0,0.85)';
+    if (card.atk >= base * TIMING.atkTier3Mult)      { fill = '#fecaca'; outline = '#dc2626'; }
+    else if (card.atk >= base * TIMING.atkTier2Mult) { fill = '#bfdbfe'; outline = '#2563eb'; }
+    const punch = card.atkPunchT > 0 ? 1 + 0.3 * Math.sin(Math.PI * (1 - card.atkPunchT / TF(TIMING.atkUpdate))) : 1;
+    const cx = x + cardW / 2;
+    const yy = drawY + (isFGMode ? 58 : 68);
+    ctx.save();
+    ctx.font = `bold ${Math.round((isFGMode ? 17 : 26) * punch)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = outline;
+    ctx.strokeText(`ATK ${atkVal}`, cx, yy);
+    ctx.fillStyle = fill;
+    ctx.fillText(`ATK ${atkVal}`, cx, yy);
+    ctx.restore();
 }
 
 function drawCards() {
@@ -2255,7 +2321,9 @@ function drawCards() {
                 ctx.fillStyle = 'rgba(255,255,255,0.18)';
                 drawRoundedRect(x, drawY, cardW, cardH, 10, ctx.fillStyle);
             }
-            // 有美術圖：屬性與 ATK 已內建於卡圖，不再額外疊字
+            // 美術圖 ATK 為靜態；疊上動態攻擊力數字（累加值＋強度分級變色）
+            if (!isFGMode || card.atk > 0) drawCardAtk(card, x, drawY, cardW, cardH, isFGMode);
+            drawCardBadgeFlash(card, x, drawY, cardW, isFGMode);
             ctx.globalAlpha = 1.0;
             ctx.restore();
             return;
@@ -2294,16 +2362,9 @@ function drawCards() {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(elem.icon, badgeX, badgeY + 1);
 
-        // 攻擊力（即時依消除顆數變動）— 屬性僅以左上 icon 呈現，不放名稱
-        // 數字更新（細節表）：瞬間放大到 1.3 倍再縮回
-        const atkVal = card.atk > 0 ? card.atk : normalAttack(card.elemId, 3, card.level);
-        const punch = card.atkPunchT > 0 ? 1 + 0.3 * Math.sin(Math.PI * (1 - card.atkPunchT / TF(TIMING.atkUpdate))) : 1;
-        ctx.font = `bold ${Math.round((isFGMode ? 17 : 26) * punch)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-        ctx.strokeText(`ATK ${atkVal}`, cx, drawY + (isFGMode ? 58 : 68));
-        ctx.fillStyle = '#facc15';
-        ctx.fillText(`ATK ${atkVal}`, cx, drawY + (isFGMode ? 58 : 68));
+        // 攻擊力（即時依消除顆數變動、含強度分級變色）
+        drawCardAtk(card, x, drawY, cardW, cardH, isFGMode);
+        drawCardBadgeFlash(card, x, drawY, cardW, isFGMode);
 
         ctx.globalAlpha = 1.0;
         ctx.restore();
@@ -2511,10 +2572,10 @@ function drawUI() {
     ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355 + ux, bottomY + 20);
 
     drawRoundedRect(850 + ux, bottomY, 150, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${winScore}`, 925 + ux, bottomY + 20);
+    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${Math.round(displayWin)}`, 925 + ux, bottomY + 20);
 
     drawRoundedRect(1020 + ux, bottomY, 220, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${totalScore}`, 1130 + ux, bottomY + 20);
+    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${Math.round(displaySession)}`, 1130 + ux, bottomY + 20);
     ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
 
     // FG / BG 狀態橫幅
@@ -2742,7 +2803,8 @@ function update() {
     for (let c = 0; c < colBounce.length; c++) if (colBounce[c] > 0) colBounce[c]--;   // 落定回彈
     if (boardShakeTimer > 0) boardShakeTimer--;                                        // WILD 著陸震動
     bgMultAnimT++;                                                                     // BG 倍數動畫
-    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; }); // 閃紅／換怪淡入
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; }); // 閃紅／換怪淡入／徽章閃爍
+    cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
         const dimTarget = (currentState === STATE.ATTACKING && cards.some(cd => cd.isCharging || cd.activated)) ? 1 : 0;
@@ -3107,6 +3169,9 @@ function update() {
                     p.stage = 1.5;
                     p.cardRef.isCharging = true;
                     p.cardRef.chargeTimer = TF(TIMING.cardPullUp);   // 上拉時長（v4.6 無蓄力段）
+                    // 卡與怪屬性徽章同步閃爍 2 次（07 定案，提示對應關係）
+                    p.cardRef.badgeFlashT = TF(TIMING.badgeFlash);
+                    if (p.targetMonster) p.targetMonster.badgeFlashT = TF(TIMING.badgeFlash);
                 }
                 attacksDone = false;
             } else if (p.stage === 1.5) {
@@ -3377,6 +3442,16 @@ function update() {
 
     updatePendingCardUpdates();
     updateFlyingScores();
+
+    // 公版跑分（scoreCountUp）：顯示值滾動逼近實際分數，依差額在 scoreCountUp 秒內補齊
+    {
+        const stepW = Math.max(1, Math.abs(winScore - displayWin) / TF(TIMING.scoreCountUp));
+        if (displayWin < winScore) displayWin = Math.min(winScore, displayWin + stepW);
+        else if (displayWin > winScore) displayWin = winScore;   // 歸零瞬間跟上（新局 WIN 重置）
+        const stepS = Math.max(1, Math.abs(totalScore - displaySession) / TF(TIMING.scoreCountUp));
+        if (displaySession < totalScore) displaySession = Math.min(totalScore, displaySession + stepS);
+        else if (displaySession > totalScore) displaySession = totalScore;
+    }
 
     for (let i = scoreTexts.length - 1; i >= 0; i--) {
         scoreTexts[i].life--;
@@ -3686,7 +3761,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 6;   // v6: 甘特圖起點依節奏表 v4.6 排序＋消除鏈絕對相位時鐘。舊存檔自動作廢。
+const TUNE_VERSION = 7;   // v7: 補齊演出細節參數（組間錯落/徽章閃爍/ATK分級/目標預亮/光束/跑分等）。舊存檔自動作廢。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
