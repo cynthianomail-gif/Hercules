@@ -2030,10 +2030,12 @@ function drawCards() {
         drawRoundedRect(sx - 2, baseY - 2, cardW + 4, cardH + 4, 13, '#0a1628', null);
     }
 
-    // 限制卡牌只在插槽範圍內顯示
+    // 限制卡牌只在插槽範圍內顯示；上緣預留上拉空間——
+    // 觸發卡牌上拉時要蓋在盤面之上（觸發的感覺），下緣維持裁切供進場動畫
+    const pullMargin = TIMING.cardPullDist + 24;   // 上拉幅度 + 蓄力放大/震動餘裕
     ctx.save();
     ctx.beginPath();
-    ctx.rect(startX - 8, baseY - 8, totalW + 16, cardH + 16);
+    ctx.rect(startX - 8, baseY - 8 - pullMargin, totalW + 16, cardH + 16 + pullMargin);
     ctx.clip();
 
     cards.forEach((card, i) => {
