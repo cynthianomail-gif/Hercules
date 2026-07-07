@@ -2,6 +2,9 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <!-- 針對手機端優化的 Viewport 設定，禁止使用者手動縮放網頁 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>海克力士</title>
@@ -400,6 +403,8 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const APP_BUILD = 'drop-sequence-live-tuning-20260707';
+console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
 function resizeApp() {
@@ -2448,6 +2453,13 @@ function drawUI() {
     } else {
         ctx.fillText("AUTO SPIN", 720 + ux, uy + 35);
     }
+    ctx.save();
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+    ctx.fillText(APP_BUILD, 1274 + ux, uy + 76);
+    ctx.restore();
     ctx.textBaseline = 'alphabetic';   // 還原
 }
 
@@ -3478,7 +3490,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 3;   // v3：參數集對齊節奏表 v4.6（舊版儲存自動作廢）
+const TUNE_VERSION = 4;   // v4: drop sequence + live tuning; older saved tuning is discarded.
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
@@ -3488,13 +3500,22 @@ let layoutFieldRefs = {};        // 佈局分頁 x/y/w/h 數字框參照（拖�
 
 function saveTuning() {
     try {
-        localStorage.setItem(TUNE_KEY, JSON.stringify({ version: TUNE_VERSION, flow: flowMode, timing: TIMING, layout: LAYOUT }));
+        localStorage.setItem(TUNE_KEY, JSON.stringify({
+            version: TUNE_VERSION,
+            build: APP_BUILD,
+            flow: flowMode,
+            timing: TIMING,
+            layout: LAYOUT
+        }));
     } catch (e) { /* 隱私模式等寫入失敗：略過 */ }
 }
 function loadTuning() {
     try {
         const d = JSON.parse(localStorage.getItem(TUNE_KEY) || 'null');
-        if (!d || d.version !== TUNE_VERSION) return;   // 版本不符自動作廢
+        if (!d || d.version !== TUNE_VERSION) {
+            localStorage.removeItem(TUNE_KEY);
+            return;
+        }
         if (d.flow === 'A' || d.flow === 'B') flowMode = d.flow;
         if (d.timing) for (const k in DEFAULT_TIMING) {
             const v = d.timing[k];
@@ -3509,6 +3530,58 @@ function loadTuning() {
         }
     } catch (e) { /* 資料損毀：退回預設 */ }
     syncLayoutDerived();
+}
+
+function retimeCountdown(value, oldFrames, newFrames) {
+    if (value <= 0 || oldFrames <= 0 || newFrames <= 0) return value;
+    return Math.max(0, Math.round(value * newFrames / oldFrames));
+}
+
+function reassignCurrentPopLightTimings() {
+    if (currentState !== STATE.POPPING || currentMatches.length === 0) return;
+    const cells = currentMatches.flatMap(m => m.cells || [])
+        .filter(cell => board[cell.c] && board[cell.c][cell.r] && board[cell.c][cell.r].isMatched)
+        .sort((a, b) => a.c - b.c || a.r - b.r);
+    if (cells.length === 0) return;
+
+    const oldTotal = Math.max(1, popScoreTotal);
+    const elapsedRatio = Math.min(1, Math.max(0, (oldTotal - popScoreTimer) / oldTotal));
+    cells.forEach((cell, i) => {
+        board[cell.c][cell.r].lightAt = Math.round(i * TIMING.scorePerIcon * 60);
+    });
+    popScoreTotal = Math.max(1, Math.round(TIMING.scorePerIcon * cells.length * 60));
+    popScoreTimer = Math.max(0, popScoreTotal - Math.round(popScoreTotal * elapsedRatio));
+}
+
+function applyRuntimeTimingChange(key, oldValue, newValue) {
+    const oldFrames = Math.max(1, Math.round(oldValue * 60));
+    const newFrames = Math.max(1, Math.round(newValue * 60));
+    if (oldFrames === newFrames) return;
+
+    if (key === 'skipStop' && spinSkip) {
+        const p = spinSkip.total > 0 ? spinSkip.t / spinSkip.total : 1;
+        spinSkip.total = newFrames;
+        spinSkip.t = Math.min(newFrames, Math.round(p * newFrames));
+    } else if (key === 'interBoardPause') {
+        checkPauseTimer = retimeCountdown(checkPauseTimer, oldFrames, newFrames);
+    } else if (key === 'cardGap') {
+        roundGapTimer = retimeCountdown(roundGapTimer, oldFrames, newFrames);
+    } else if (key === 'interSpinPause' || key === 'winSpinPause') {
+        autoSpinDelay = retimeCountdown(autoSpinDelay, oldFrames, newFrames);
+    } else if (key === 'scorePerIcon') {
+        reassignCurrentPopLightTimings();
+    }
+}
+
+function setTimingValue(key, rawValue, min, max) {
+    const parsed = parseFloat(rawValue);
+    const next = Math.min(max, Math.max(min, Number.isFinite(parsed) ? parsed : 0));
+    const old = TIMING[key];
+    if (old === next) return next;
+    TIMING[key] = next;
+    applyRuntimeTimingChange(key, old, next);
+    saveTuning();
+    return next;
 }
 
 const tuneBtn   = document.getElementById('tuneBtn');
@@ -3547,14 +3620,19 @@ function buildTimingTab() {
             rng.type = 'range'; rng.min = String(min); rng.max = String(max); rng.step = String(step); rng.value = TIMING[key];
             const num = document.createElement('input');
             num.type = 'number'; num.min = String(min); num.max = String(max); num.step = String(step); num.value = TIMING[key];
-            const apply = v => {
-                v = Math.min(max, Math.max(min, parseFloat(v) || 0));
-                TIMING[key] = v;
-                rng.value = v; num.value = v;
-                saveTuning();
+            const apply = (v, syncNumber = true) => {
+                v = setTimingValue(key, v, min, max);
+                rng.value = v;
+                if (syncNumber) num.value = v;
+                return v;
             };
             rng.addEventListener('input', () => apply(rng.value));
-            num.addEventListener('change', () => apply(num.value));
+            num.addEventListener('input', () => {
+                const raw = num.value.trim();
+                if (raw === '' || raw === '-' || raw === '.' || raw.endsWith('.')) return;
+                apply(raw, false);
+            });
+            num.addEventListener('change', () => { num.value = apply(num.value, true); });
             row.appendChild(lab); row.appendChild(rng); row.appendChild(num);
             tuneBody.appendChild(row);
         });
@@ -3591,10 +3669,12 @@ function buildLayoutTab() {
             const lab = document.createElement('label'); lab.textContent = p.toUpperCase();
             const num = document.createElement('input');
             num.type = 'number'; num.step = '1'; num.value = o[p];
-            num.addEventListener('change', () => {
+            const applyLayoutValue = () => {
                 const v = parseInt(num.value, 10);
                 if (isFinite(v)) { o[p] = v; syncLayoutDerived(); saveTuning(); }
-            });
+            };
+            num.addEventListener('input', applyLayoutValue);
+            num.addEventListener('change', applyLayoutValue);
             layoutFieldRefs[p] = num;
             row.appendChild(lab); row.appendChild(num);
             tuneBody.appendChild(row);
@@ -3747,6 +3827,11 @@ function drawLayoutOverlay() {
 
 // 啟動時載入已保存的調校值（損毀/版本不符自動退回預設）
 loadTuning();
+window.addEventListener('storage', (e) => {
+    if (e.key !== TUNE_KEY) return;
+    loadTuning();
+    if (tunePanelOpen) refreshTuneBody();
+});
 
 // === 啟動遊戲 ===
 initMonsters();
