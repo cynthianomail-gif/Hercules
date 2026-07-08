@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'multigroup-light-all-then-dissolve-20260707r';
+const APP_BUILD = 'kill-mechanic-effects-20260708';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -601,6 +601,25 @@ const ELEMENTS = [
 
 const WILD_ID = 6;
 const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
+const MECH_LEVEL_STYLE = {
+    1: { color: '#38bdf8', flash: '#bae6fd', shakeAmp: 3, beamWidth: 4 },
+    2: { color: '#a78bfa', flash: '#ddd6fe', shakeAmp: 5, beamWidth: 5 },
+    3: { color: '#facc15', flash: '#fef08a', shakeAmp: 7, beamWidth: 6 },
+    4: { color: '#fb7185', flash: '#fecdd3', shakeAmp: 10, beamWidth: 8 },
+};
+const clamp01 = v => Math.max(0, Math.min(1, v));
+function easeInOutQuad(t) { t = clamp01(t); return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+function easeOutBack(t) {
+    t = clamp01(t);
+    const c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function mechStyle(level) { return MECH_LEVEL_STYLE[Math.max(1, Math.min(4, level || 1))] || MECH_LEVEL_STYLE[1]; }
+function rgba(hex, alpha) {
+    const raw = hex.replace('#', '');
+    const n = parseInt(raw.length === 3 ? raw.split('').map(ch => ch + ch).join('') : raw, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
 
 // === 調校系統：節奏（單位秒，另註明者除外）與佈局（單位px）單一事實來源 ===
 // 預設值對齊「節奏表 v4」＋「演繹節奏總表」＋「演出細節定義表」（海克力斯_260706_新增視覺流程v4_4.xlsx）
@@ -609,7 +628,7 @@ const DEFAULT_TIMING = {
     spinClear:        0.25,  // 舊版保留欄位：清場速度已改由 spinDropIn 統一控制
     spinDropIn:       0.30,  // 每欄圖示離場/掉入時長（舊圖示離開與新圖示落下共用）
     firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s；即「何時落定」）
-    reelStopInterval: 0.15,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.15 = 2.2s）
+    reelStopInterval: 0.10,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.10 = 1.9s）
     landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
     skipStop:         0.30,  // 跳過1（定案）：下落期間點擊，全輪齊停落定
     interSpinPause:   0.30,  // 局間停頓・無連線（停頓三檔定案）
@@ -618,11 +637,11 @@ const DEFAULT_TIMING = {
     // 消除／得分
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
-    scorePerIcon:     0.30,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
+    scorePerIcon:     0.40,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
     scorePop:         0.70,  // 得分數字（該組中央）彈出＋停留時長
     groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
-    popDissolve:      0.20,  // 得分圖示消散（化為能量）
-    energyFly:        0.30,  // 能量飛向卡牌攻擊力圓圈
+    popDissolve:      0.30,  // 得分圖示消散（化為能量）
+    energyFly:        0.60,  // 能量飛向卡牌攻擊力圓圈
     // 補盤
     refillPerCell:    0.15,  // 補盤掉落每格時間（總長 = 0.15 × 落下格數）
     refillStagger:    0.05,  // 補盤每欄錯落
@@ -649,9 +668,9 @@ const DEFAULT_TIMING = {
     respawnFade:      0.40,  // 更換怪獸淡入
     fgbgCollect:      0.40,  // LV4 擊殺：FG/BG 獎勵圖示飛入 UI 收集欄（11-2 新定案）
     // WILD／機制
-    wildSpawn:        0.25,  // WILD 於原座標生成
-    wildFlyIn:        0.30,  // WILD 飛入（每顆）
-    wildStagger:      0.10,  // WILD 每 +1 顆飛入錯落
+    wildSpawn:        0.40,  // WILD 於原座標生成
+    wildFlyIn:        0.50,  // WILD 飛入（每顆）
+    wildStagger:      0.15,  // WILD 每 +1 顆飛入錯落
     wildShake:        0.15,  // WILD 著陸盤面震動
     bigWildSpawn:     0.30,  // 巨型 WILD 生成
     bigWildFly:       0.40,  // 巨型 WILD 飛入
@@ -737,7 +756,7 @@ const GANTT_START_PRESET = {
     // 受擊／擊殺
     hitReact: 1.45, hitFlash: 1.45, deathSwitch: 1.75, effectFly: 2.25, effectShow: 2.65, respawnFade: 3.05, fgbgCollect: 2.25,
     // WILD／機制（各機制為互斥分支，起點自 0 起排）
-    wildSpawn: 0.00, wildFlyIn: 0.25, wildStagger: 0.25, wildShake: 0.55,
+    wildSpawn: 0.00, wildFlyIn: 0.40, wildStagger: 0.45, wildShake: 0.60,
     bigWildSpawn: 0.00, bigWildFly: 0.30, bigWildShake: 0.70,
     targetPreLight: 0.00, beamFly: 0.20, beamStagger: 0.20, iconShrink: 0.50, newIconPop: 0.50, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60, scoreCountUp: 0.60,
     // LV4 全畫面／轉場
@@ -761,7 +780,7 @@ function TS(key) {
 const TF = s => Math.max(1, Math.round(s * 60));   // 秒 → 幀（60fps）
 
 // 流程架構（流程架構B提案）：A = 現行（每波消除後立刻攻擊）；B = 連鎖累積後一次結算
-let flowMode = 'A';
+let flowMode = 'B';
 
 // 佈局預設值 = 原程式寫死座標
 const DEFAULT_LAYOUT = {
@@ -1018,7 +1037,9 @@ let popScoreTimer = 0;      // 相容用（drawGrid 舊參照）
 let popScoreTotal = 0;      // 得分演繹總長（同組圖示同步亮起）
 let attackDimAlpha = 0;     // 卡牌觸發時盤面壓暗（0~1 漸變）
 let boardShakeTimer = 0;    // WILD 著陸盤面震動倒數
+let boardShakeAmp = 3;      // WILD／機制著陸盤面震動幅度（依機制等級）
 let pendingBoardShake = 0;  // 待觸發的震動時長（幀，WILD 著陸時啟動）
+let cellFlashes = [];       // 機制落點閃光
 let checkPauseTimer = 0;    // 盤間停頓（補盤後再判定連線前）
 let bgMultAnimT = 999;      // BG 倍數更新動畫經過幀數
 let bgMultPrev = 1;         // BG 前一個倍數（淡出用）
@@ -1117,7 +1138,7 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     const pools = { 1: p1, 2: p2, 3: p3, 4: p4 };
     let pool = pools[level] || p1;
     let eff = pool[Math.floor(Math.random() * pool.length)]();
-    return { ...eff, fromX, fromY };
+    return { ...eff, fromX, fromY, level };
 }
 
 // === 初始化 ===
@@ -1444,6 +1465,283 @@ function applyOverflow(side, overflow, fromX, fromY, elemId, ignoreElem = false,
 // === 怪獸擊殺盤面效果 ===
 function getCardElems() { return new Set(cards.map(c => c.elemId)); }
 function getNonCardElems() { return [0,1,2,3,4,5].filter(e => !getCardElems().has(e)); }
+function isWildEffect(effect) { return effect && effect.type === 1; }
+function isTargetBeamEffect(effect) { return effect && (effect.type === 2 || effect.type === 3 || effect.type === 4 || effect.type === 8); }
+function isDirectScoreEffect(effect) { return effect && effect.type === 10; }
+function cellCenter(c, r) { return { x: GRID_X + c * GEM_SIZE + GEM_SIZE / 2, y: GRID_Y + r * GEM_SIZE + GEM_SIZE / 2 }; }
+function shuffled(list) { return list.slice().sort(() => Math.random() - 0.5); }
+function randomCardElem() {
+    const cardElems = [...getCardElems()];
+    const pool = cardElems.length ? cardElems : [0, 1, 2, 3, 4, 5];
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+function allBoardCells(filter = null) {
+    const out = [];
+    for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+            const gem = board[c] && board[c][r];
+            if (!gem || gem.id === -1) continue;
+            const cell = { c, r, oldId: gem.id };
+            if (!filter || filter(cell, gem)) out.push(cell);
+        }
+    }
+    return out;
+}
+function startBoardShake(frames, amp) {
+    boardShakeTimer = Math.max(boardShakeTimer, frames);
+    boardShakeAmp = Math.max(boardShakeAmp || 0, amp || 3);
+}
+function spawnCellFlash(c, r, color, frames = 12, size = 1) {
+    cellFlashes.push({ c, r, color, life: frames, maxLife: frames, size });
+}
+function prepareWildEffect(effect) {
+    if (effect._prepared) return;
+    effect._prepared = true;
+    effect.level = effect.level || 1;
+    effect.style = mechStyle(effect.level);
+    effect.flights = [];
+    if (effect.big) {
+        const startC = Math.floor(Math.random() * (COLS - 1));
+        const startR = Math.floor(Math.random() * (ROWS - 1));
+        const cells = [];
+        for (let dc = 0; dc < 2; dc++) {
+            for (let dr = 0; dr < 2; dr++) cells.push({ c: startC + dc, r: startR + dr });
+        }
+        effect.flights.push({ cells, delay: 0, landed: false, size: 2 });
+    } else {
+        const wildCount = Math.min(effect.wildCount || 1, COLS * ROWS);
+        shuffled(allBoardCells()).slice(0, wildCount).forEach((cell, i) => {
+            effect.flights.push({ cells: [{ c: cell.c, r: cell.r }], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 });
+        });
+    }
+}
+function prepareTargetBeamEffect(effect) {
+    if (effect._prepared) return;
+    effect._prepared = true;
+    effect.level = effect.level || 1;
+    effect.style = mechStyle(effect.level);
+    let targets = [];
+    const nonCardElems = getNonCardElems();
+    const presentNonCard = nonCardElems.filter(id => board.some(col => col.some(gem => gem.id === id)));
+
+    if (effect.type === 2) {
+        const count = effect.gemCount || 5;
+        let candidates = allBoardCells((cell, gem) => nonCardElems.includes(gem.id));
+        if (!candidates.length) candidates = allBoardCells((cell, gem) => gem.id !== WILD_ID);
+        targets = shuffled(candidates).slice(0, count).map(cell => ({ ...cell, newId: randomCardElem() }));
+    } else if (effect.type === 3) {
+        const types = shuffled(presentNonCard).slice(0, effect.convertCount || presentNonCard.length);
+        targets = allBoardCells((cell, gem) => types.includes(gem.id)).map(cell => ({ ...cell, newId: randomCardElem() }));
+    } else if (effect.type === 8) {
+        const cardElems = [...getCardElems()];
+        if (effect.fromElemId === undefined) effect.fromElemId = presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
+        if (effect.toElemId === undefined) effect.toElemId = cardElems.length ? cardElems[Math.floor(Math.random() * cardElems.length)] : randomCardElem();
+        targets = effect.fromElemId === null ? [] : allBoardCells((cell, gem) => gem.id === effect.fromElemId).map(cell => ({ ...cell, newId: effect.toElemId }));
+    } else if (effect.type === 4) {
+        const types = shuffled(presentNonCard).slice(0, effect.clearCount || presentNonCard.length);
+        targets = allBoardCells((cell, gem) => types.includes(gem.id));
+        if (!targets.length) targets = shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, effect.clearCount || 1);
+    }
+
+    effect.targets = targets.map((target, index) => ({ ...target, index, landed: false }));
+}
+function wildFlightTarget(flight) {
+    const sum = flight.cells.reduce((acc, cell) => {
+        const p = cellCenter(cell.c, cell.r);
+        acc.x += p.x; acc.y += p.y;
+        return acc;
+    }, { x: 0, y: 0 });
+    return { x: sum.x / flight.cells.length, y: sum.y / flight.cells.length };
+}
+function beamPoint(sx, sy, tx, ty, t, arc = 70) {
+    const e = easeInOutQuad(t);
+    return {
+        x: sx + (tx - sx) * e,
+        y: sy + (ty - sy) * e - Math.sin(Math.PI * clamp01(t)) * arc
+    };
+}
+function drawEnergyBeam(sx, sy, tx, ty, t, style, widthScale = 1) {
+    const now = beamPoint(sx, sy, tx, ty, t);
+    const tail = beamPoint(sx, sy, tx, ty, Math.max(0, t - 0.18));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = rgba(style.color, 0.32);
+    ctx.lineWidth = Math.max(2, style.beamWidth * widthScale * 0.55);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo((sx + tx) / 2, Math.min(sy, ty) - 80, tx, ty);
+    ctx.stroke();
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = rgba(style.color, 0.92);
+    ctx.lineWidth = Math.max(3, style.beamWidth * widthScale);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(now.x, now.y);
+    ctx.stroke();
+    ctx.fillStyle = style.flash;
+    ctx.beginPath();
+    ctx.arc(now.x, now.y, 5 + style.beamWidth * widthScale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+function drawWildIconAt(x, y, size, scale = 1, alpha = 1) {
+    const img = gemImg(WILD_ID);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 24;
+    if (imgReady(img)) {
+        ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    } else {
+        drawRoundedRect(-size / 2, -size / 2, size, size, 12, '#1a1400', '#ffd700', 3);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = `bold ${Math.round(size * 0.45)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('W', 0, 2);
+    }
+    ctx.restore();
+}
+function drawWildSpawnEffect(effect) {
+    prepareWildEffect(effect);
+    const spawnF = TF(effect.big ? TIMING.bigWildSpawn : TIMING.wildSpawn);
+    const p = clamp01(killEffectTimer / spawnF);
+    const style = effect.style || mechStyle(effect.level);
+    const size = effect.big ? GEM_SIZE * 1.8 : GEM_SIZE * 0.95;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = rgba(style.color, 0.28 * (1 - p * 0.25));
+    ctx.beginPath();
+    ctx.arc(effect.fromX, effect.fromY, size * (0.3 + p * 0.75), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawWildIconAt(effect.fromX, effect.fromY, size, easeOutBack(p), 1);
+}
+function drawWildFlyEffect(effect) {
+    prepareWildEffect(effect);
+    const flyF = TF(effect.big ? TIMING.bigWildFly : TIMING.wildFlyIn);
+    const style = effect.style || mechStyle(effect.level);
+    effect.flights.forEach(flight => {
+        const t = (killEffectTimer - flight.delay) / flyF;
+        if (t < 0 || t > 1 || flight.landed) return;
+        const target = wildFlightTarget(flight);
+        const pos = beamPoint(effect.fromX, effect.fromY, target.x, target.y, t, effect.big ? 110 : 80);
+        drawEnergyBeam(effect.fromX, effect.fromY, target.x, target.y, clamp01(t), style, effect.big ? 1.55 : 1);
+        drawWildIconAt(pos.x, pos.y, effect.big ? GEM_SIZE * 1.8 : GEM_SIZE * 0.82, 1, 1);
+    });
+}
+function drawMechanismBeams(effect) {
+    prepareTargetBeamEffect(effect);
+    const beamF = TF(TIMING.beamFly);
+    const staggerF = TF(TIMING.beamStagger);
+    const style = effect.style || mechStyle(effect.level);
+    effect.targets.forEach(target => {
+        const delay = target.index * staggerF;
+        const t = (killEffectTimer - delay) / beamF;
+        if (t < 0 || t > 1) return;
+        const to = cellCenter(target.c, target.r);
+        drawEnergyBeam(effect.fromX, effect.fromY, to.x, to.y, clamp01(t), style, 0.9);
+    });
+}
+function landWildFlight(effect, flight) {
+    if (flight.landed) return;
+    flight.landed = true;
+    const style = effect.style || mechStyle(effect.level);
+    flight.cells.forEach(cell => {
+        board[cell.c][cell.r] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false, lit: false };
+        spawnCellFlash(cell.c, cell.r, style.flash, 12, flight.size);
+    });
+    startBoardShake(TF(effect.big ? TIMING.bigWildShake : TIMING.wildShake), style.shakeAmp * (effect.big ? 1.25 : 1));
+}
+function updateWildFlyLandings(effect) {
+    prepareWildEffect(effect);
+    const flyF = TF(effect.big ? TIMING.bigWildFly : TIMING.wildFlyIn);
+    effect.flights.forEach(flight => {
+        if (killEffectTimer >= flight.delay + flyF) landWildFlight(effect, flight);
+    });
+}
+function updateBeamLandings(effect) {
+    prepareTargetBeamEffect(effect);
+    const beamF = TF(TIMING.beamFly);
+    const staggerF = TF(TIMING.beamStagger);
+    const style = effect.style || mechStyle(effect.level);
+    effect.targets.forEach(target => {
+        if (!target.landed && killEffectTimer >= target.index * staggerF + beamF) {
+            target.landed = true;
+            spawnCellFlash(target.c, target.r, style.flash, 8, 1);
+        }
+    });
+}
+function targetBeamTotalFrames(effect) {
+    const count = (effect.targets || []).length;
+    return TF(TIMING.beamFly) + Math.max(0, count - 1) * TF(TIMING.beamStagger);
+}
+function replaceTargetIcons(effect) {
+    prepareTargetBeamEffect(effect);
+    const style = effect.style || mechStyle(effect.level);
+    effect.targets.forEach(target => {
+        const gem = board[target.c] && board[target.c][target.r];
+        if (!gem) return;
+        gem.id = target.newId;
+        gem.scale = 0;
+        gem.yOffset = 0;
+        gem.isMatched = false;
+        gem.lit = false;
+        spawnCellFlash(target.c, target.r, style.flash, 10, 1);
+    });
+}
+function clearTargetIcons(effect) {
+    prepareTargetBeamEffect(effect);
+    effect.targets.forEach(target => {
+        const gem = board[target.c] && board[target.c][target.r];
+        if (!gem) return;
+        gem.id = -1;
+        gem.scale = 1;
+        gem.isMatched = false;
+        gem.lit = false;
+    });
+}
+function startDirectScoreEffect(effect) {
+    if (effect._scoreStarted) return;
+    effect._scoreStarted = true;
+    const level = effect.level || 1;
+    const mult = effect.multiplier || 3;
+    const reward = betAmount * mult;
+    const sx = effect.fromX || 640;
+    const sy = effect.fromY || 360;
+    const coinCount = level <= 1 ? 18 : level === 2 ? 26 : 36;
+    spawnCoinBurst(sx, sy, coinCount);
+    flyingScores.push({
+        type: 'bossHit',
+        x: sx,
+        y: sy - 10,
+        tx: 925 + LAYOUT.bottomUI.x,
+        ty: LAYOUT.bottomUI.y + 20,
+        text: `🪙 +${reward}`,
+        color: '#ffd700',
+        life: TF(TIMING.coinBurst) + TF(TIMING.scoreFly) + 30,
+        delay: TF(TIMING.coinBurst),
+        award: reward,
+        awardDelay: TF(TIMING.coinBurst) + TF(TIMING.scoreFly),
+        awarded: false
+    });
+}
+function respawnDeadSmallMonsters() {
+    [1, 2, 4, 5].forEach(idx => {
+        if (monsters[idx].isDead) respawnMonster(idx, false);
+    });
+}
+function finishKillEffect() {
+    killEffectPhase = 'idle';
+    killEffectCurrent = null;
+    respawnDeadSmallMonsters();
+    applyGravity();
+    currentState = STATE.GRAVITY;
+}
 
 function applyKillEffect(effect) {
     const effectType = effect.type;
@@ -1545,16 +1843,7 @@ function applyKillEffect(effect) {
 
     } else if (effectType === 10) {
         // 直接給分：依等級倍率（噴錢演繹 = coinBurst，數字飛入公版）
-        let mult = effect.multiplier || 3;
-        let reward = betAmount * mult;
-        winScore += reward; totalScore += reward;
-        spawnCoinBurst(effect.fromX || 640, effect.fromY || 360, 26);
-        flyingScores.push({
-            type: 'bossHit', x: effect.fromX || 640, y: (effect.fromY || 360) - 10,
-            tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
-            text: `🪙 +${reward}`, color: '#ffd700',
-            life: TF(TIMING.coinBurst) + 60, delay: TF(TIMING.coinBurst)
-        });
+        startDirectScoreEffect(effect);
     }
 }
 
@@ -1599,6 +1888,7 @@ function startModeTransition(text, subText, bgColor, accentColor) {
 }
 
 function startKillEffect(effect) {
+    effect.level = effect.level || 1;
     killEffectCurrent = effect;
     killEffectPhase = 'pre';   // 死亡切換停留（含灰化過渡）→ 光效飛行
     killEffectTimer = 0;
@@ -1692,6 +1982,24 @@ function drawKillEffect() {
     if (!killEffectCurrent || killEffectPhase === 'idle') return;
     const cx = GRID_X + GRID_W / 2;
     const cy = GRID_Y + GRID_H / 2;
+
+    if (killEffectPhase === 'wildSpawn') {
+        drawWildSpawnEffect(killEffectCurrent);
+        return;
+    }
+    if (killEffectPhase === 'wildFly') {
+        drawWildFlyEffect(killEffectCurrent);
+        return;
+    }
+    if (killEffectPhase === 'beamFly') {
+        drawMechanismBeams(killEffectCurrent);
+        return;
+    }
+    if (killEffectPhase === 'targetPreLight' || killEffectPhase === 'iconShrink'
+        || killEffectPhase === 'newIconPop' || killEffectPhase === 'clearSmoke'
+        || killEffectPhase === 'coinBurst') {
+        return;
+    }
 
     if (killEffectPhase === 'flying') {
         const isFGBG = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6);
@@ -1947,6 +2255,86 @@ function drawRoundedRect(x, y, w, h, r, fill, stroke, lineWidth = 2) {
     ctx.closePath();
     if (fill) { ctx.fillStyle = fill; ctx.fill(); }
     if (stroke) { ctx.lineWidth = lineWidth; ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+
+function drawMechanismTargetHighlights() {
+    const effect = killEffectCurrent;
+    if (currentState !== STATE.KILL_EFFECT || !isTargetBeamEffect(effect) || !effect.targets) return;
+    const active = ['targetPreLight', 'beamFly', 'iconShrink', 'newIconPop', 'clearSmoke'].includes(killEffectPhase);
+    if (!active) return;
+    const style = effect.style || mechStyle(effect.level);
+    let alpha = 0.32;
+    if (killEffectPhase === 'targetPreLight') {
+        alpha = 0.18 + 0.26 * Math.sin(Math.PI * clamp01(killEffectTimer / TF(TIMING.targetPreLight)));
+    } else if (killEffectPhase === 'newIconPop') {
+        alpha = 0.26 * (1 - clamp01(killEffectTimer / TF(TIMING.newIconPop)));
+    } else if (killEffectPhase === 'clearSmoke') {
+        alpha = 0.22 * (1 - clamp01(killEffectTimer / TF(TIMING.clearSmoke)));
+    }
+    effect.targets.forEach(target => {
+        const x = GRID_X + target.c * GEM_SIZE;
+        const y = GRID_Y + target.r * GEM_SIZE;
+        const cx = x + GEM_SIZE / 2;
+        const cy = y + GEM_SIZE / 2;
+        const grad = ctx.createRadialGradient(cx, cy, 8, cx, cy, GEM_SIZE * 0.62);
+        grad.addColorStop(0, rgba(style.flash, alpha));
+        grad.addColorStop(0.65, rgba(style.color, alpha * 0.38));
+        grad.addColorStop(1, rgba(style.color, 0));
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, GEM_SIZE, GEM_SIZE);
+        ctx.strokeStyle = rgba(style.flash, alpha * 1.15);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 7, y + 7, GEM_SIZE - 14, GEM_SIZE - 14);
+        ctx.restore();
+    });
+}
+
+function drawMechanismCellFlashes() {
+    cellFlashes.forEach(flash => {
+        const p = clamp01(flash.life / flash.maxLife);
+        const center = cellCenter(flash.c, flash.r);
+        const radius = GEM_SIZE * (0.28 + 0.35 * (1 - p)) * (flash.size || 1);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = p;
+        ctx.fillStyle = rgba(flash.color, 0.42);
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = rgba('#ffffff', 0.68);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius * 0.72, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    });
+}
+
+function drawMechanismClearSmoke() {
+    const effect = killEffectCurrent;
+    if (currentState !== STATE.KILL_EFFECT || killEffectPhase !== 'clearSmoke' || !effect || effect.type !== 4 || !effect.targets) return;
+    const p = clamp01(killEffectTimer / TF(TIMING.clearSmoke));
+    effect.targets.forEach(target => {
+        const center = cellCenter(target.c, target.r);
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + target.index * 0.7;
+            const dist = 10 + 30 * p + (i % 2) * 7;
+            const x = center.x + Math.cos(angle) * dist;
+            const y = center.y + Math.sin(angle) * dist * 0.72 - p * 16;
+            const radius = 11 + 13 * p + (i % 3) * 2;
+            ctx.save();
+            ctx.globalAlpha = (1 - p) * 0.48;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.shadowColor = '#94a3b8';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    });
 }
 
 function drawStatsPanel() {
@@ -2414,8 +2802,10 @@ function drawGrid() {
 
     // WILD 著陸盤面震動（細節表：震動強度依機制等級）
     if (boardShakeTimer > 0) {
-        ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+        ctx.translate((Math.random() - 0.5) * 2 * boardShakeAmp, (Math.random() - 0.5) * 2 * boardShakeAmp);
     }
+
+    drawMechanismTargetHighlights();
 
     function drawGem(c, r, gem, extraY = 0) {
         let currentYOffset = (colOffsets[c] || 0) + gem.yOffset + extraY;
@@ -2520,6 +2910,8 @@ function drawGrid() {
             let gem = board[c] ? board[c][r] : null;
             if (gem && gem.id !== -1 && isBright(c, r, gem)) drawGem(c, r, gem);
         }
+    drawMechanismCellFlashes();
+    drawMechanismClearSmoke();
     ctx.restore();
 }
 
@@ -2749,6 +3141,14 @@ function updatePendingCardUpdates() {
 function updateFlyingScores() {
     for (let i = flyingScores.length - 1; i >= 0; i--) {
         let fs = flyingScores[i];
+        if (fs.awardDelay !== undefined && !fs.awarded) {
+            fs.awardDelay--;
+            if (fs.awardDelay <= 0) {
+                winScore += fs.award || 0;
+                totalScore += fs.award || 0;
+                fs.awarded = true;
+            }
+        }
         if (fs.delay > 0) {
             fs.delay--;
             if (fs.type === 'kill') fs.y -= 0.5;
@@ -2796,6 +3196,11 @@ function update() {
     tickCounter++;
     for (let c = 0; c < colBounce.length; c++) if (colBounce[c] > 0) colBounce[c]--;   // 落定回彈
     if (boardShakeTimer > 0) boardShakeTimer--;                                        // WILD 著陸震動
+    else boardShakeAmp = 3;
+    for (let i = cellFlashes.length - 1; i >= 0; i--) {
+        cellFlashes[i].life--;
+        if (cellFlashes[i].life <= 0) cellFlashes.splice(i, 1);
+    }
     bgMultAnimT++;                                                                     // BG 倍數動畫
     monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; }); // 閃紅／換怪淡入／徽章閃爍
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
@@ -3283,7 +3688,7 @@ function update() {
                                     effect = pickKillEffect(lvl, mx, my, canFGBG2);
                                     // forcedEffectType 不清除，留待 Lv.4 被打死時觸發
                                 } else {
-                                    effect = { type: forcedEffectType, fromX: mx, fromY: my, ...(fd[forcedEffectType] || {}) };
+                                    effect = { type: forcedEffectType, fromX: mx, fromY: my, level: lvl, ...(fd[forcedEffectType] || {}) };
                                     if (forcedEffectType === 1 && forceBigWild) { effect.big = true; forceBigWild = false; }
                                     forcedEffectType = 0;
                                     forceNoFGBG = false;
@@ -3345,9 +3750,79 @@ function update() {
         if (killEffectPhase === 'pre') {
             // 死亡切換（節奏表 0.5s）：怪物維持死亡狀態停留，之後才淡出＋光效飛行
             if (killEffectTimer >= TF(TIMING.deathSwitch)) {
-                killEffectPhase = 'flying';
+                if (isWildEffect(killEffectCurrent)) {
+                    prepareWildEffect(killEffectCurrent);
+                    killEffectPhase = 'wildSpawn';
+                } else if (isTargetBeamEffect(killEffectCurrent)) {
+                    prepareTargetBeamEffect(killEffectCurrent);
+                    killEffectPhase = 'targetPreLight';
+                } else if (isDirectScoreEffect(killEffectCurrent)) {
+                    startDirectScoreEffect(killEffectCurrent);
+                    killEffectPhase = 'coinBurst';
+                } else {
+                    killEffectPhase = 'flying';
+                }
                 killEffectTimer = 0;
             }
+        } else if (killEffectPhase === 'wildSpawn') {
+            const spawnF = TF(killEffectCurrent.big ? TIMING.bigWildSpawn : TIMING.wildSpawn);
+            if (killEffectTimer >= spawnF) {
+                killEffectPhase = 'wildFly';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'wildFly') {
+            updateWildFlyLandings(killEffectCurrent);
+            const flyF = TF(killEffectCurrent.big ? TIMING.bigWildFly : TIMING.wildFlyIn);
+            const totalF = Math.max(...killEffectCurrent.flights.map(f => f.delay + flyF), flyF);
+            if (killEffectTimer >= totalF) finishKillEffect();
+        } else if (killEffectPhase === 'targetPreLight') {
+            if (killEffectTimer >= TF(TIMING.targetPreLight)) {
+                killEffectPhase = 'beamFly';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'beamFly') {
+            updateBeamLandings(killEffectCurrent);
+            if (killEffectTimer >= targetBeamTotalFrames(killEffectCurrent)) {
+                killEffectPhase = killEffectCurrent.type === 4 ? 'clearSmoke' : 'iconShrink';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'iconShrink') {
+            const p = clamp01(killEffectTimer / TF(TIMING.iconShrink));
+            killEffectCurrent.targets.forEach(target => {
+                const gem = board[target.c] && board[target.c][target.r];
+                if (gem) gem.scale = Math.max(0, 1 - p);
+            });
+            if (killEffectTimer >= TF(TIMING.iconShrink)) {
+                replaceTargetIcons(killEffectCurrent);
+                killEffectPhase = 'newIconPop';
+                killEffectTimer = 0;
+            }
+        } else if (killEffectPhase === 'newIconPop') {
+            const p = clamp01(killEffectTimer / TF(TIMING.newIconPop));
+            const sc = Math.min(1.16, easeOutBack(p));
+            killEffectCurrent.targets.forEach(target => {
+                const gem = board[target.c] && board[target.c][target.r];
+                if (gem && gem.id !== -1) gem.scale = sc;
+            });
+            if (killEffectTimer >= TF(TIMING.newIconPop)) {
+                killEffectCurrent.targets.forEach(target => {
+                    const gem = board[target.c] && board[target.c][target.r];
+                    if (gem && gem.id !== -1) gem.scale = 1;
+                });
+                finishKillEffect();
+            }
+        } else if (killEffectPhase === 'clearSmoke') {
+            const p = clamp01(killEffectTimer / TF(TIMING.clearSmoke));
+            killEffectCurrent.targets.forEach(target => {
+                const gem = board[target.c] && board[target.c][target.r];
+                if (gem) gem.scale = Math.max(0, 1 - p);
+            });
+            if (killEffectTimer >= TF(TIMING.clearSmoke)) {
+                clearTargetIcons(killEffectCurrent);
+                finishKillEffect();
+            }
+        } else if (killEffectPhase === 'coinBurst') {
+            if (killEffectTimer >= TF(TIMING.coinBurst) + TF(TIMING.scoreFly)) finishKillEffect();
         } else if (killEffectPhase === 'flying') {
             killEffectProgress = Math.min(1, killEffectTimer / TF(TIMING.effectFly));
             if (killEffectTimer >= TF(TIMING.effectFly)) {
@@ -3401,15 +3876,7 @@ function update() {
                     }
             }
             if (killEffectTimer >= doneTicks) {
-                killEffectPhase = 'idle';
-                killEffectCurrent = null;
-                // 補入新怪獸替換已死亡的小怪（不顯示逃跑文字）
-                [1, 2, 4, 5].forEach(idx => {
-                    if (monsters[idx].isDead) respawnMonster(idx, false);
-                });
-                // 每個 kill effect 播完後先補盤，由 GRAVITY 完成時統一判斷下一個 effect
-                applyGravity();
-                currentState = STATE.GRAVITY;
+                finishKillEffect();
             }
         }
     }
