@@ -554,10 +554,22 @@ const IMG = {
 for (let i = 0; i <= 6; i++) IMG.gem[i]     = loadImg(`assets/icon_${i}.png`);
 for (let i = 0; i <= 5; i++) IMG.monIcon[i] = loadImg(`assets/mon_icon_${i}.png`);
 for (let i = 0; i <= 1; i++) IMG.bossIcon[i]= loadImg(`assets/boss_icon_${i}.png`);
-IMG.monArt.rearL  = loadImg('assets/mon_rear_l.png');   // 紅龍（左後）
-IMG.monArt.frontL = loadImg('assets/mon_front_l.png');  // 野豬（左前）
-IMG.monArt.rearR  = loadImg('assets/mon_rear_r.png');   // 三頭巨人（右後）
-IMG.monArt.frontR = loadImg('assets/mon_front_r.png');  // 亞馬遜女戰士（右前）
+// 大怪正常狀態圖（0708 更新版）
+IMG.monArt.rearL  = loadImg('assets/0708_巨龍.png');    // 紅龍（左後）
+IMG.monArt.frontL = loadImg('assets/0708_野豬.png');    // 野豬（左前）
+IMG.monArt.rearR  = loadImg('assets/0708_巨人.png');    // 三頭巨人（右後）
+IMG.monArt.frontR = loadImg('assets/0708_女戰士.png');  // 亞馬遜女戰士（右前）
+// 受擊狀態圖（受擊瞬間切換，0.3s）
+IMG.monArtHurt = {
+    rearL:  loadImg('assets/0708_巨龍_受傷.png'),
+    frontL: loadImg('assets/0708_野豬受擊.png'),
+    rearR:  loadImg('assets/0708_巨人_受傷.png'),
+    frontR: loadImg('assets/0708_女戰士_受傷.png'),
+};
+// 死亡狀態圖（僅野豬有專屬倒下圖；其餘退回受傷圖）
+IMG.monArtDeath = {
+    frontL: loadImg('assets/0708_野豬倒下.png'),
+};
 ['1_3', '5_1', '0_2'].forEach(k => IMG.card[k] = loadImg(`assets/card_${k}.png`));
 
 // 屬性 id → 寶石/頭像檔案編號（檔名編號與屬性 id 不同，需對照）
@@ -1067,6 +1079,7 @@ let killEffectCurrent = null; // 當前播放中的效果
 let killEffectPhase = 'idle'; // 'flying' | 'showing' | 'applied'
 let killEffectTimer = 0;
 let killEffectProgress = 0;
+const DEATH_HOLD_T = -1;
 let isMouseHoverSpin = false;
 let isMouseHoverAuto = false;
 let isAutoSpinning = false;
@@ -1191,6 +1204,19 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
         jackpot: 0, reward: 0,
         flashT: 0, fadeIn: TF(TIMING.respawnFade)   // 更換怪獸淡入（節奏總表 0.4s）
     };
+}
+
+// 死亡光球：屬性色光球，怪獸淡出後「留在怪獸位置」當作生成/轉換機制的發射源（不飛盤面）
+function drawDeathOrb(x, y, color, alpha) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.shadowColor = color; ctx.shadowBlur = 28;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * 0.6;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(x - 5, y - 5, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
 }
 
 function generateRandomBoard(initialLight = false) {
@@ -1747,10 +1773,30 @@ function respawnDeadSmallMonsters() {
         if (monsters[idx].isDead) respawnMonster(idx, false);
     });
 }
+function isSmallMonsterIndex(idx) {
+    return idx === 1 || idx === 2 || idx === 4 || idx === 5;
+}
+function holdMonsterDeath(monster) {
+    if (monster) monster.deathT = DEATH_HOLD_T;
+}
+function startKillSourceFade(effect) {
+    const idx = effect && effect.monIdx;
+    const monster = Number.isInteger(idx) ? monsters[idx] : null;
+    if (monster && monster.isDead) monster.deathT = TF(TIMING.deathSwitch) + 1;
+}
+function respawnKillSource(effect) {
+    const idx = effect && effect.monIdx;
+    if (Number.isInteger(idx) && isSmallMonsterIndex(idx)) {
+        if (monsters[idx] && monsters[idx].isDead) respawnMonster(idx, false);
+    } else if (pendingKillEffects.length === 0) {
+        respawnDeadSmallMonsters();
+    }
+}
 function finishKillEffect() {
+    const finishedEffect = killEffectCurrent;
     killEffectPhase = 'idle';
     killEffectCurrent = null;
-    respawnDeadSmallMonsters();
+    respawnKillSource(finishedEffect);
     applyGravity();
     currentState = STATE.GRAVITY;
 }
@@ -1905,6 +1951,7 @@ function startKillEffect(effect) {
     killEffectPhase = 'pre';   // 死亡切換停留（含灰化過渡）→ 光效飛行
     killEffectTimer = 0;
     killEffectProgress = 0;
+    startKillSourceFade(effect);
     currentState = STATE.KILL_EFFECT;
 }
 
@@ -1994,6 +2041,14 @@ function drawKillEffect() {
     if (!killEffectCurrent || killEffectPhase === 'idle') return;
     const cx = GRID_X + GRID_W / 2;
     const cy = GRID_Y + GRID_H / 2;
+
+    // 死亡光球：留在怪獸位置（fromX/fromY = 插畫中心）當生成/轉換的發射源；觸發射線時漸淡。WILD 機制不畫（WILD 本體直接生成）
+    if (killEffectCurrent.orbColor && isTargetBeamEffect(killEffectCurrent)
+        && (killEffectPhase === 'targetPreLight' || killEffectPhase === 'beamFly')) {
+        let a = 1;
+        if (killEffectPhase === 'beamFly') a = 1 - 0.55 * clamp01(killEffectTimer / Math.max(1, targetBeamTotalFrames(killEffectCurrent)));   // 射線期間漸淡
+        drawDeathOrb(killEffectCurrent.fromX, killEffectCurrent.fromY, killEffectCurrent.orbColor, a);
+    }
 
     if (killEffectPhase === 'wildSpawn') {
         drawWildSpawnEffect(killEffectCurrent);
@@ -2437,27 +2492,44 @@ function drawStatsPanel() {
 
 // === 四角大怪（背景裝飾，左後龍／右後巨人／左前豬／右前女戰士）===
 // 大怪插畫：受擊閃紅（疊乘紅色，濃度 RD 參數）＋水平震動（±hitShakeAmp px）＋換怪淡入
-function drawBigArt(img, o, m) {
+function drawBigArt(key, o, m) {
+    // 依狀態選圖：死亡→死亡圖（無則退受傷圖）／受擊→受傷圖／其餘→正常圖
+    let img = IMG.monArt[key];
+    let deathFade = 1;
+    if (m) {
+        if (m.isDead && m.deathT) {
+            img = (IMG.monArtDeath && IMG.monArtDeath[key]) || (IMG.monArtHurt && IMG.monArtHurt[key]) || IMG.monArt[key];
+            deathFade = m.deathT > 0 ? Math.max(0, m.deathT / TF(TIMING.deathSwitch)) : 1;
+        } else if (m.isDead) {
+            return;   // 已淡出消散完畢，等待換怪淡入
+        } else if (m.hurtT > 0 || (m.maxHp > 0 && m.hp > 0 && m.hp < m.maxHp * 0.5)) {
+            // 受擊瞬間，或攻擊後血量 < 50% → 持續維持受擊狀態圖；≥ 50% 則恢復待機圖
+            img = (IMG.monArtHurt && IMG.monArtHurt[key]) || IMG.monArt[key];
+        }
+    }
     if (!imgReady(img)) return;
     let dx = 0;
     if (m && m.shake > 0) dx = (Math.random() - 0.5) * 2 * TIMING.hitShakeAmp;
     ctx.save();
-    if (m && m.fadeIn > 0) ctx.globalAlpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
+    let alpha = 1;
+    if (m && m.fadeIn > 0) alpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
+    alpha *= deathFade;                                                     // 死亡淡出
+    ctx.globalAlpha = alpha;
     drawImgFit(img, o.x + dx, o.y, o.w, o.h, 'contain');
     if (m && m.flashT > 0) {   // 閃紅：紅色濾鏡疊繪一次
-        ctx.globalAlpha = TIMING.hitFlashAlpha * (m.flashT / TF(TIMING.hitFlash));
+        ctx.globalAlpha = alpha * TIMING.hitFlashAlpha * (m.flashT / TF(TIMING.hitFlash));
         ctx.filter = 'sepia(1) saturate(8) hue-rotate(-50deg) brightness(1.2)';
         drawImgFit(img, o.x + dx, o.y, o.w, o.h, 'contain');
     }
     ctx.restore();
 }
 function drawBigMonstersRear() {
-    drawBigArt(IMG.monArt.rearL, LAYOUT.bigRearL, monsters[1]);   // 紅龍 左後（side left / yIndex 1）
-    drawBigArt(IMG.monArt.rearR, LAYOUT.bigRearR, monsters[4]);   // 三頭巨人 右後（right / yIndex 1）
+    drawBigArt('rearL', LAYOUT.bigRearL, monsters[1]);   // 紅龍 左後（side left / yIndex 1）
+    drawBigArt('rearR', LAYOUT.bigRearR, monsters[4]);   // 三頭巨人 右後（right / yIndex 1）
 }
 function drawBigMonstersFront() {
-    drawBigArt(IMG.monArt.frontL, LAYOUT.bigFrontL, monsters[2]);   // 野豬 左前（left / yIndex 2）
-    drawBigArt(IMG.monArt.frontR, LAYOUT.bigFrontR, monsters[5]);   // 亞馬遜 右前（right / yIndex 2）
+    drawBigArt('frontL', LAYOUT.bigFrontL, monsters[2]);   // 野豬 左前（left / yIndex 2）
+    drawBigArt('frontR', LAYOUT.bigFrontR, monsters[5]);   // 亞馬遜 右前（right / yIndex 2）
 }
 
 // === 小怪頭像圓心（佈局錨點，drawMonsters/monsterAnchor 共用）===
@@ -2476,6 +2548,14 @@ function monsterAnchor(m) {
     const a = monUIAnchor(m);
     const barX = left ? a.x + r + gap : a.x - r - gap - barW;
     return { x: barX + barW / 2, y: a.y };
+}
+
+// === 大怪插畫中心（死亡機制／WILD／光球的原點＝「原本怪獸的位置」）===
+const MON_ART_KEY = { 1: 'bigRearL', 2: 'bigFrontL', 4: 'bigRearR', 5: 'bigFrontR' };
+function monsterArtCenter(m) {
+    const key = MON_ART_KEY[monsters.indexOf(m)];
+    const o = key && LAYOUT[key];
+    return o ? { x: o.x + o.w / 2, y: o.y + o.h / 2 } : monsterAnchor(m);   // Boss 無插畫 → 退回血條錨點
 }
 
 // === Boss（宙斯／赫拉）血量：金色飾框內專屬排版（大數字＋細血條＋徽章）===
@@ -3172,7 +3252,7 @@ function updateFlyingScores() {
             if (fs.type === 'kill') fs.y -= 0.5;
         } else if (fs.type === 'collect') {
             // 拋物線飛行（無拖尾、不使用粒子）：以進度 t 沿弧線移動，t=1 落點精準
-            fs.prog = Math.min(1, (fs.prog || 0) + 1 / TF(TIMING.energyFly));
+            fs.prog = Math.min(1, (fs.prog || 0) + 1 / (fs.flyF || TF(TIMING.energyFly)));
             const e = easeInOutQuad(fs.prog);
             fs.x = fs.sx + (fs.tx - fs.sx) * e;
             fs.y = fs.sy + (fs.ty - fs.sy) * e - Math.sin(Math.PI * fs.prog) * 80;
@@ -3224,7 +3304,7 @@ function update() {
         if (cellFlashes[i].life <= 0) cellFlashes.splice(i, 1);
     }
     bgMultAnimT++;                                                                     // BG 倍數動畫
-    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; }); // 閃紅／換怪淡入／徽章閃爍
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
@@ -3639,18 +3719,25 @@ function update() {
                         t.hp = Math.max(0, t.hp - p.overflowDamage);
                         t.shake = TF(TIMING.hitReact);
                         t.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
+                        t.hurtT = TF(TIMING.hitReact);    // 切換受擊狀態圖（0.3s）
                         // 宙斯/赫拉里程碑
                         if (t.jackpot > 0) {
                             checkBossMilestones(monsters.indexOf(t), prevHp, t.hp, p.tx, p.ty);
                         }
                         if (t.hp === 0 && !t.isDead) {
-                            t.isDead = true;
-                            let { x: mx, y: my } = monsterAnchor(t);
+                            t.isDead = true;   // 先保持死亡狀態圖；淡出改由擊殺特效 'pre' 驅動（淡出後才出機制）
+                            const artC = monsterArtCenter(t);                            // 原本怪獸的位置（插畫中心）
+                            if (t.jackpot > 0) t.deathT = TF(TIMING.deathSwitch) + TF(TIMING.effectFly);
+                            else holdMonsterDeath(t);
+                            let mx = artC.x, my = artC.y;
                             if (!t.jackpot) {
                                 const canFGBG = !isFG
                                     && !deferredKillEffects.some(e => e.type === 5 || e.type === 6)
                                     && pendingFGBG === null;
-                                deferredKillEffects.push(pickKillEffect(getMonsterLevel(t), mx, my, canFGBG));
+                                const eff = pickKillEffect(getMonsterLevel(t), mx, my, canFGBG);
+                                eff.orbColor = (ELEMENTS[t.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
+                                eff.monIdx = monsters.indexOf(t);                         // 綁定死亡怪獸→淡出與機制同步
+                                deferredKillEffects.push(eff);
                             }
                             if (t.jackpot > 0) {
                                 winScore += t.jackpot; totalScore += t.jackpot;
@@ -3673,6 +3760,7 @@ function update() {
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = TF(TIMING.hitReact);
                     p.targetMonster.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
+                    p.targetMonster.hurtT = TF(TIMING.hitReact);    // 切換受擊狀態圖（0.3s）
                     // 卡牌維持拉出至受擊結束，之後才歸位（節奏表：受擊 0.3 → 歸位 0.25）
                     if (p.cardRef) {
                         p.cardRef.isCharging = false;
@@ -3710,13 +3798,16 @@ function update() {
 
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
                         p.targetMonster.isDead = true;
+                        p.targetMonster.deathT = TF(TIMING.deathSwitch) + TF(TIMING.effectFly);   // 死亡狀態圖停留→淡出消散
+                        if (!p.targetMonster.jackpot) holdMonsterDeath(p.targetMonster);
                         let { x: omx, y: omy } = monsterAnchor(p.targetMonster);
                         let overflowDmg = p.damage - prevHp;
                         let ignoreElem = false;
                         if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); forceOverflow = false; }
                         applyOverflow(p.targetMonster.side, overflowDmg, omx, omy, p.targetMonster.elemId, ignoreElem, p.cardRef);
 
-                        let mx = omx, my = omy;
+                        const artC = monsterArtCenter(p.targetMonster);   // 原本怪獸的位置（插畫中心）
+                        let mx = artC.x, my = artC.y;
                         // 小怪才觸發盤面效果，Boss（宙斯/赫拉）不觸發
                         if (!p.targetMonster.jackpot) {
                             let effect;
@@ -3744,6 +3835,8 @@ function update() {
                                 forceNoFGBG = false;
                                 effect = pickKillEffect(lvl, mx, my, canFGBG);
                             }
+                            effect.orbColor = (ELEMENTS[p.targetMonster.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
+                            effect.monIdx = monsters.indexOf(p.targetMonster);
                             deferredKillEffects.push(effect);
                         }
 
