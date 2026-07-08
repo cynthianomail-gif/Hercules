@@ -359,7 +359,7 @@
         <div class="tune-actions">
             <button id="tuneApplySpin">套用並試轉</button>
             <button id="tuneReset">重設為預設</button>
-            <button id="tuneExport">匯出 JSON</button>
+            <button id="tuneExport">匯出全部設定</button>
             <div id="tuneStatus" aria-live="polite"></div>
         </div>
     </div>
@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'group-score-param-noplus-20260707p';
+const APP_BUILD = 'export-all-settings-20260707q';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -4127,7 +4127,8 @@ document.getElementById('tuneReset').addEventListener('click', () => {
     refreshTuneBody();
 });
 document.getElementById('tuneExport').addEventListener('click', (e) => {
-    const data = tuneTab === 'timing' ? { flow: flowMode, timing: TIMING, timeline: TIMING_START } : { layout: LAYOUT };
+    // 一次匯出完整設定（流程／節奏／甘特起點／佈局），貼回工程端即可套用為正式預設
+    const data = { version: TUNE_VERSION, build: APP_BUILD, flow: flowMode, timing: TIMING, timeline: TIMING_START, layout: LAYOUT };
     const text = JSON.stringify(data, null, 2);
     const done = () => {
         const btn = e.target;
