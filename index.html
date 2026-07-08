@@ -2049,6 +2049,85 @@ function drawKillEffect() {
         if (killEffectPhase === 'beamFly') a = 1 - 0.55 * clamp01(killEffectTimer / Math.max(1, targetBeamTotalFrames(killEffectCurrent)));   // 射線期間漸淡
         drawDeathOrb(killEffectCurrent.fromX, killEffectCurrent.fromY, killEffectCurrent.orbColor, a);
     }
+}
+
+// 宙斯 / 赫拉 傷害里程碑檢查
+function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
+    let m = monsters[monIdx];
+    if (!m || !m.jackpot) return;
+    if (!bossHitMilestones[monIdx]) bossHitMilestones[monIdx] = new Set();
+    let triggered = bossHitMilestones[monIdx];
+    BOSS_MILESTONES.forEach(ms => {
+        let threshold = m.maxHp - ms.hpLost;
+        if (prevHp > threshold && newHp <= threshold && !triggered.has(ms.hpLost)) {
+            triggered.add(ms.hpLost);
+            let mult   = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
+            let reward = betAmount * mult;
+            winScore  += reward;
+            totalScore += reward;
+            let coinCount = ms.hpLost <= 15 ? 14 : ms.hpLost <= 25 ? 22 : 34;
+            spawnCoinBurst(bossX, bossY, coinCount);
+            // 大字停留 80 幀後飛往 WIN 欄
+            flyingScores.push({
+                type: 'bossHit',
+                x: bossX, y: bossY - 10,
+                tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
+                text: `🪙 +${reward}`,
+                color: '#ffd700',
+                life: 150, delay: 85,
+            });
+        }
+    });
+}
+
+function drawTransition() {
+    if (transitionPhase === 'idle' || transitionAlpha <= 0) return;
+
+    // 全螢幕背景遮罩
+    ctx.globalAlpha = transitionAlpha;
+    ctx.fillStyle = transitionBgColor;
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // 光暈裝飾圓
+    ctx.globalAlpha = transitionAlpha * 0.25;
+    ctx.beginPath();
+    ctx.arc(640, 340, 260, 0, Math.PI * 2);
+    ctx.fillStyle = transitionAccentColor;
+    ctx.fill();
+
+    // 主標題
+    ctx.globalAlpha = transitionAlpha;
+    ctx.shadowColor = transitionAccentColor;
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = transitionAccentColor;
+    ctx.font = 'bold 80px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(transitionText, 640, 320);
+
+    // 副標題
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(transitionSubText, 640, 410);
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'alphabetic';
+}
+
+function drawKillEffect() {
+    if (!killEffectCurrent || killEffectPhase === 'idle') return;
+    const cx = GRID_X + GRID_W / 2;
+    const cy = GRID_Y + GRID_H / 2;
+
+    // 死亡光球：留在怪獸位置（fromX/fromY = 插畫中心）當生成/轉換的發射源；觸發射線時漸淡。WILD 機制不畫（WILD 本體直接生成）
+    if (killEffectCurrent.orbColor && isTargetBeamEffect(killEffectCurrent)
+        && (killEffectPhase === 'targetPreLight' || killEffectPhase === 'beamFly')) {
+        let a = 1;
+        if (killEffectPhase === 'beamFly') a = 1 - 0.55 * clamp01(killEffectTimer / Math.max(1, targetBeamTotalFrames(killEffectCurrent)));   // 射線期間漸淡
+        drawDeathOrb(killEffectCurrent.fromX, killEffectCurrent.fromY, killEffectCurrent.orbColor, a);
+    }
 
     if (killEffectPhase === 'wildSpawn') {
         drawWildSpawnEffect(killEffectCurrent);
