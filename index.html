@@ -1417,16 +1417,28 @@ function startPopWave(groups) {
     // 依組首位置排序（左到右、上到下）
     groups.forEach(g => { g.order = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
     groups.sort((a, b) => a.order - b.order);
-    const scoreF = TF(TIMING.scorePerIcon);   // 每組亮起佔用
-    const gapF   = TF(TIMING.groupGap);        // 消散時組與組錯落
-    const allLitF = groups.length * scoreF;    // 全部組亮起所需總時間
+    const scoreF = TF(TIMING.scorePerIcon);   // 每組亮起→消散前的得分演繹停留
+    const gapF   = TF(TIMING.groupGap);        // 組與組輪流錯落（前一組能量起飛時，下一組開始消散）
+    // 逐格歸屬：WILD 可同時屬多組，記錄其「參與的最後一組」→ 只在最後一組時才真正消散（WILD 保留）
+    const cellGroups = new Map();
+    groups.forEach((g, i) => g.cells.forEach(c => {
+        const k = c.c + ',' + c.r;
+        if (!cellGroups.has(k)) cellGroups.set(k, []);
+        cellGroups.get(k).push(i);
+    }));
     groups.forEach((g, i) => {
-        g.lightF    = i * scoreF;               // 第 i 組亮起時點
-        g.dissolveF = allLitF + i * gapF;       // 全亮之後才依序消散
+        g.lightF    = i * gapF;                 // 第 i 組亮起時點（逐組錯落）
+        g.dissolveF = i * gapF + scoreF;        // 亮起停留 scoreF 後，該組才開始消散
         g.lit = false; g.resolved = false;
+        g.dissolveCells = [];                   // 本組負責消散的格（含輪到最後一組的 WILD）
+        g.emitWildCells = [];                   // 本組內「保留的 WILD」：射能量但本體不消
         g.cells.forEach(cell => {
+            const k = cell.c + ',' + cell.r;
+            const mem = cellGroups.get(k);
+            const lastIdx = mem[mem.length - 1];   // 升序 push，末項 = 參與的最後一組
+            if (lastIdx === i) g.dissolveCells.push(cell); else g.emitWildCells.push(cell);
             const gem = board[cell.c][cell.r];
-            gem.isMatched = true; gem.scale = 1; gem.lit = false; gem.litAt = 0;
+            gem.isMatched = true; gem.scale = 1; gem.lit = false; gem.litAt = 0; gem.canDissolve = false;
         });
     });
     currentMatches = groups;
@@ -3074,9 +3086,15 @@ function drawEffects() {
     flyingScores.forEach(fs => {
         ctx.textAlign = 'center';
         if (fs.type === 'collect') {
+            // 能量：屬性色能量球（拋物線、無拖尾、不使用粒子）
             ctx.globalAlpha = Math.min(1, fs.life / 20);
-            ctx.font = 'bold 22px sans-serif';
-            ctx.fillText(fs.text, fs.x, fs.y);
+            ctx.fillStyle = fs.color;
+            ctx.shadowColor = fs.color; ctx.shadowBlur = 14;
+            ctx.beginPath(); ctx.arc(fs.x, fs.y, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = Math.min(1, fs.life / 20) * 0.6;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(fs.x - 3, fs.y - 3, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
         } else if (fs.type === 'bossHit') {
             const holding = fs.delay > 0;
             ctx.globalAlpha  = holding ? 1 : Math.min(1, fs.life / 25);
@@ -3152,10 +3170,14 @@ function updateFlyingScores() {
         if (fs.delay > 0) {
             fs.delay--;
             if (fs.type === 'kill') fs.y -= 0.5;
+        } else if (fs.type === 'collect') {
+            // 拋物線飛行（無拖尾、不使用粒子）：以進度 t 沿弧線移動，t=1 落點精準
+            fs.prog = Math.min(1, (fs.prog || 0) + 1 / TF(TIMING.energyFly));
+            const e = easeInOutQuad(fs.prog);
+            fs.x = fs.sx + (fs.tx - fs.sx) * e;
+            fs.y = fs.sy + (fs.ty - fs.sy) * e - Math.sin(Math.PI * fs.prog) * 80;
         } else {
-            const k = fs.type === 'collect' ? 1 - Math.pow(0.02, 1 / TF(TIMING.energyFly))
-                    : fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly))
-                    : 0.15;
+            const k = fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly)) : 0.15;
             fs.x += (fs.tx - fs.x) * k;
             fs.y += (fs.ty - fs.y) * k;
         }
@@ -3382,7 +3404,7 @@ function update() {
         }
 
     } else if (currentState === STATE.POPPING) {
-        // 兩階段（03/04 定案）：所有組先「依序亮起」（全亮）→ 再「依序消散」（每組消散→能量飛卡→ATK更新）
+        // 多組：一組一組輪流演完整一輪（亮起得分→消散→能量飛卡→ATK更新），組間錯開 groupGap
         popDimTimer++;
         popPhaseT++;
         updatePendingCardUpdates();
@@ -3415,6 +3437,8 @@ function update() {
             if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
+                // 標記本組要消散的格；保留的 WILD（非最後一組）不含在內 → 本體不消
+                g.dissolveCells.forEach(cell => { board[cell.c][cell.r].canDissolve = true; });
 
                 let atkCardIdx = cards.findIndex(c => c.elemId === g.elemId);
                 if (atkCardIdx !== -1) {
@@ -3433,13 +3457,31 @@ function update() {
                         const cGap = cards.length === 6 ? 8 : 20;
                         const cTotalW = cards.length * cW + (cards.length - 1) * cGap;
                         let cardCX = LAYOUT.cards.x - cTotalW / 2 + cardIdx * (cW + cGap) + cW / 2;
+                        const cardTY = LAYOUT.cards.y + 15;
+                        const elemColor = ELEMENTS[g.elemId].color, elemIcon = ELEMENTS[g.elemId].icon;
+                        const energyLife = TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20;
+                        const energyDelay = TF(TIMING.popDissolve);
+                        // 本組主能量（自整組中心飛出）
                         let startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
                         let startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
                         flyingScores.push({
-                            type: 'collect', x: startCX, y: startCY,
-                            tx: cardCX, ty: LAYOUT.cards.y + 15,
-                            text: ELEMENTS[g.elemId].icon, color: ELEMENTS[g.elemId].color,
-                            life: TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20, delay: TF(TIMING.popDissolve)
+                            type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
+                            tx: cardCX, ty: cardTY,
+                            color: elemColor,
+                            life: energyLife, delay: energyDelay
+                        });
+                        // WILD 保留：本組內尚未輪到「最後一組」的 WILD，原地各射 1 顆該組色能量（本體不消）
+                        g.emitWildCells.forEach(cell => {
+                            const wx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2;
+                            const wy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
+                            flyingScores.push({
+                                type: 'collect', x: wx, y: wy, sx: wx, sy: wy, prog: 0,
+                                tx: cardCX, ty: cardTY,
+                                color: elemColor,
+                                life: energyLife, delay: energyDelay
+                            });
+                            // 射能量回饋：保留的 WILD 重新高亮，維持「已結算保留」狀態
+                            board[cell.c][cell.r].lit = true; board[cell.c][cell.r].litAt = popPhaseT;
                         });
                     }
                 }
@@ -3447,16 +3489,18 @@ function update() {
             }
         });
 
-        // 消散動畫：已 resolved 的組逐幀縮小其格子
+        // 消散動畫：只縮小「已標記可消散」的格；保留的 WILD 不縮（維持高亮），待其最後一組才消散
         let allDone = true;
         currentMatches.forEach(g => {
             if (!g.resolved) { allDone = false; return; }
-            g.cells.forEach(cell => {
+            g.dissolveCells.forEach(cell => {
                 const gem = board[cell.c][cell.r];
-                if (gem.isMatched) {
+                if (gem.isMatched && gem.canDissolve) {
                     gem.scale -= dissolveStep;
                     if (gem.scale > 0) allDone = false;
-                    else { gem.id = -1; gem.isMatched = false; gem.lit = false; }
+                    else { gem.id = -1; gem.isMatched = false; gem.lit = false; gem.canDissolve = false; }
+                } else if (gem.isMatched) {
+                    allDone = false;   // 尚未輪到（等待其參與的最後一組）
                 }
             });
         });
