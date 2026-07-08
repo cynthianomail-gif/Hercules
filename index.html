@@ -482,7 +482,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const APP_BUILD = 'export-all-settings-20260707q';
+const APP_BUILD = 'multigroup-light-all-then-dissolve-20260707r';
 console.info('Hercules demo build:', APP_BUILD);
 
 // === 視窗自適應縮放 (Auto-Scaling) ===
@@ -1361,65 +1361,60 @@ function applyGravity() {
     }
 }
 
-function prepareNextPop() {
-    // 找第一個仍有效的組
-    let first = null;
-    while (matchQueue.length > 0 && !first) {
-        let candidate = matchQueue.shift();
-        candidate.cells = candidate.cells.filter(cell => board[cell.c][cell.r].id !== -1);
-        candidate.count = candidate.cells.length;
-        if (candidate.count >= 3) first = candidate;
-    }
-
-    if (!first) {
-        if (isBG || flowMode === 'B') {
-            // BG：無卡牌攻擊；B案（一次結算）：連鎖期間不攻擊、ATK 跨波累積，先補盤繼續連鎖
-            applyGravity();
-            currentState = STATE.GRAVITY;
+// 把 findMatches 的橫/縱連線段，合併成「相同屬性且相連」的獨立組（L/T 形視為一組）。
+// WILD 跨不同屬性連線時不合併 → 該 WILD 分屬多組（規格 03/04）。
+function buildWaveGroups() {
+    const runs = findMatches().filter(run => run.cells.length >= 3);
+    const groups = [];
+    runs.forEach(run => {
+        const keyset = new Set(run.cells.map(c => c.c + ',' + c.r));
+        // 找可合併的既有組：同屬性且有共用格子
+        let target = groups.find(g => g.elemId === run.elemId && run.cells.some(c => g.keyset.has(c.c + ',' + c.r)));
+        if (target) {
+            run.cells.forEach(c => { const k = c.c + ',' + c.r; if (!target.keyset.has(k)) { target.keyset.add(k); target.cells.push(c); } });
         } else {
-            currentState = STATE.EVALUATING;
+            groups.push({ elemId: run.elemId, cells: [...run.cells], keyset });
         }
-        return;
+    });
+    // 傳遞性合併（A-B、B-C 相連 → A-C 同組）
+    let merged = true;
+    while (merged) {
+        merged = false;
+        for (let i = 0; i < groups.length && !merged; i++)
+            for (let j = i + 1; j < groups.length && !merged; j++)
+                if (groups[i].elemId === groups[j].elemId && [...groups[j].keyset].some(k => groups[i].keyset.has(k))) {
+                    groups[j].cells.forEach(c => { const k = c.c + ',' + c.r; if (!groups[i].keyset.has(k)) { groups[i].keyset.add(k); groups[i].cells.push(c); } });
+                    groups.splice(j, 1); merged = true;
+                }
     }
+    groups.forEach(g => { g.count = g.cells.length; });
+    return groups;
+}
 
-    // 偵測 L 形：找剩餘隊列中與 first 共用格子的組，批次同時消除
-    let firstKeys = new Set(first.cells.map(c => `${c.c},${c.r}`));
-    let batch = [first];
-    let leftovers = [];
-    while (matchQueue.length > 0) {
-        let next = matchQueue.shift();
-        next.cells = next.cells.filter(cell => board[cell.c][cell.r].id !== -1);
-        next.count = next.cells.length;
-        if (next.cells.some(c => firstKeys.has(`${c.c},${c.r}`))) {
-            // 共用格子 → 同批次同時消除
-            if (next.count >= 1) batch.push(next);
-        } else if (next.count >= 3) {
-            leftovers.push(next);
-        }
-    }
-    matchQueue.unshift(...leftovers);
-
-    // 標記所有批次格子（共用格子只標記一次），L/T 形合計顆數合併為一組
-    let marked = new Set();
-    let mergedCells = [];
-    batch.forEach(m => m.cells.forEach(cell => {
-        let key = `${cell.c},${cell.r}`;
-        if (!marked.has(key)) {
-            marked.add(key);
-            board[cell.c][cell.r].isMatched = true;
-            mergedCells.push(cell);
-        }
-    }));
-
-    currentMatches = [{ elemId: batch[0].elemId, cells: mergedCells, count: mergedCells.length }];
+// 開始一波消除：所有組先依序亮起（全亮）→ 再依序消散（規格 03/04 定案）
+function startPopWave(groups) {
+    // 依組首位置排序（左到右、上到下）
+    groups.forEach(g => { g.order = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
+    groups.sort((a, b) => a.order - b.order);
+    const scoreF = TF(TIMING.scorePerIcon);   // 每組亮起佔用
+    const gapF   = TF(TIMING.groupGap);        // 消散時組與組錯落
+    const allLitF = groups.length * scoreF;    // 全部組亮起所需總時間
+    groups.forEach((g, i) => {
+        g.lightF    = i * scoreF;               // 第 i 組亮起時點
+        g.dissolveF = allLitF + i * gapF;       // 全亮之後才依序消散
+        g.lit = false; g.resolved = false;
+        g.cells.forEach(cell => {
+            const gem = board[cell.c][cell.r];
+            gem.isMatched = true; gem.scale = 1; gem.lit = false; gem.litAt = 0;
+        });
+    });
+    currentMatches = groups;
     currentState = STATE.POPPING;
     popWaitTimer = 0;
-    popPhaseT = 0;          // 消除相位時鐘歸零（甘特圖起點皆相對此）
+    popPhaseT = 0;
     popResolved = false;
-    // 得分演繹：同一組連線圖示一起亮，不再用「圖示數 × 時長」逐顆排隊。
-    mergedCells.forEach(cell => { board[cell.c][cell.r].lightAt = 0; });
-    popScoreTotal = TF(TIMING.scorePerIcon);
-    popScoreTimer = popScoreTotal;
+    popScoreTotal = scoreF;
+    popScoreTimer = scoreF;
 }
 
 // === 溢出傷害：找相同屬性的目標（不限同側），光球抵達才扣血 ===
@@ -1927,11 +1922,10 @@ function triggerSkip() {
             fromBoard: board.map(col => col.map(cell => cell.yOffset)),
             oldFrom: spinOldDrops.slice()
         };
-    } else if (currentState === STATE.POPPING && !popResolved) {
-        // 跳過2：直接推進相位到消散開始（略過壓暗/得分演繹的等待）
-        const scoreEndF = TF(TS('scorePerIcon')) + popScoreTotal;
-        const dissolveStartF = Math.max(TF(TS('popDissolve')), scoreEndF);
-        popPhaseT = Math.max(popPhaseT, dissolveStartF);
+    } else if (currentState === STATE.POPPING && currentMatches.length) {
+        // 跳過2：直接推進相位到最後一組的消散開始（略過亮起/等待，仍保留消散→能量→ATK）
+        const lastDissolveF = Math.max(...currentMatches.map(g => g.dissolveF || 0));
+        popPhaseT = Math.max(popPhaseT, lastDissolveF);
     } else if (currentState === STATE.KILL_EFFECT && killEffectCurrent
         && killEffectCurrent.type !== 5 && killEffectCurrent.type !== 6 && killEffectCurrent.type !== 9) {
         killEffectTimer = 100000;   // 直接推進到本階段結束
@@ -2423,10 +2417,6 @@ function drawGrid() {
         ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     }
 
-    // 得分框亮起：相位到達得分起點後開始（相對甘特圖 scorePerIcon 起點）
-    const popScoreStartF = TF(TS('scorePerIcon'));
-    const popScoreActive = currentState !== STATE.POPPING || popPhaseT >= popScoreStartF;
-    const popElapsed = Math.max(0, popPhaseT - popScoreStartF);   // 得分演繹經過幀數（同組同步亮起）
     function drawGem(c, r, gem, extraY = 0) {
         let currentYOffset = (colOffsets[c] || 0) + gem.yOffset + extraY;
         let x = GRID_X + c * GEM_SIZE;
@@ -2437,10 +2427,10 @@ function drawGrid() {
         const maxS = GEM_SIZE - pad * 2;
         let s = maxS * gem.scale;
 
-        // 得分框亮起：同組圖示同步高亮＋震動，時間到後才消散
-        const lit = popScoreActive && gem.isMatched && popElapsed >= (gem.lightAt || 0);
+        // 得分框亮起：該組亮起後高亮＋亮起瞬間輕縮放/震動（每組各自的 litAt）
+        const lit = gem.isMatched && gem.lit;
         if (lit) {
-            const sinceLit = popElapsed - (gem.lightAt || 0);
+            const sinceLit = popPhaseT - (gem.litAt || 0);
             const pulseF = Math.max(1, Math.round(TIMING.scorePerIcon * 0.5 * 60));
             if (sinceLit < pulseF) {
                 s *= 1 + 0.1 * Math.sin(Math.PI * (sinceLit / pulseF));   // 亮起瞬間輕縮放
@@ -2504,12 +2494,8 @@ function drawGrid() {
     }
 
     // 得分圖示不壓暗（細節表 #2）：當前批次（isMatched）＋排隊中的後續連線批次都保持亮度
-    let brightSet = null;
-    if (currentState === STATE.POPPING && matchQueue.length > 0) {
-        brightSet = new Set();
-        matchQueue.forEach(m => m.cells.forEach(cell => brightSet.add(cell.c + ',' + cell.r)));
-    }
-    const isBright = (c, r, gem) => gem.isMatched || (brightSet !== null && brightSet.has(c + ',' + r));
+    // 亮起中的得分格提升層級（未亮起的等待組仍在壓暗層）
+    const isBright = (c, r, gem) => gem.isMatched && gem.lit;
 
     // 第一層：未得分格（會被壓暗）
     for (let c = 0; c < COLS; c++)
@@ -2961,10 +2947,9 @@ function update() {
     } else if (currentState === STATE.CHECKING) {
         // 盤間停頓（節奏表）：補盤後停頓再判定下一次連線
         if (checkPauseTimer > 0) { checkPauseTimer--; return; }
-        let matchedGroups = findMatches();
-        if (matchedGroups.length > 0) {
-            matchQueue = [...matchedGroups];
-            prepareNextPop();
+        let waveGroups = buildWaveGroups();
+        if (waveGroups.length > 0) {
+            startPopWave(waveGroups);
         } else {
             // B案（一次結算）：連鎖確定結束 → 依序觸發所有充能卡牌（B-05）
             // 攻擊後的擊殺機制若改盤形成新連線，會回到 CHECKING 開新循環（B-07）
@@ -2992,110 +2977,89 @@ function update() {
         }
 
     } else if (currentState === STATE.POPPING) {
-        // 消除相位時鐘（絕對起點，對齊甘特圖）：壓暗→得分演繹→消散→能量飛卡→數字更新
+        // 兩階段（03/04 定案）：所有組先「依序亮起」（全亮）→ 再「依序消散」（每組消散→能量飛卡→ATK更新）
         popDimTimer++;
         popPhaseT++;
+        updatePendingCardUpdates();
+        updateFlyingScores();
 
-        const scoreStartF    = TF(TS('scorePerIcon'));
-        const scoreEndF      = scoreStartF + popScoreTotal;
-        const dissolveStartF = Math.max(TF(TS('popDissolve')), scoreEndF);   // 得分演繹結束後才消散（安全夾）
-        const energyStartF   = TF(TS('energyFly'));
-        const atkStartF      = TF(TS('atkUpdate'));
-        const phaseEndF      = Math.max(dissolveStartF + TF(TIMING.popDissolve),
-                                        energyStartF + TF(TIMING.energyFly),
-                                        atkStartF + TF(TIMING.atkUpdate));
+        const dissolveStep = 1 / TF(TIMING.popDissolve);
 
-        // 尚未到消散時點：圖示保持亮（得分演繹中）。飛行物/卡牌更新仍推進（每幀一次），相位前進
-        if (popPhaseT < dissolveStartF) {
-            updatePendingCardUpdates();
-            updateFlyingScores();
-            return;
-        }
-
-        // 消散起點的同一幀結算（得分、能量飛卡、數字更新皆照甘特圖絕對起點排程），只做一次
-        if (!popResolved) {
-            popResolved = true;
-            if (!hasHitThisSpin) { hasHitThisSpin = true; stats.hits++; }
-
-            currentMatches.forEach((match, mi) => {
-                let { elemId, count } = match;
-                matchHistory.push({ elemId, count });
-
-                let atkCardIdx = cards.findIndex(c => c.elemId === elemId);
-                if (atkCardIdx !== -1) {
-                    let _c = cards[atkCardIdx];
-                    let a = computeAttack(elemId, count, _c.level, forceCrit && elemId !== 1 && elemId !== 2);
-                    if (a.isCrit && forceCrit) forceCrit = false;
-                    pendingCardUpdates.push({
-                        delay: Math.max(0, atkStartF - dissolveStartF),   // 數字更新：等能量飛抵才更新
-                        card: _c,
-                        damage: a.damage,
-                        isCrit: a.isCrit,
-                        effectLabel: a.effectLabel || ''
-                    });
-                }
-
-                let score = getScore(count, elemId);
+        // 階段1：各組到 lightF 時亮起＋顯示該組得分數字＋計分（一次）
+        currentMatches.forEach(g => {
+            if (!g.lit && popPhaseT >= g.lightF) {
+                g.lit = true;
+                if (!hasHitThisSpin) { hasHitThisSpin = true; stats.hits++; }
+                g.cells.forEach(cell => { const gem = board[cell.c][cell.r]; gem.lit = true; gem.litAt = popPhaseT; });
+                const score = getScore(g.count, g.elemId);
                 winScore += score; totalScore += score;
-
-                // 得分數字以「組」為單位顯示於該組中央、放大彈出（03 定案）
-                const gcx = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
-                const gcy = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
+                const gcx = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
+                const gcy = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
                 const scoreLabel = isBG ? `×${getBGMultiplier()}｜${score}` : `${score}`;
                 const scorePopLife = TF(TIMING.scorePop);
                 if (showScorePopup) scoreTexts.push({
-                    x: gcx, y: gcy,
-                    text: scoreLabel,
+                    x: gcx, y: gcy, text: scoreLabel,
                     color: isBG ? '#fde047' : '#ffffff',
                     fontSize: 40, life: scorePopLife, life0: scorePopLife, pop: true, fixed: true
                 });
+            }
+        });
 
-                // 寶石飛向對應卡片（BG 無卡牌跳過；FG 使用6卡版面）
+        // 階段2：各組到 dissolveF 時開始消散＋能量飛卡＋ATK更新（一次）
+        currentMatches.forEach(g => {
+            if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
+                g.resolved = true;
+                matchHistory.push({ elemId: g.elemId, count: g.count });
+
+                let atkCardIdx = cards.findIndex(c => c.elemId === g.elemId);
+                if (atkCardIdx !== -1) {
+                    let _c = cards[atkCardIdx];
+                    let a = computeAttack(g.elemId, g.count, _c.level, forceCrit && g.elemId !== 1 && g.elemId !== 2);
+                    if (a.isCrit && forceCrit) forceCrit = false;
+                    pendingCardUpdates.push({
+                        delay: TF(TIMING.popDissolve) + TF(TIMING.energyFly),   // 消散→能量飛抵後才更新數字
+                        card: _c, damage: a.damage, isCrit: a.isCrit, effectLabel: a.effectLabel || ''
+                    });
+                }
                 if (!isBG) {
-                    let cardIdx = cards.findIndex(c => c.elemId === elemId);
+                    let cardIdx = cards.findIndex(c => c.elemId === g.elemId);
                     if (cardIdx !== -1) {
                         const cW = cards.length === 6 ? 85 : 140;
                         const cGap = cards.length === 6 ? 8 : 20;
                         const cTotalW = cards.length * cW + (cards.length - 1) * cGap;
                         let cardCX = LAYOUT.cards.x - cTotalW / 2 + cardIdx * (cW + cGap) + cW / 2;
-                        let startCX = match.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
-                        let startCY = match.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / match.cells.length;
-                        const flyDelay = Math.max(0, energyStartF - dissolveStartF) + mi * 3;   // 能量飛卡：相對消散起點
+                        let startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
+                        let startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
                         flyingScores.push({
                             type: 'collect', x: startCX, y: startCY,
                             tx: cardCX, ty: LAYOUT.cards.y + 15,
-                            text: ELEMENTS[elemId].icon, color: ELEMENTS[elemId].color,
-                            life: flyDelay + TF(TIMING.energyFly) + 20, delay: flyDelay
+                            text: ELEMENTS[g.elemId].icon, color: ELEMENTS[g.elemId].color,
+                            life: TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20, delay: TF(TIMING.popDissolve)
                         });
                     }
                 }
-            });
-
-            // BG：每輪消除後倍率遞增一級（觸發倍數更新演繹：舊淡出→新飛入→縮放）
-            if (isBG) {
-                bgMultPrev = getBGMultiplier();
-                bgMultiplierIndex++;
-                bgMultAnimT = 0;
+                if (isBG) { bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0; }
             }
-        }
+        });
 
-        // 消散動畫（到達消散起點後逐幀縮小 isMatched 格）
-        let allShrunk = true;
-        const dissolveStep = 1 / TF(TIMING.popDissolve);
-        for (let c = 0; c < COLS; c++) {
-            for (let r = 0; r < ROWS; r++) {
-                let gem = board[c][r];
+        // 消散動畫：已 resolved 的組逐幀縮小其格子
+        let allDone = true;
+        currentMatches.forEach(g => {
+            if (!g.resolved) { allDone = false; return; }
+            g.cells.forEach(cell => {
+                const gem = board[cell.c][cell.r];
                 if (gem.isMatched) {
                     gem.scale -= dissolveStep;
-                    if (gem.scale > 0) allShrunk = false;
-                    else { gem.id = -1; gem.isMatched = false; }
+                    if (gem.scale > 0) allDone = false;
+                    else { gem.id = -1; gem.isMatched = false; gem.lit = false; }
                 }
-            }
-        }
+            });
+        });
 
-        // 相位跑完＋消散完＋卡牌數字更新排空 → 接下一批
-        if (allShrunk && popPhaseT >= phaseEndF && pendingCardUpdates.length === 0) {
-            prepareNextPop();
+        // 全部組亮起→消散完畢＋卡牌數字更新排空 → 進入攻擊（A）或補盤（B/BG）
+        if (allDone && pendingCardUpdates.length === 0) {
+            if (isBG || flowMode === 'B') { applyGravity(); currentState = STATE.GRAVITY; }
+            else currentState = STATE.EVALUATING;
         }
 
     } else if (currentState === STATE.GRAVITY) {
