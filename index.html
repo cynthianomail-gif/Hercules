@@ -654,62 +654,63 @@ function rgba(hex, alpha) {
 // 預設值對齊「節奏表 v4」＋「演繹節奏總表」＋「演出細節定義表」（海克力斯_260706_新增視覺流程v4_4.xlsx）
 const DEFAULT_TIMING = {
     // 掉落（本作為圖示掉落式・同天使奧丁：清場 → 7 輪同時啟動掉入、依序落定）
-    spinClear:        0.25,  // 舊版保留欄位：清場速度已改由 spinDropIn 統一控制
-    spinDropIn:       0.30,  // 每欄圖示離場/掉入時長（舊圖示離開與新圖示落下共用）
-    firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s；即「何時落定」）
-    reelStopInterval: 0.05,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.05 = 1.6s）
-    landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
+    spinClear:        0.25,  // 舊圖示掉出畫面（清場）時長（v10 起與新圖示掉入分拆控制）
+    spinDropIn:       0.30,  // 新圖示掉入時長（每欄）
+    firstReelStop:    1.40,  // 第 1 輪啟動-落定（即「何時落定」）
+    reelStopInterval: 0.05,  // 每輪落定間隔（第7輪 = 1.4 + 6×0.05 = 1.7s）
+    landBounce:       0.19,  // 落定回彈（squash 約5%，細節表：可做可不做）
     skipStop:         0.30,  // 跳過1（定案）：下落期間點擊，全輪齊停落定
-    interSpinPause:   0.20,  // 局間停頓・無連線（停頓三檔定案）
-    winSpinPause:     0.20,  // 局間停頓・有得分（停頓三檔定案）
-    interBoardPause:  0.10,  // 連鎖間停頓（停頓三檔定案：連鎖越打越順）
+    interSpinPause:   0.10,  // 局間停頓・無連線（停頓三檔定案）
+    winSpinPause:     0.10,  // 局間停頓・有得分（停頓三檔定案）
+    interBoardPause:  0.05,  // 連鎖間停頓（停頓三檔定案：連鎖越打越順）
     // 消除／得分
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
-    scorePerIcon:     0.45,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
-    scorePop:         0.70,  // 得分數字（該組中央）彈出＋停留時長
-    groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
+    scorePerIcon:     0.80,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
+    scorePop:         0.80,  // 得分數字（該組中央）彈出＋停留時長
+    groupGap:         0.50,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
     popDissolve:      0.30,  // 得分圖示消散（化為能量）
-    energyFly:        0.65,  // 能量飛向卡牌攻擊力圓圈
+    energyFly:        0.75,  // 能量飛向卡牌攻擊力數字
     // 補盤
-    refillPerCell:    0.10,  // 補盤掉落每格時間（總長 = 0.10 × 落下格數）
-    refillStagger:    0.05,  // 補盤每欄錯落
+    refillPerCell:    0.15,  // 補盤掉落每格時間（總長 = 每格時間 × 落下格數）
+    refillStagger:    0.10,  // 補盤每欄錯落
     // 卡牌攻擊（v4.6 定案：不射光束、不撞擊，直接於怪物上出受擊特效）
     atkUpdate:        0.20,  // 攻擊力數字更新（能量抵達後，數字放大 1.3 倍縮回）
     atkTier2Mult:     3,     // ATK 達卡面初始值 ×N → 數字強度2（藍字外框），非時間值
     atkTier3Mult:     5,     // ATK 達卡面初始值 ×N → 數字強度3（紅字外框），非時間值
-    cardPullUp:       0.60,  // 卡牌上拉
+    cardPullUp:       0.80,  // 卡牌上拉
     cardPullDist:     70,    // 卡牌上拉幅度（px，定案：露出約 2/3 牌面）
-    badgeFlash:       0.60,  // 觸發時卡牌與怪物屬性徽章同步閃爍 2 次
-    attackDim:        0.15,  // 卡牌觸發時盤面／他卡壓暗
-    cardGap:          0.50,  // 多卡觸發：卡與卡攻擊間隔
-    cardReturn:       0.20,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
+    badgeFlash:       0.80,  // 觸發時卡牌與怪物屬性徽章同步閃爍 2 次
+    attackDim:        0.25,  // 卡牌觸發時盤面／他卡壓暗
+    cardGap:          0.55,  // 多卡觸發：卡與卡攻擊間隔
+    cardReturn:       0.30,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
     // 受擊／擊殺
-    hitReact:         0.40,  // 受擊+血量（血條位移）
-    hitFlash:         0.35,  // 受擊閃紅（本體疊乘紅色，1 次）
+    hitReact:         0.50,  // 受擊+血量（血條位移）
+    hitFlash:         0.45,  // 受擊閃紅（本體疊乘紅色，1 次）
     hitFlashAlpha:    0.50,  // 閃紅濃度 0~1（細節表：疊乘紅色50%，RD 參數）
     hitShakeAmp:      4,     // 受擊震動幅度（±px，細節表 ±4px，RD 參數）
     hitTiers:         3,     // 受擊特效分級階數（依攻擊數值區間，至少3階），非時間值
     deathSwitch:      0.50,  // 死亡切換（含灰化過渡）
-    effectFly:        0.40,  // 怪物淡出＋機制光效飛向盤面
-    effectShow:       0.40,  // 機制展示（盤面遮罩＋機制名稱）
+    effectFly:        0.50,  // 怪物淡出＋機制光效飛向盤面
+    effectShow:       0.50,  // 機制展示（盤面遮罩＋機制名稱）
     effectDimAlpha:   0.70,  // 機制展示遮罩不透明度 0~1（細節表：壓黑約70%，RD 參數）
     respawnFade:      0.40,  // 更換怪獸淡入
     fgbgCollect:      0.40,  // LV4 擊殺：FG/BG 獎勵圖示飛入 UI 收集欄（11-2 新定案）
     // WILD／機制
-    wildSpawn:        0.40,  // WILD 於原座標生成
-    wildFlyIn:        0.40,  // WILD 飛入（每顆）
-    wildStagger:      0.10,  // WILD 每 +1 顆飛入錯落
+    wildSpawn:        0.50,  // WILD 於原座標生成
+    wildFlyIn:        0.50,  // WILD 飛入（每顆）
+    wildStagger:      0.15,  // WILD 每 +1 顆飛入錯落
     wildShake:        0.15,  // WILD 著陸盤面震動
-    bigWildSpawn:     0.30,  // 巨型 WILD 生成
-    bigWildFly:       0.40,  // 巨型 WILD 飛入
-    bigWildShake:     0.25,  // 巨型 WILD 著陸震動
-    targetPreLight:   0.20,  // 生成／轉換／清除：目標格預先亮起（12-1-3~5）
-    beamFly:          0.30,  // 生成／轉換／清除：能量光束飛往盤面
-    beamStagger:      0.05,  // 多道光束錯落
+    bigWildSpawn:     0.40,  // 巨型 WILD 生成
+    bigWildFly:       0.50,  // 巨型 WILD 飛入
+    bigWildShake:     0.30,  // 巨型 WILD 著陸震動
+    targetPreLight:   0.25,  // 生成／轉換／清除：目標格預先亮起（12-1-3~5）
+    beamFly:          0.35,  // 生成／轉換／清除：能量光束飛往盤面
+    beamStagger:      0.10,  // 多道光束錯落
     iconShrink:       0.15,  // 轉換：原圖示縮小消失
     newIconPop:       0.20,  // 生成／轉換：新圖示帶閃光放大出現
     clearSmoke:       0.25,  // 清除圖示：煙霧消散
+    mechCheckPause:   0.30,  // 機制觸發完（改盤落定後）→ 連線得分演繹開始的停頓
     coinBurst:        0.60,  // 直接給分：噴錢演繹
     scoreFly:         0.40,  // 直接給分：得分數字飛入公版
     scoreCountUp:     1.00,  // 公版得分跑分滾動（依金額分級 0.5~1.5s）
@@ -723,14 +724,14 @@ const DEFAULT_TIMING = {
     bgMultScale:      0.05,  // 新倍數縮放（先放大後縮回）
     bgRefill:         0.10,  // BG 補盤（每格）
     // 變體
-    critFlash:        0.10,  // 爆擊：觸發瞬間閃白
-    critImage:        0.50,  // 爆擊：角色動畫
-    chaseGap:         0.30,  // 追擊：與前次攻擊間隔
+    critFlash:        0.05,  // 爆擊：觸發瞬間閃白
+    critImage:        1.10,  // 爆擊：角色動畫
+    chaseGap:         0.70,  // 追擊：與前次攻擊間隔
 };
 // 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
     { group: '掉落（停輪）', items: [
-        ['spinDropIn','離場/掉入時長'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
+        ['spinClear','舊圖示清除'], ['spinDropIn','新圖示掉入'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
         ['interSpinPause','局間停頓(無連線)'], ['winSpinPause','局間停頓(有得分)'], ['interBoardPause','連鎖間停頓']] },
     { group: '消除／得分', items: [
@@ -750,7 +751,7 @@ const TIMING_META = [
         ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
         ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
         ['targetPreLight','目標格預亮'], ['beamFly','能量光束飛行'], ['beamStagger','光束錯落'], ['iconShrink','原圖縮小'],
-        ['newIconPop','新圖示出現'], ['clearSmoke','清除煙霧'], ['coinBurst','噴錢演繹'], ['scoreFly','給分數字飛入'], ['scoreCountUp','公版跑分', 0, 2, 0.05]] },
+        ['newIconPop','新圖示出現'], ['clearSmoke','清除煙霧'], ['mechCheckPause','機制後連線停頓'], ['coinBurst','噴錢演繹'], ['scoreFly','給分數字飛入'], ['scoreCountUp','公版跑分', 0, 2, 0.05]] },
     { group: 'LV4 全畫面／轉場', items: [
         ['transIn','全畫面壓黑'], ['transHold','機制畫面入場'], ['transOut','轉場淡出']] },
     { group: 'BG 倍數遞增', items: [
@@ -787,7 +788,7 @@ const GANTT_START_PRESET = {
     // WILD／機制（各機制為互斥分支，起點自 0 起排）
     wildSpawn: 0.05, wildFlyIn: 0.45, wildStagger: 0.50, wildShake: 0.65,
     bigWildSpawn: 0.00, bigWildFly: 0.30, bigWildShake: 0.70,
-    targetPreLight: 0.00, beamFly: 0.20, beamStagger: 0.20, iconShrink: 0.50, newIconPop: 0.50, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60, scoreCountUp: 0.60,
+    targetPreLight: 0.00, beamFly: 0.20, beamStagger: 0.20, iconShrink: 0.50, newIconPop: 0.50, clearSmoke: 0.00, mechCheckPause: 0.00, coinBurst: 0.00, scoreFly: 0.60, scoreCountUp: 0.60,
     // LV4 全畫面／轉場
     transIn: 0.00, transHold: 0.30, transOut: 0.70,
     // BG 倍數遞增（舊退場∥新更新→縮放→補盤）
@@ -1058,6 +1059,7 @@ let particles = [];
 let scoreTexts = [];
 let flyingScores = [];
 let coinBursts = [];        // 宙斯/赫拉受傷：金幣噴發粒子
+let energyParticles = [];   // 能量飛卡粒子：出發濺／抵達爆開（設計 2026-07-09）
 let bossHitMilestones = {}; // { monIdx: Set<hpLost> } 每局觸發紀錄
 
 // 數值與統計系統
@@ -1097,6 +1099,7 @@ let boardShakeAmp = 3;      // WILD／機制著陸盤面震動幅度（依機制
 let pendingBoardShake = 0;  // 待觸發的震動時長（幀，WILD 著陸時啟動）
 let cellFlashes = [];       // 機制落點閃光
 let checkPauseTimer = 0;    // 盤間停頓（補盤後再判定連線前）
+let afterMechPause = false; // 機制觸發完旗標：下一次進 CHECKING 改用 mechCheckPause 停頓
 let bgMultAnimT = 999;      // BG 倍數更新動畫經過幀數
 let bgMultPrev = 1;         // BG 前一個倍數（淡出用）
 let tickCounter = 0;        // 全域幀計數（呼吸光等循環動畫用）
@@ -1493,6 +1496,67 @@ function buildWaveGroups() {
     return groups;
 }
 
+// 沿一組相連格子的外輪廓建立封閉路徑（得分框用）。
+// 邊統一順時針（組內部在行進方向右側）；對角相接的頂點「優先右轉」串接，避免路徑交錯。
+// 回傳多條迴圈（含洞形狀會有內圈），點已轉為畫布座標並向組內側縮 inset px。
+function traceGroupOutline(cells, inset = 2) {
+    const inGroup = new Set(cells.map(c => c.c + ',' + c.r));
+    const edges = new Map();   // 起點格點 -> 出邊終點列表
+    const addEdge = (x1, y1, x2, y2) => {
+        const k = x1 + ',' + y1;
+        if (!edges.has(k)) edges.set(k, []);
+        edges.get(k).push({ x: x2, y: y2 });
+    };
+    cells.forEach(({ c, r }) => {
+        if (!inGroup.has(c + ',' + (r - 1))) addEdge(c, r, c + 1, r);           // 上邊：左→右
+        if (!inGroup.has((c + 1) + ',' + r)) addEdge(c + 1, r, c + 1, r + 1);   // 右邊：上→下
+        if (!inGroup.has(c + ',' + (r + 1))) addEdge(c + 1, r + 1, c, r + 1);   // 下邊：右→左
+        if (!inGroup.has((c - 1) + ',' + r)) addEdge(c, r + 1, c, r);           // 左邊：下→上
+    });
+    const takeEdge = (x, y, dx, dy) => {
+        const k = x + ',' + y;
+        const outs = edges.get(k);
+        if (!outs || !outs.length) return null;
+        let pick = 0;
+        if (outs.length > 1 && (dx || dy)) {
+            // 對角相接頂點有多個出邊：右轉 > 直行 > 左轉，維持順時針不跨入另一斜角
+            const prefer = [[-dy, dx], [dx, dy], [dy, -dx]];
+            outer: for (const [pdx, pdy] of prefer)
+                for (let i = 0; i < outs.length; i++)
+                    if (outs[i].x - x === pdx && outs[i].y - y === pdy) { pick = i; break outer; }
+        }
+        const e = outs.splice(pick, 1)[0];
+        if (!outs.length) edges.delete(k);
+        return e;
+    };
+    const loops = [];
+    while (edges.size) {
+        let [x, y] = edges.keys().next().value.split(',').map(Number);
+        const sx = x, sy = y;
+        const pts = [{ x, y }];
+        let dx = 0, dy = 0, guard = 0;
+        while (guard++ < 999) {
+            const next = takeEdge(x, y, dx, dy);
+            if (!next) break;
+            dx = next.x - x; dy = next.y - y;
+            x = next.x; y = next.y;
+            if (x === sx && y === sy) break;
+            pts.push({ x, y });
+        }
+        if (pts.length >= 4) loops.push(pts);
+    }
+    // 格點 → 畫布座標，並向組內側縮 inset（邊的內側 = 行進方向右側法線 (-dy, dx)）
+    return loops.map(pts => pts.map((p, i) => {
+        const prev = pts[(i - 1 + pts.length) % pts.length];
+        const next = pts[(i + 1) % pts.length];
+        const n1 = { x: -(p.y - prev.y), y: p.x - prev.x };
+        const n2 = { x: -(next.y - p.y), y: next.x - p.x };
+        const ox = n1.x !== 0 ? n1.x : n2.x;
+        const oy = n1.y !== 0 ? n1.y : n2.y;
+        return { x: GRID_X + p.x * GEM_SIZE + ox * inset, y: GRID_Y + p.y * GEM_SIZE + oy * inset };
+    }));
+}
+
 // 開始一波消除：所有組先依序亮起（全亮）→ 再依序消散（規格 03/04 定案）
 function startPopWave(groups) {
     // 依組首位置排序（左到右、上到下）
@@ -1858,6 +1922,7 @@ function finishKillEffect() {
     killEffectCurrent = null;
     respawnKillSource(finishedEffect);
     applyGravity();
+    afterMechPause = true;   // 機制改盤落定後，連線判定前改用 mechCheckPause 停頓
     currentState = STATE.GRAVITY;
 }
 
@@ -2030,6 +2095,56 @@ function spawnCoinBurst(cx, cy, count) {
             r: 4 + Math.random() * 4
         });
     }
+}
+
+// 能量飛卡粒子特效（設計 2026-07-09）：出發濺／抵達爆開共用噴發，本體環繞光點見 drawEffects
+const ENERGY_FX = {
+    launchCount: 6,  launchSpeed: 2.2, launchLife: 22,   // 出發濺：數量／初速／壽命(幀)
+    burstCount: 12,  burstSpeed: 3.0,  burstLife: 26,    // 抵達爆開
+    orbiters: 5,     orbitR: 13,                          // 本體：環繞光點數／漂移半徑
+    maxParticles: 400                                     // 粒子池上限（超過丟棄最舊）
+};
+
+function spawnEnergyBurst(x, y, color, count, speed, life) {
+    for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = speed * (0.35 + Math.random() * 0.65);
+        const lf  = Math.round(life * (0.7 + Math.random() * 0.6));
+        energyParticles.push({
+            x, y,
+            vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+            life: lf, maxLife: lf,
+            r: 2.5 + Math.random() * 4,
+            color, twinkle: Math.random() * Math.PI * 2
+        });
+    }
+    if (energyParticles.length > ENERGY_FX.maxParticles)
+        energyParticles.splice(0, energyParticles.length - ENERGY_FX.maxParticles);
+}
+
+function updateEnergyParticles() {
+    for (let i = energyParticles.length - 1; i >= 0; i--) {
+        const p = energyParticles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.vx *= 0.92; p.vy *= 0.92;   // 阻尼：噴出後迅速減速、原地懸浮淡出
+        p.life--;
+        if (p.life <= 0) energyParticles.splice(i, 1);
+    }
+}
+
+function drawEnergyParticles() {
+    if (!energyParticles.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';   // 加色混合：粒子重疊處更亮
+    energyParticles.forEach(p => {
+        const fade = p.life / p.maxLife;
+        const tw = 0.7 + 0.3 * Math.sin(p.twinkle + p.life * 0.5);
+        ctx.globalAlpha = fade * tw;
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.5 + 0.5 * fade), 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
 }
 
 // 宙斯 / 赫拉 傷害里程碑檢查
@@ -2269,6 +2384,7 @@ function startSpin() {
     stats.spins++;
     hasHitThisSpin = false;
     coinBursts = [];
+    energyParticles = [];
     bossHitMilestones = {};
 
     if (isBG) {
@@ -2341,6 +2457,7 @@ function startSpin() {
     popResolved = false;
     popScoreTimer = 0;
     checkPauseTimer = 0;
+    afterMechPause = false;
     attackDimAlpha = 0;
 }
 
@@ -3113,9 +3230,40 @@ function drawGrid() {
             let gem = board[c] ? board[c][r] : null;
             if (gem && gem.id !== -1 && isBright(c, r, gem)) drawGem(c, r, gem);
         }
+    drawGroupWinFrames();
     drawMechanismCellFlashes();
     drawMechanismClearSmoke();
     ctx.restore();
+}
+
+// 得分框：亮起中的組沿外輪廓畫「純白柔光光暈邊框」，該組開始消散時消失（設計 2026-07-09）
+function drawGroupWinFrames() {
+    if (currentState !== STATE.POPPING || !currentMatches) return;
+    for (const g of currentMatches) {
+        if (!g.lit || popPhaseT >= g.dissolveF) continue;
+        if (!g.outline) g.outline = traceGroupOutline(g.cells);
+        const fade = Math.min(1, Math.max(0, (popPhaseT - g.lightF) / 6));   // 亮起後 6 幀淡入
+        ctx.save();
+        ctx.beginPath();
+        for (const loop of g.outline) {
+            ctx.moveTo(loop[0].x, loop[0].y);
+            for (let i = 1; i < loop.length; i++) ctx.lineTo(loop[i].x, loop[i].y);
+            ctx.closePath();
+        }
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        ctx.shadowColor = '#ffffff';
+        // 底層：粗描邊＋大光暈（柔光）
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = `rgba(255,255,255,${0.35 * fade})`;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+        // 上層：細描邊維持輪廓可讀性
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = `rgba(255,255,255,${0.9 * fade})`;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 function drawUI() {
@@ -3326,18 +3474,42 @@ function drawEffects() {
         ctx.fillStyle = `rgba(255,255,255,0.4)`; ctx.fill();
     });
 
+    drawEnergyParticles();   // 能量粒子（出發濺／抵達爆開）：蓋在盤面上、得分數字下
+
     flyingScores.forEach(fs => {
         ctx.textAlign = 'center';
         if (fs.type === 'collect') {
-            // 能量：屬性色能量球（拋物線、無拖尾、不使用粒子）
-            ctx.globalAlpha = Math.min(1, fs.life / 20);
+            // 能量本體粒子化（設計 2026-07-09）：中心光核＋環繞明滅光點，沿原拋物線飛行
+            if (!fs.orbs) fs.orbs = Array.from({ length: ENERGY_FX.orbiters }, () => ({
+                ang: Math.random() * Math.PI * 2,               // 環繞角度
+                spd: 0.15 + Math.random() * 0.2,                // 環繞轉速
+                dist: ENERGY_FX.orbitR * (0.5 + Math.random() * 0.8),
+                size: 3 + Math.random() * 3,
+                ph: Math.random() * Math.PI * 2                 // 閃爍相位
+            }));
+            const baseA = Math.min(1, fs.life / 20);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            // 中心光核：屬性色暈＋白色亮心
+            ctx.globalAlpha = baseA;
             ctx.fillStyle = fs.color;
-            ctx.shadowColor = fs.color; ctx.shadowBlur = 14;
-            ctx.beginPath(); ctx.arc(fs.x, fs.y, 10, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = Math.min(1, fs.life / 20) * 0.6;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath(); ctx.arc(fs.x - 3, fs.y - 3, 3.5, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.shadowColor = fs.color; ctx.shadowBlur = 16;
+            ctx.beginPath(); ctx.arc(fs.x, fs.y, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = baseA * 0.9;
+            ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(fs.x, fs.y, 3, 0, Math.PI * 2); ctx.fill();
+            // 環繞光點：繞光核漂移（縱向略壓扁）＋明滅閃爍
+            fs.orbs.forEach(o => {
+                o.ang += o.spd;
+                const tw = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(o.ph + o.ang * 2.3));
+                ctx.globalAlpha = baseA * tw;
+                ctx.fillStyle = fs.color;
+                ctx.shadowColor = fs.color; ctx.shadowBlur = 6;
+                ctx.beginPath();
+                ctx.arc(fs.x + Math.cos(o.ang) * o.dist, fs.y + Math.sin(o.ang) * o.dist * 0.8, o.size * tw, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
         } else if (fs.type === 'bossHit') {
             const holding = fs.delay > 0;
             ctx.globalAlpha  = holding ? 1 : Math.min(1, fs.life / 25);
@@ -3413,12 +3585,20 @@ function updateFlyingScores() {
         if (fs.delay > 0) {
             fs.delay--;
             if (fs.type === 'kill') fs.y -= 0.5;
+            // 出發濺粒子：能量起飛的那一幀原地濺出屬性色光點（設計 2026-07-09）
+            if (fs.type === 'collect' && fs.delay <= 0)
+                spawnEnergyBurst(fs.sx, fs.sy, fs.color, ENERGY_FX.launchCount, ENERGY_FX.launchSpeed, ENERGY_FX.launchLife);
         } else if (fs.type === 'collect') {
-            // 拋物線飛行（無拖尾、不使用粒子）：以進度 t 沿弧線移動，t=1 落點精準
+            // 拋物線飛行：以進度 t 沿弧線移動，t=1 落點精準
             fs.prog = Math.min(1, (fs.prog || 0) + 1 / (fs.flyF || TF(TIMING.energyFly)));
             const e = easeInOutQuad(fs.prog);
             fs.x = fs.sx + (fs.tx - fs.sx) * e;
             fs.y = fs.sy + (fs.ty - fs.sy) * e - Math.sin(Math.PI * fs.prog) * 80;
+            // 抵達爆開：到點瞬間爆出放射粒子、本體移除（取代原地停留淡出）；ATK 更新由 pendingCardUpdates 計時，不受影響
+            if (fs.prog >= 1) {
+                spawnEnergyBurst(fs.tx, fs.ty, fs.color, ENERGY_FX.burstCount, ENERGY_FX.burstSpeed, ENERGY_FX.burstLife);
+                fs.life = 0;
+            }
         } else {
             const k = fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly)) : 0.15;
             fs.x += (fs.tx - fs.x) * k;
@@ -3519,8 +3699,8 @@ function update() {
     if (currentState === STATE.SPINNING) {
         spinTimer++;
         let allDone = true;
-        // 舊盤面圖示每欄依序往下掉出畫面；離場速度與新圖示掉入速度共用 spinDropIn。
-        const clearF = TF(TIMING.spinDropIn);
+        // 舊盤面圖示每欄依序往下掉出畫面；離場速度 spinClear 與新圖示掉入 spinDropIn 分拆控制（v10）。
+        const clearF = TF(TIMING.spinClear);
         const reelIntervalF = TF(TIMING.reelStopInterval);
         const oldClearDoneAt = clearF + reelIntervalF * (COLS - 1);
         const oldExitY = GRID_H + 50;
@@ -3697,8 +3877,11 @@ function update() {
                     let cardIdx = cards.findIndex(c => c.elemId === g.elemId);
                     if (cardIdx !== -1) {
                         const cm = getCardDrawMetrics(cards.length);
-                        let cardCX = cm.startX + cardIdx * (cm.cardW + cm.gap) + cm.cardW / 2;
-                        const cardTY = cm.baseY + 24;
+                        // 能量落點＝攻擊力數字實際位置（與 drawCardAtk 同一算式，含佈局面板 atkNum 偏移）
+                        const AL = LAYOUT.atkNum || { x: 0, y: 0 };
+                        const cardX = cm.startX + cardIdx * (cm.cardW + cm.gap);
+                        let cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
+                        const cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
                         const elemColor = ELEMENTS[g.elemId].color, elemIcon = ELEMENTS[g.elemId].icon;
                         const energyLife = TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20;
                         const energyDelay = TF(TIMING.popDissolve);
@@ -3776,7 +3959,9 @@ function update() {
                 startKillEffect(pendingKillEffects.shift());
             } else {
                 // 無論 pendingFGBG 是否有值，都先繼續 CHECKING 讓連爆打完
-                checkPauseTimer = TF(TIMING.interBoardPause);   // 盤間停頓
+                // 機制觸發完的那一次改用 mechCheckPause（機制後連線停頓），一般連鎖用 interBoardPause
+                checkPauseTimer = TF(afterMechPause ? TIMING.mechCheckPause : TIMING.interBoardPause);
+                afterMechPause = false;
                 currentState = STATE.CHECKING;
             }
         }
@@ -4205,6 +4390,9 @@ function update() {
         if (c.life <= 0) coinBursts.splice(i, 1);
     }
 
+    // 能量飛卡粒子更新（出發濺／抵達爆開）
+    updateEnergyParticles();
+
     if (currentState === STATE.IDLE) {
         // 轉場進行中或有待處理的模式切換時，一律不啟動旋轉
         if (transitionPhase !== 'idle' || pendingFGBG !== null) return;
@@ -4548,7 +4736,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 8;   // v8: 新增得分數字彈出 scorePop 參數。舊存檔自動作廢。
+const TUNE_VERSION = 10;  // v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。舊存檔自動作廢。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
