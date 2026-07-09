@@ -543,7 +543,7 @@ function loadImg(src) { const i = new Image(); i.src = src; return i; }
 function imgReady(img) { return img && img.complete && img.naturalWidth > 0; }
 const IMG = {
     bg:      loadImg('assets/bg.png'),
-    frame:   loadImg('assets/reel_frame.png'),
+    frame:   loadImg('assets/jp_num_02.png'),   // 神殿盤面框（含 Zeus/Hera JP 橫幅、MYTHIC JACKPOT 匾額）
     reelbot: loadImg('assets/reel_bot.png'),
     gem:      [], // 寶石圖（依檔案編號 0~6）
     monIcon:  [], // 小怪屬性頭像（0~5）
@@ -552,8 +552,23 @@ const IMG = {
     card:     {}, // 卡牌圖，key = `${elemId}_${level}`
 };
 for (let i = 0; i <= 6; i++) IMG.gem[i]     = loadImg(`assets/icon_${i}.png`);
+IMG.wildBig = loadImg('assets/icon_07.png'); // 巨型 WILD 單張（192×192，覆蓋 2×2 區塊）
 for (let i = 0; i <= 5; i++) IMG.monIcon[i] = loadImg(`assets/mon_icon_${i}.png`);
-for (let i = 0; i <= 1; i++) IMG.bossIcon[i]= loadImg(`assets/boss_icon_${i}.png`);
+// Boss 徽章改用新版 jp_01/02_icon（宙斯雷霆／赫拉聖心）
+IMG.bossIcon[0] = loadImg('assets/jp_01_icon.png');
+IMG.bossIcon[1] = loadImg('assets/jp_02_icon.png');
+// Boss 血條框素材（金屬質感底條，宙斯/赫拉各一）
+IMG.jpHP = [loadImg('assets/jp_hp_01.png'), loadImg('assets/jp_hp_02.png')];
+// 怪物血條素材：hg_bot 底軌 + hg_progress 銀色填充
+IMG.hgBot      = loadImg('assets/hg_bot.png');
+IMG.hgProgress = loadImg('assets/hg_progress.png');
+// 底部公版 UI 條（玩家資訊/BET/WIN/按鈕）＋場景前景剪影
+IMG.publicUI   = loadImg('assets/public_ui.png');
+IMG.foreground = loadImg('assets/foreground.png');
+// 爆擊演出組圖：全版特效底圖＋海克力士角色＋必殺技字卡
+IMG.critFx   = loadImg('assets/critical_fx_01.png');
+IMG.critPose = loadImg('assets/critical_pose_01.png');
+IMG.critText = loadImg('assets/critical_text_01.png');
 // 大怪正常狀態圖（0708 更新版）
 IMG.monArt.rearL  = loadImg('assets/0708_巨龍.png');    // 紅龍（左後）
 IMG.monArt.frontL = loadImg('assets/0708_野豬.png');    // 野豬（左前）
@@ -572,11 +587,13 @@ IMG.monArtDeath = {
 };
 ['1_3', '5_1', '0_2'].forEach(k => IMG.card[k] = loadImg(`assets/card_${k}.png`));
 
-// 屬性 id → 寶石/頭像檔案編號（檔名編號與屬性 id 不同，需對照）
-//  0祕法→5 / 1雷霆→0 / 2聖心→1 / 3烈焰→4 / 4冰霜→3 / 5大地→2 / 6 WILD→6
-const ELEM_ICON_IDX = [5, 0, 1, 4, 3, 2, 6];
-function gemImg(elemId)     { return IMG.gem[ELEM_ICON_IDX[elemId]]; }
-function monIconImg(elemId) { return IMG.monIcon[ELEM_ICON_IDX[elemId]]; }
+// 屬性 id → 檔案編號對照（新版盤面 icon 與舊版 mon_icon 檔序不同，需分開對照）
+// 盤面寶石（新版檔序）：0祕法→2 / 1雷霆→0 / 2聖心→1 / 3烈焰→3 / 4冰霜→4 / 5大地→5 / 6 WILD→6
+const GEM_ICON_IDX = [2, 0, 1, 3, 4, 5, 6];
+// 怪物頭像（舊版檔序）：0祕法→5 / 1雷霆→0 / 2聖心→1 / 3烈焰→4 / 4冰霜→3 / 5大地→2 / 6 WILD→6
+const MON_ICON_IDX = [5, 0, 1, 4, 3, 2, 6];
+function gemImg(elemId)     { return IMG.gem[GEM_ICON_IDX[elemId]]; }
+function monIconImg(elemId) { return IMG.monIcon[MON_ICON_IDX[elemId]]; }
 // 等比置中繪製（cover：填滿並裁切；contain：完整顯示）
 function drawImgFit(img, x, y, w, h, mode = 'contain', anchorY = 'center') {
     if (!imgReady(img)) return;
@@ -640,36 +657,36 @@ const DEFAULT_TIMING = {
     spinClear:        0.25,  // 舊版保留欄位：清場速度已改由 spinDropIn 統一控制
     spinDropIn:       0.30,  // 每欄圖示離場/掉入時長（舊圖示離開與新圖示落下共用）
     firstReelStop:    1.30,  // 第 1 輪啟動-落定（節奏表 v4.6：Normal 1.3s；即「何時落定」）
-    reelStopInterval: 0.10,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.10 = 1.9s）
+    reelStopInterval: 0.05,  // 每輪落定間隔（第7輪 = 1.3 + 6×0.05 = 1.6s）
     landBounce:       0.05,  // 落定回彈（squash 約5%，細節表：可做可不做）
     skipStop:         0.30,  // 跳過1（定案）：下落期間點擊，全輪齊停落定
-    interSpinPause:   0.30,  // 局間停頓・無連線（停頓三檔定案）
-    winSpinPause:     0.50,  // 局間停頓・有得分（停頓三檔定案）
+    interSpinPause:   0.20,  // 局間停頓・無連線（停頓三檔定案）
+    winSpinPause:     0.20,  // 局間停頓・有得分（停頓三檔定案）
     interBoardPause:  0.10,  // 連鎖間停頓（停頓三檔定案：連鎖越打越順）
     // 消除／得分
     popDim:           0.15,  // 盤面壓暗淡入（未得分圖示）
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
-    scorePerIcon:     0.40,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
+    scorePerIcon:     0.45,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
     scorePop:         0.70,  // 得分數字（該組中央）彈出＋停留時長
     groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
     popDissolve:      0.30,  // 得分圖示消散（化為能量）
-    energyFly:        0.60,  // 能量飛向卡牌攻擊力圓圈
+    energyFly:        0.65,  // 能量飛向卡牌攻擊力圓圈
     // 補盤
-    refillPerCell:    0.15,  // 補盤掉落每格時間（總長 = 0.15 × 落下格數）
+    refillPerCell:    0.10,  // 補盤掉落每格時間（總長 = 0.10 × 落下格數）
     refillStagger:    0.05,  // 補盤每欄錯落
     // 卡牌攻擊（v4.6 定案：不射光束、不撞擊，直接於怪物上出受擊特效）
     atkUpdate:        0.20,  // 攻擊力數字更新（能量抵達後，數字放大 1.3 倍縮回）
     atkTier2Mult:     3,     // ATK 達卡面初始值 ×N → 數字強度2（藍字外框），非時間值
     atkTier3Mult:     5,     // ATK 達卡面初始值 ×N → 數字強度3（紅字外框），非時間值
-    cardPullUp:       0.30,  // 卡牌上拉
-    cardPullDist:     60,    // 卡牌上拉幅度（px，定案：露出約 2/3 牌面）
-    badgeFlash:       0.20,  // 觸發時卡牌與怪物屬性徽章同步閃爍 2 次
+    cardPullUp:       0.60,  // 卡牌上拉
+    cardPullDist:     70,    // 卡牌上拉幅度（px，定案：露出約 2/3 牌面）
+    badgeFlash:       0.60,  // 觸發時卡牌與怪物屬性徽章同步閃爍 2 次
     attackDim:        0.15,  // 卡牌觸發時盤面／他卡壓暗
     cardGap:          0.50,  // 多卡觸發：卡與卡攻擊間隔
-    cardReturn:       0.25,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
+    cardReturn:       0.20,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
     // 受擊／擊殺
-    hitReact:         0.30,  // 受擊+血量（血條位移）
-    hitFlash:         0.15,  // 受擊閃紅（本體疊乘紅色，1 次）
+    hitReact:         0.40,  // 受擊+血量（血條位移）
+    hitFlash:         0.35,  // 受擊閃紅（本體疊乘紅色，1 次）
     hitFlashAlpha:    0.50,  // 閃紅濃度 0~1（細節表：疊乘紅色50%，RD 參數）
     hitShakeAmp:      4,     // 受擊震動幅度（±px，細節表 ±4px，RD 參數）
     hitTiers:         3,     // 受擊特效分級階數（依攻擊數值區間，至少3階），非時間值
@@ -681,8 +698,8 @@ const DEFAULT_TIMING = {
     fgbgCollect:      0.40,  // LV4 擊殺：FG/BG 獎勵圖示飛入 UI 收集欄（11-2 新定案）
     // WILD／機制
     wildSpawn:        0.40,  // WILD 於原座標生成
-    wildFlyIn:        0.50,  // WILD 飛入（每顆）
-    wildStagger:      0.15,  // WILD 每 +1 顆飛入錯落
+    wildFlyIn:        0.40,  // WILD 飛入（每顆）
+    wildStagger:      0.10,  // WILD 每 +1 顆飛入錯落
     wildShake:        0.15,  // WILD 著陸盤面震動
     bigWildSpawn:     0.30,  // 巨型 WILD 生成
     bigWildFly:       0.40,  // 巨型 WILD 飛入
@@ -764,11 +781,11 @@ const GANTT_START_PRESET = {
     // 補盤
     refillPerCell: 0.00, refillStagger: 0.00,
     // 卡牌攻擊（接續消除段：數字更新→上拉→受擊→歸位）
-    atkUpdate: 0.95, cardPullUp: 1.15, badgeFlash: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.75,
+    atkUpdate: 1.00, cardPullUp: 1.15, badgeFlash: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.80,
     // 受擊／擊殺
-    hitReact: 1.45, hitFlash: 1.45, deathSwitch: 1.75, effectFly: 2.25, effectShow: 2.65, respawnFade: 3.05, fgbgCollect: 2.25,
+    hitReact: 1.90, hitFlash: 1.90, deathSwitch: 2.15, effectFly: 2.65, effectShow: 3.05, respawnFade: 3.45, fgbgCollect: 2.65,
     // WILD／機制（各機制為互斥分支，起點自 0 起排）
-    wildSpawn: 0.00, wildFlyIn: 0.40, wildStagger: 0.45, wildShake: 0.60,
+    wildSpawn: 0.05, wildFlyIn: 0.45, wildStagger: 0.50, wildShake: 0.65,
     bigWildSpawn: 0.00, bigWildFly: 0.30, bigWildShake: 0.70,
     targetPreLight: 0.00, beamFly: 0.20, beamStagger: 0.20, iconShrink: 0.50, newIconPop: 0.50, clearSmoke: 0.00, coinBurst: 0.00, scoreFly: 0.60, scoreCountUp: 0.60,
     // LV4 全畫面／轉場
@@ -797,21 +814,24 @@ let flowMode = 'B';
 // 佈局預設值 = 原程式寫死座標
 const DEFAULT_LAYOUT = {
     bigRearL:    { x: -55,  y: 60,  w: 330, h: 340 },  // 左後 紅龍插畫
-    bigRearR:    { x: 1015, y: 48,  w: 268, h: 312 },  // 右後 三頭巨人插畫
+    bigRearR:    { x: 1008, y: 102, w: 263, h: 307 },  // 右後 三頭巨人插畫
     bigFrontL:   { x: 8,    y: 468, w: 205, h: 175 },  // 左前 野豬插畫
     bigFrontR:   { x: 1012, y: 352, w: 252, h: 320 },  // 右前 亞馬遜插畫
-    monL1:       { x: 98,   y: 320 },                  // 左後小怪 頭像/血條錨點
-    monL2:       { x: 98,   y: 610 },                  // 左前小怪
-    monR1:       { x: 1182, y: 300 },                  // 右後小怪
-    monR2:       { x: 1182, y: 615 },                  // 右前小怪
-    bossL:       { x: 126,  y: 116 },                  // 宙斯 金框內容（徽章起點/垂直中心）
-    bossR:       { x: 1084, y: 116 },                  // 赫拉 金框內容
-    cards:       { x: 640,  y: 560 },                  // 卡牌列（水平置中錨點/頂端）
+    monL1:       { x: 50,   y: 325, s: 1 },            // 左後小怪 頭像/血條錨點（s=整組縮放）
+    monL2:       { x: 90,   y: 605, s: 1 },            // 左前小怪
+    monR1:       { x: 1220, y: 339, s: 1 },            // 右後小怪
+    monR2:       { x: 1196, y: 577, s: 1 },            // 右前小怪
+    bossL:       { x: 126,  y: 116, s: 1 },            // 宙斯 金框內容（徽章起點/垂直中心，s=徽章/數字/血條縮放）
+    bossR:       { x: 1084, y: 116, s: 1 },            // 赫拉 金框內容
+    cards:       { x: 640,  y: 560, w: 199, h: 276 },  // 卡牌列（水平置中錨點/頂端/單張尺寸）
     grid:        { x: 304,  y: 82 },                   // 盤面左上角
     bottomUI:    { x: 0,    y: 640 },                  // 下方 UI 列
-    jpBanner:    { x: 640,  y: 33 },                   // JP 橫幅（置中）
-    accum:       { x: 640,  y: 482 },                  // 消除累計欄（中心）
-    collectSlot: { x: 40,   y: 72 },                   // FG/BG 收集欄（左上角）
+    jpBanner:    { x: 642,  y: 37, s: 1.25 },          // JP 橫幅（置中，s=彩金字級縮放）
+    accum:       { x: 640,  y: 482, s: 1 },            // 消除累計欄（中心，s=整體縮放）
+    collectSlot: { x: 40,   y: 72, s: 1 },             // FG/BG 收集欄（左上角，s=整體縮放）
+    atkNum:      { x: 3,    y: 0,  s: 0.9 },           // 卡牌攻擊力數字（相對卡面預設位置的偏移 + 字級縮放）
+    spinBtn:     { x: 1014, y: 588, w: 165, h: 184 },  // SPIN 鈕判定區（圓形內切於框）
+    autoBtn:     { x: 1172, y: 641, w: 84,  h: 68 },   // AUTO 快轉鈕判定區
 };
 // 佈局註冊表：key、面板顯示名、外框（點選/顯示用）、是否可調尺寸
 const LAYOUT_META = [
@@ -821,22 +841,46 @@ const LAYOUT_META = [
     ['bigRearR',    '右後三頭巨人',   o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
     ['bigFrontL',   '左前野豬',       o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
     ['bigFrontR',   '右前亞馬遜',     o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
-    ['cards',       '卡牌列',         o => ({ x: o.x - 236, y: o.y - 8, w: 472, h: 104 }), false],
-    ['accum',       '消除累計欄',     o => ({ x: o.x - 250, y: o.y - 22, w: 500, h: 45 }), false],
+    ['cards',       '卡牌列',         o => {
+        const gap = 20, count = 3;
+        return { x: o.x - (o.w * count + gap * (count - 1)) / 2, y: o.y, w: o.w * count + gap * (count - 1), h: o.h };
+    }, true],
+    ['accum',       '消除累計欄',     o => { const s = o.s || 1; return { x: o.x - 250 * s, y: o.y - 22 * s, w: 500 * s, h: 45 * s }; }, false],
     ['jpBanner',    'JP橫幅',         o => ({ x: o.x - 100, y: o.y - 25, w: 200, h: 50 }), false],
-    ['collectSlot', 'FG/BG收集欄',    o => ({ x: o.x, y: o.y, w: 285, h: 26 }), false],
+    ['collectSlot', 'FG/BG收集欄',    o => { const s = o.s || 1; return { x: o.x, y: o.y, w: 285 * s, h: 26 * s }; }, false],
     ['bossL',       '宙斯血條',       o => ({ x: o.x - 6, y: o.y - 28, w: 146, h: 56 }), false],
     ['bossR',       '赫拉血條',       o => ({ x: o.x - 74, y: o.y - 28, w: 130, h: 56 }), false],
     ['monL1',       '左後小怪血條',   o => ({ x: o.x - 22, y: o.y - 22, w: 150, h: 44 }), false],
     ['monL2',       '左前小怪血條',   o => ({ x: o.x - 22, y: o.y - 22, w: 150, h: 44 }), false],
     ['monR1',       '右後小怪血條',   o => ({ x: o.x - 128, y: o.y - 22, w: 150, h: 44 }), false],
     ['monR2',       '右前小怪血條',   o => ({ x: o.x - 128, y: o.y - 22, w: 150, h: 44 }), false],
+    ['atkNum',      '攻擊力數字',     o => {
+        const mtr = getCardDrawMetrics(cards.length || 3);
+        const cx = (mtr.isFGMode ? mtr.startX + mtr.cardW / 2 : mtr.startX + mtr.cardW * 0.855) + o.x;
+        const cy = (mtr.isFGMode ? mtr.baseY + 58 : mtr.baseY + mtr.cardH * 0.112) + o.y;
+        const r = 28 * (o.s || 1);
+        return { x: cx - r, y: cy - r, w: r * 2, h: r * 2 };
+    }, false],
+    ['spinBtn',     'SPIN判定區',     o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
+    ['autoBtn',     'AUTO判定區',     o => ({ x: o.x, y: o.y, w: o.w, h: o.h }), true],
 ];
 let LAYOUT = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
 // 佈局變更後同步既有全域變數（盤面座標被大量引用，維持原名）
 function syncLayoutDerived() {
     GRID_X = LAYOUT.grid.x;
     GRID_Y = LAYOUT.grid.y;
+}
+
+function getCardDrawMetrics(count = cards.length) {
+    const isFGMode = count === 6;
+    const cardW = isFGMode ? 85 : (LAYOUT.cards.w || 199);
+    const cardH = isFGMode ? 84 : (LAYOUT.cards.h || 276);
+    const gap = isFGMode ? 8 : 20;
+    const drawCount = Math.max(count, isFGMode ? 6 : 3);
+    const totalW = drawCount * cardW + (drawCount - 1) * gap;
+    const startX = LAYOUT.cards.x - totalW / 2;
+    const baseY = LAYOUT.cards.y + (isFGMode ? -8 : 0);
+    return { isFGMode, cardW, cardH, gap, count: drawCount, totalW, startX, baseY };
 }
 
 const LEVEL_TRIM = { 1: '#64748b', 2: '#b45309', 3: '#94a3b8', 4: '#ca8a04', 5: '#c084fc' };
@@ -1192,7 +1236,15 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     if (fixedElem >= 0) {
         newElem = fixedElem;
     } else {
-        newElem = getMonsterElemPool()[Math.floor(Math.random() * getMonsterElemPool().length)];
+        // 替換屬性一定是卡牌屬性；並優先補上「目前沒有對應存活小怪」的卡牌屬性，
+        // 確保每張卡都有可攻擊目標（避免某張卡在盤面上找不到對應怪）。
+        const pool = [...new Set(getMonsterElemPool())];
+        const covered = new Set([1, 2, 4, 5]
+            .filter(i => i !== idx && monsters[i] && !monsters[i].isDead)
+            .map(i => monsters[i].elemId));
+        const uncovered = pool.filter(e => !covered.has(e));
+        const choose = uncovered.length ? uncovered : pool;
+        newElem = choose[Math.floor(Math.random() * choose.length)];
     }
     let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
     // 外觀依等級綁定，且不替換成相同外觀（企劃書）
@@ -1328,30 +1380,46 @@ function generateCardsForFG() {
 }
 
 // === 核心邏輯 ===
+// 在一段連續非空格上，為每個實色找出「該色或WILD、且含≥1實色、長度≥3」的極大連續 run。
+// 關鍵：WILD 可同時併入左右（上下）不同顏色的連線 → 巨型WILD 四邊皆能各自成線。
+function collectLineRuns(groups, start, end, fixed, horizontal) {
+    const at = i => horizontal ? board[i][fixed] : board[fixed][i];
+    const mkCell = i => horizontal ? { c: i, r: fixed } : { c: fixed, r: i };
+    // 本段內出現的所有實色（WILD 不算色，需靠實色帶起連線）
+    const colors = new Set();
+    for (let i = start; i < end; i++) { const id = at(i).id; if (id !== WILD_ID) colors.add(id); }
+    colors.forEach(color => {
+        let i = start;
+        while (i < end) {
+            const id = at(i).id;
+            if (id !== color && id !== WILD_ID) { i++; continue; }
+            let runStart = i, hasColor = false;
+            while (i < end) {
+                const g = at(i).id;
+                if (g === color) { hasColor = true; i++; }
+                else if (g === WILD_ID) { i++; }
+                else break;
+            }
+            if (hasColor && i - runStart >= 3) {
+                const cells = [];
+                for (let k = runStart; k < i; k++) cells.push(mkCell(k));
+                groups.push({ elemId: color, cells, count: i - runStart });
+            }
+        }
+    });
+}
+
 function findMatches() {
     let groups = [];
 
-    // 橫向掃描（WILD 可加入任意顏色的連線）
+    // 橫向掃描：逐段（非空）找每個實色的連線，WILD 可同時屬多色
     for (let r = 0; r < ROWS; r++) {
         let c = 0;
         while (c < COLS) {
             if (board[c][r].id === -1) { c++; continue; }
-            let startC = c;
-            let runColor = -1;
-            while (c < COLS && board[c][r].id !== -1) {
-                let id = board[c][r].id;
-                if (id === WILD_ID) { c++; continue; }
-                if (runColor === -1) { runColor = id; c++; continue; }
-                if (id === runColor) { c++; continue; }
-                break;
-            }
-            if (runColor !== -1 && c - startC >= 3) {
-                let cells = [];
-                for (let i = startC; i < c; i++) cells.push({ c: i, r });
-                groups.push({ elemId: runColor, cells, count: c - startC });
-            } else {
-                c = startC + 1; // 未湊成消除（含純WILD段）→退回重掃，避免跳過夾在中間的WILD
-            }
+            let segStart = c;
+            while (c < COLS && board[c][r].id !== -1) c++;
+            collectLineRuns(groups, segStart, c, r, true);
         }
     }
 
@@ -1360,22 +1428,9 @@ function findMatches() {
         let r = 0;
         while (r < ROWS) {
             if (board[col][r].id === -1) { r++; continue; }
-            let startR = r;
-            let runColor = -1;
-            while (r < ROWS && board[col][r].id !== -1) {
-                let id = board[col][r].id;
-                if (id === WILD_ID) { r++; continue; }
-                if (runColor === -1) { runColor = id; r++; continue; }
-                if (id === runColor) { r++; continue; }
-                break;
-            }
-            if (runColor !== -1 && r - startR >= 3) {
-                let cells = [];
-                for (let i = startR; i < r; i++) cells.push({ c: col, r: i });
-                groups.push({ elemId: runColor, cells, count: r - startR });
-            } else {
-                r = startR + 1; // 未湊成消除（含純WILD段）→退回重掃
-            }
+            let segStart = r;
+            while (r < ROWS && board[col][r].id !== -1) r++;
+            collectLineRuns(groups, segStart, r, col, false);
         }
     }
 
@@ -1624,8 +1679,8 @@ function drawEnergyBeam(sx, sy, tx, ty, t, style, widthScale = 1) {
     ctx.fill();
     ctx.restore();
 }
-function drawWildIconAt(x, y, size, scale = 1, alpha = 1) {
-    const img = gemImg(WILD_ID);
+function drawWildIconAt(x, y, size, scale = 1, alpha = 1, big = false) {
+    const img = (big && imgReady(IMG.wildBig)) ? IMG.wildBig : gemImg(WILD_ID);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
@@ -1657,7 +1712,7 @@ function drawWildSpawnEffect(effect) {
     ctx.arc(effect.fromX, effect.fromY, size * (0.3 + p * 0.75), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    drawWildIconAt(effect.fromX, effect.fromY, size, easeOutBack(p), 1);
+    drawWildIconAt(effect.fromX, effect.fromY, size, easeOutBack(p), 1, effect.big);
 }
 function drawWildFlyEffect(effect) {
     prepareWildEffect(effect);
@@ -1669,7 +1724,7 @@ function drawWildFlyEffect(effect) {
         const target = wildFlightTarget(flight);
         const pos = beamPoint(effect.fromX, effect.fromY, target.x, target.y, t, effect.big ? 110 : 80);
         drawEnergyBeam(effect.fromX, effect.fromY, target.x, target.y, clamp01(t), style, effect.big ? 1.55 : 1);
-        drawWildIconAt(pos.x, pos.y, effect.big ? GEM_SIZE * 1.8 : GEM_SIZE * 0.82, 1, 1);
+        drawWildIconAt(pos.x, pos.y, effect.big ? GEM_SIZE * 1.8 : GEM_SIZE * 0.82, 1, 1, effect.big);
     });
 }
 function drawMechanismBeams(effect) {
@@ -1689,8 +1744,13 @@ function landWildFlight(effect, flight) {
     if (flight.landed) return;
     flight.landed = true;
     const style = effect.style || mechStyle(effect.level);
+    // 巨型 WILD（2×2）標記左上角為錨點，繪製時以單張 icon_07 覆蓋整塊
+    const isBig = flight.size === 2 && flight.cells.length === 4;
+    const minC = Math.min(...flight.cells.map(c => c.c));
+    const minR = Math.min(...flight.cells.map(c => c.r));
     flight.cells.forEach(cell => {
         board[cell.c][cell.r] = { id: WILD_ID, yOffset: 0, scale: 1, isMatched: false, lit: false };
+        if (isBig) board[cell.c][cell.r].bigWildBlock = { minC, minR };
         spawnCellFlash(cell.c, cell.r, style.flash, 12, flight.size);
     });
     startBoardShake(TF(effect.big ? TIMING.bigWildShake : TIMING.wildShake), style.shakeAmp * (effect.big ? 1.25 : 1));
@@ -2070,9 +2130,10 @@ function drawKillEffect() {
 
     if (killEffectPhase === 'flying') {
         const isFGBG = (killEffectCurrent.type === 5 || killEffectCurrent.type === 6);
-        // FG/BG 飛向左上收集欄中心；其他效果飛向盤面中心
-        const targetX = isFGBG ? LAYOUT.collectSlot.x + 142 : cx;
-        const targetY = isFGBG ? LAYOUT.collectSlot.y + 13  : cy;
+        // FG/BG 飛向左上收集欄中心（隨欄位縮放）；其他效果飛向盤面中心
+        const csFly = LAYOUT.collectSlot.s || 1;
+        const targetX = isFGBG ? LAYOUT.collectSlot.x + 142 * csFly : cx;
+        const targetY = isFGBG ? LAYOUT.collectSlot.y + 13 * csFly  : cy;
         const ballColor = isFGBG
             ? (killEffectCurrent.type === 5 ? '#10b981' : '#f59e0b')
             : '#ffd700';
@@ -2141,7 +2202,7 @@ function drawKillEffect() {
             ctx.shadowBlur  = 30 * glow;
             ctx.fillStyle   = `rgba(255,255,255,${0.5 * glow})`;
             ctx.beginPath();
-            ctx.arc(LAYOUT.collectSlot.x + 142, LAYOUT.collectSlot.y + 13, 20 + 15 * glow, 0, Math.PI * 2);
+            ctx.arc(LAYOUT.collectSlot.x + 142 * (LAYOUT.collectSlot.s || 1), LAYOUT.collectSlot.y + 13 * (LAYOUT.collectSlot.s || 1), 20 + 15 * glow, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
         } else {
@@ -2153,9 +2214,7 @@ function drawKillEffect() {
 }
 
 function fireAttackRound(round) {
-    const cardW = cards.length === 6 ? 85 : 140;
-    const gap   = cards.length === 6 ? 8  : 20;
-    const totalW = cards.length * cardW + (cards.length - 1) * gap;
+    const { cardW, gap, startX, baseY } = getCardDrawMetrics(cards.length);
     round.forEach(({ elemId }) => {
         let cardIdx = cards.findIndex(c => c.elemId === elemId);
         if (cardIdx === -1) return;
@@ -2163,12 +2222,12 @@ function fireAttackRound(round) {
         let candidates = monsters.filter(m => m.elemId === elemId && m.hp > 0);
         if (candidates.length === 0) return;
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
-        const cardX = LAYOUT.cards.x - totalW / 2 + cardIdx * (cardW + gap) + cardW / 2;
+        const cardX = startX + cardIdx * (cardW + gap) + cardW / 2;
         // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
         particles.push({
             stage: 1,
             startX: 640, startY: GRID_Y + GRID_H,
-            tx: cardX, ty: LAYOUT.cards.y + 10,
+            tx: cardX, ty: baseY + 20,
             progress: 0,
             color: ELEMENTS[elemId].color,
             cardRef: card,
@@ -2544,8 +2603,9 @@ function monsterAnchor(m) {
         const o = left ? LAYOUT.bossL : LAYOUT.bossR;
         return left ? { x: o.x + 101, y: o.y + 11 } : { x: o.x - 32, y: o.y + 11 };
     }
-    const r = 17, barW = 78, gap = 8;
     const a = monUIAnchor(m);
+    const ms = a.s || 1;   // 與 drawMonsters 的縮放同步，命中點才對得上
+    const r = 17 * ms, barW = 78 * ms, gap = 8 * ms;
     const barX = left ? a.x + r + gap : a.x - r - gap - barW;
     return { x: barX + barW / 2, y: a.y };
 }
@@ -2558,39 +2618,41 @@ function monsterArtCenter(m) {
     return o ? { x: o.x + o.w / 2, y: o.y + o.h / 2 } : monsterAnchor(m);   // Boss 無插畫 → 退回血條錨點
 }
 
-// === Boss（宙斯／赫拉）血量：金色飾框內專屬排版（大數字＋細血條＋徽章）===
+// === Boss（宙斯／赫拉）血量：數字槽與血條凹槽皆烙印在 jp_num_02 框上，徽章＋數字＋jp_hp 銀條對位畫入 ===
 function drawBossPlate(m, idx, left) {
     const ratio = Math.max(0, m.hp / m.maxHp);
     const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
     const o = left ? LAYOUT.bossL : LAYOUT.bossR;
-    const plateCY = o.y;                 // 金色飾框內容垂直中心
-    const embW = 50, embH = 46;
-    const barW = 74, barH = 7;
-    let embX, textX, barX;
-    if (left) {                          // 左框：徽章｜數字／血條
-        embX = o.x; textX = o.x + 56; barX = o.x + 56;
-    } else {                             // 右框：數字／血條｜徽章
-        embX = o.x; textX = o.x - 70; barX = o.x - 69;
-    }
+    const dx = (left ? o.x - 126 : o.x - 1084), dy = o.y - 116;   // 調校面板微調量（預設 0）
+    const bs = o.s || 1;                                          // 徽章/數字/血條縮放
+    const fx = GRID_X - 226 + dx, fy = GRID_Y - 197 + dy;         // 神殿框左上（與框繪製同步）
+    // 上槽（數字底，框圖 y218~229）中心線
+    const ty = fy + 223.5;
+    const embW = 44 * bs, embH = 40 * bs;
+    const embCX = left ? fx + 12 : fx + 1099;    // 徽章壓在數字槽外側端
+    const textX = left ? fx + 38 : fx + 1073;    // 數字貼齊槽內
+    const textAlign = left ? 'left' : 'right';
     // 徽章（保留透明 PNG 原樣，不裁圓）
-    if (imgReady(emb)) drawImgFit(emb, embX, plateCY - embH / 2, embW, embH, 'contain');
-    // 大數字 hp/maxHp（白字黑描邊）
+    if (imgReady(emb)) drawImgFit(emb, embCX - embW / 2, ty - embH / 2, embW, embH, 'contain');
+    // 數字 hp/maxHp（白字黑描邊）
     ctx.save();
-    ctx.font = 'bold 21px sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000';
-    ctx.strokeText(`${m.hp}/${m.maxHp}`, textX, plateCY - 6);
+    ctx.font = `bold ${Math.round(20 * bs)}px sans-serif`;
+    ctx.textAlign = textAlign; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3 * bs; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000';
+    ctx.strokeText(`${m.hp}/${m.maxHp}`, textX, ty);
     ctx.fillStyle = m.hp <= 0 ? '#ef4444' : '#ffffff';
-    ctx.fillText(`${m.hp}/${m.maxHp}`, textX, plateCY - 6);
+    ctx.fillText(`${m.hp}/${m.maxHp}`, textX, ty);
     ctx.restore();
-    // 細血條（數字下方）
-    const by = plateCY + 11;
-    drawRoundedRect(barX, by - barH / 2, barW, barH, barH / 2, 'rgba(8,12,20,0.92)', 'rgba(0,0,0,0.7)', 1);
+    // 血條：jp_hp 銀條依血量比例畫入框上凹槽（框圖 左27~145／右976~1094，y240~247；縮放以槽中心為準）
+    const sw = 116 * bs, sh = 8 * bs;
+    const sx = (left ? fx + 28 : fx + 977) + (116 - sw) / 2, sy = fy + 240 + (8 - sh) / 2;
+    const fill = IMG.jpHP && IMG.jpHP[idx === 0 ? 0 : 1];
     if (ratio > 0) {
         ctx.save();
-        ctx.beginPath(); ctx.roundRect(barX + 1, by - barH / 2 + 1, (barW - 2) * ratio, barH - 2, (barH - 2) / 2); ctx.clip();
-        ctx.fillStyle = ratio > 0.3 ? '#22c55e' : '#ef4444';
-        ctx.fillRect(barX, by - barH / 2, barW, barH);
+        ctx.beginPath(); ctx.rect(sx, sy, sw * ratio, sh); ctx.clip();
+        if (imgReady(fill)) ctx.drawImage(fill, sx, sy, sw, sh);
+        else { ctx.fillStyle = ratio > 0.3 ? '#cbd5e1' : '#ef4444'; ctx.fillRect(sx, sy, sw, sh); }
+        if (ratio <= 0.3) { ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillRect(sx, sy, sw, sh); }  // 低血量警示
         ctx.restore();
     }
     ctx.textBaseline = 'alphabetic';
@@ -2605,14 +2667,15 @@ function drawMonsters() {
         // Boss（宙斯／赫拉）：金色飾框內專屬排版（大數字＋細血條＋徽章）
         if (lvl === 0) { drawBossPlate(m, idx, left); return; }
 
-        // 頭像/血條錨點統一由 LAYOUT 提供（可由調校面板拖曳）
+        // 頭像/血條錨點統一由 LAYOUT 提供（可由調校面板拖曳，s=整組縮放）
         const a = monUIAnchor(m);
+        const ms = a.s || 1;
         let iconCX = a.x, cy = a.y;
         ctx.save();
         if (m.fadeIn > 0) ctx.globalAlpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
 
-        let r = 17, barW = 78, barH = 9, gap = 8;
-        let barX, numX, numAlign, numFont = 'bold 15px sans-serif';
+        let r = 17 * ms, barW = 78 * ms, barH = 9 * ms, gap = 8 * ms;
+        let barX, numX, numAlign, numFont = `bold ${Math.round(15 * ms)}px sans-serif`;
         if (left) {
             barX = iconCX + r + gap;          // 血條在頭像內側（朝盤面）
             numX = barX + barW + 6;
@@ -2635,7 +2698,7 @@ function drawMonsters() {
         ctx.lineWidth = 2; ctx.strokeStyle = accent; ctx.stroke();
         ctx.clip();
         if (imgReady(portrait)) drawImgFit(portrait, iconCX - r, cy - r, r * 2, r * 2, 'cover');
-        else { ctx.fillStyle = '#fff'; ctx.font = '18px Segoe UI Emoji'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(elem.icon, iconCX, cy + 1); }
+        else { ctx.fillStyle = '#fff'; ctx.font = `${Math.round(18 * ms)}px Segoe UI Emoji`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(elem.icon, iconCX, cy + 1); }
         ctx.restore();
         // 屬性徽章同步閃爍（與觸發卡牌同步，提示對應）
         const mbf = badgeFlashAlpha(m.badgeFlashT);
@@ -2648,15 +2711,17 @@ function drawMonsters() {
             ctx.restore();
         }
 
-        // 細血條（無分格，純漸減）
+        // 細血條：hg_bot 底軌 + hg_progress 銀色填充（素材未載入退回程式繪製）
         const ratio = Math.max(0, m.hp / m.maxHp);
-        const hpColor = ratio > 0.3 ? '#22c55e' : '#ef4444';
-        drawRoundedRect(barX, cy - barH / 2, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
+        const bty = cy - barH / 2;
+        if (imgReady(IMG.hgBot)) ctx.drawImage(IMG.hgBot, barX, bty, barW, barH);
+        else drawRoundedRect(barX, bty, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
         if (ratio > 0) {
             ctx.save();
-            ctx.beginPath(); ctx.roundRect(barX + 1, cy - barH / 2 + 1, (barW - 2) * ratio, barH - 2, (barH - 2) / 2); ctx.clip();
-            ctx.fillStyle = hpColor;
-            ctx.fillRect(barX, cy - barH / 2, barW, barH);
+            ctx.beginPath(); ctx.roundRect(barX + 1, bty + 1, (barW - 2) * ratio, barH - 2, (barH - 2) / 2); ctx.clip();
+            if (imgReady(IMG.hgProgress)) ctx.drawImage(IMG.hgProgress, barX + 1, bty + 1, barW - 2, barH - 2);
+            else { ctx.fillStyle = ratio > 0.3 ? '#22c55e' : '#ef4444'; ctx.fillRect(barX, bty, barW, barH); }
+            if (ratio <= 0.3) { ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillRect(barX + 1, bty + 1, (barW - 2) * ratio, barH - 2); }  // 低血量警示
             ctx.restore();
         }
 
@@ -2672,25 +2737,26 @@ function drawMonsters() {
     });
 }
 
-// === 上方 Zeus JP / Hera JP 橫幅數字 ===
+// === Zeus / Hera JP 彩金數字：畫進神殿框左右橫幅（黑補丁蓋掉素材烙印占位數字）===
 function drawJPBanner() {
     const zeus = monsters[0], hera = monsters[3];
     const jx = LAYOUT.jpBanner.x - 640, jy = LAYOUT.jpBanner.y - 33;   // 相對原位偏移
+    const fx = GRID_X - 226, fy = GRID_Y - 197;                        // 神殿框左上（與框繪製同步）
     ctx.save();
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
-    // 宙斯（左）
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('ZEUS JP', 590 + jx, 22 + jy);
-    ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText((zeus ? zeus.jackpot : 0).toLocaleString(), 600 + jx, 44 + jy);
-    // 赫拉（右）
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#9ca3af'; ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('HERA JP', 690 + jx, 22 + jy);
-    ctx.fillStyle = '#fde047'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), 680 + jx, 44 + jy);
+    ctx.textAlign = 'center';
+    // 宙斯（左，深藍橫幅）
+    ctx.fillStyle = '#081c42';
+    ctx.beginPath(); ctx.roundRect(fx + 142 + jx, fy + 147 + jy, 176, 31, 4); ctx.fill();
+    ctx.font = `italic bold ${Math.round(23 * (LAYOUT.jpBanner.s || 1))}px sans-serif`;
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+    ctx.fillStyle = '#ffe14a';
+    ctx.fillText((zeus ? zeus.jackpot : 0).toLocaleString(), fx + 230 + jx, fy + 163 + jy);
+    // 赫拉（右，深紅橫幅）
+    ctx.fillStyle = '#3f0a1c';
+    ctx.beginPath(); ctx.roundRect(fx + 803 + jx, fy + 147 + jy, 179, 31, 4); ctx.fill();
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillText((hera ? hera.jackpot : 0).toLocaleString(), fx + 892 + jx, fy + 163 + jy);
     ctx.restore();
     ctx.textBaseline = 'alphabetic';
 }
@@ -2719,33 +2785,42 @@ function drawCardAtk(card, x, drawY, cardW, cardH, isFGMode) {
     const base = normalAttack(card.elemId, 3, card.level);
     const atkVal = card.atk > 0 ? card.atk : base;
     // 強度分級（細節表 05）：達 ×atkTier3Mult → 紅字外框；達 ×atkTier2Mult → 藍字外框
-    let fill = '#facc15', outline = 'rgba(0,0,0,0.85)';
+    let fill = { 1: '#fef08a', 2: '#bfdbfe', 3: '#fecaca', 4: '#fde68a', 5: '#e9d5ff' }[card.level] || '#facc15';
+    let outline = 'rgba(0,0,0,0.85)';
     if (card.atk >= base * TIMING.atkTier3Mult)      { fill = '#fecaca'; outline = '#dc2626'; }
     else if (card.atk >= base * TIMING.atkTier2Mult) { fill = '#bfdbfe'; outline = '#2563eb'; }
     const punch = card.atkPunchT > 0 ? 1 + 0.3 * Math.sin(Math.PI * (1 - card.atkPunchT / TF(TIMING.atkUpdate))) : 1;
-    const cx = x + cardW / 2;
-    const yy = drawY + (isFGMode ? 58 : 68);
+    const AL = LAYOUT.atkNum || { x: 0, y: 0, s: 1 };   // 佈局面板：偏移 + 縮放
+    const as = AL.s || 1;
+    const cx = (isFGMode ? x + cardW / 2 : x + cardW * 0.855) + AL.x;
+    const yy = (isFGMode ? drawY + 58 : drawY + cardH * 0.112) + AL.y;
+    const text = isFGMode ? `ATK ${atkVal}` : `${atkVal}`;
     ctx.save();
-    ctx.font = `bold ${Math.round((isFGMode ? 17 : 26) * punch)}px sans-serif`;
+    ctx.font = `bold ${Math.round((isFGMode ? 17 : 38 * (cardW / 199)) * punch * as)}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = outline;
-    ctx.strokeText(`ATK ${atkVal}`, cx, yy);
+    ctx.lineJoin = 'round'; ctx.lineWidth = (isFGMode ? 4 : Math.max(4, 5 * (cardW / 199))) * as; ctx.strokeStyle = outline;
+    ctx.strokeText(text, cx, yy);
     ctx.fillStyle = fill;
-    ctx.fillText(`ATK ${atkVal}`, cx, yy);
+    ctx.fillText(text, cx, yy);
+    ctx.restore();
+}
+
+function drawInactiveCardDim(card, x, drawY, cardW, cardH) {
+    // 攻擊時「聚光燈」：當下正在出手的卡（蓄力／受擊硬直）與已收集攻擊力
+    // 待觸發的卡（atk > 0，維持呼吸光待機）保持亮度；其餘卡牌壓黑
+    // ——含逐組輪流中已打完的前組卡牌（打完 atk 歸零即壓黑）
+    const isTriggered = card.isCharging || card.holdT > 0 || card.atk > 0;
+    if (currentState !== STATE.ATTACKING || isTriggered || attackDimAlpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = attackDimAlpha * TIMING.popDimAlpha;
+    drawRoundedRect(x, drawY, cardW, cardH, 10, 'rgb(0,0,15)');
     ctx.restore();
 }
 
 function drawCards() {
     if (isBG) return; // BG 模式無卡牌
 
-    const isFGMode = cards.length === 6;
-    const cardW = isFGMode ? 85  : 140;
-    const cardH = isFGMode ? 84  : 90;
-    const gap   = isFGMode ? 8   : 20;
-    const count = Math.max(cards.length, isFGMode ? 6 : 3);
-    const totalW = count * cardW + (count - 1) * gap;
-    const startX = LAYOUT.cards.x - totalW / 2;
-    const baseY = LAYOUT.cards.y + (isFGMode ? -8 : 0); // FG 小卡略高（原 552/560）
+    const { isFGMode, cardW, cardH, gap, count, totalW, startX, baseY } = getCardDrawMetrics(cards.length);
 
     // 插槽背景
     for (let i = 0; i < count; i++) {
@@ -2799,6 +2874,7 @@ function drawCards() {
             // 美術圖 ATK 為靜態；疊上動態攻擊力數字（累加值＋強度分級變色）
             if (!isFGMode || card.atk > 0) drawCardAtk(card, x, drawY, cardW, cardH, isFGMode);
             drawCardBadgeFlash(card, x, drawY, cardW, isFGMode);
+            drawInactiveCardDim(card, x, drawY, cardW, cardH);
             ctx.globalAlpha = 1.0;
             ctx.restore();
             return;
@@ -2840,6 +2916,7 @@ function drawCards() {
         // 攻擊力（即時依消除顆數變動、含強度分級變色）
         drawCardAtk(card, x, drawY, cardW, cardH, isFGMode);
         drawCardBadgeFlash(card, x, drawY, cardW, isFGMode);
+        drawInactiveCardDim(card, x, drawY, cardW, cardH);
 
         ctx.globalAlpha = 1.0;
         ctx.restore();
@@ -2849,8 +2926,10 @@ function drawCards() {
 }
 
 function drawAccumulator() {
-    const ax = LAYOUT.accum.x;
-    let accumY = LAYOUT.accum.y - 22;
+    const ax = LAYOUT.accum.x, ay = LAYOUT.accum.y, asc = LAYOUT.accum.s || 1;
+    ctx.save();
+    ctx.translate(ax, ay); ctx.scale(asc, asc); ctx.translate(-ax, -ay);   // 以錨點為中心整體縮放
+    let accumY = ay - 22;
     drawRoundedRect(ax - 250, accumY, 500, 45, 12, 'rgba(30, 41, 59, 0.9)', '#334155', 2);
 
     let activeAccums = [];
@@ -2864,6 +2943,7 @@ function drawAccumulator() {
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText("當前消除累計將顯示於此...", ax, accumY + 28);
+        ctx.restore();
         return;
     }
 
@@ -2879,6 +2959,7 @@ function drawAccumulator() {
         // 改為顯示 displayAccumulatedMatches
         ctx.fillText(`${elem.icon} x${displayAccumulatedMatches[elemId]}`, x, accumY + 30);
     });
+    ctx.restore();
 }
 
 function drawGrid() {
@@ -2899,7 +2980,37 @@ function drawGrid() {
 
     drawMechanismTargetHighlights();
 
+    // 巨型 WILD 區塊仍完整（4 格皆為 WILD、同錨點、未消除）時回傳錨點座標,否則清旗標
+    function bigWildIntact(gem) {
+        const b = gem.bigWildBlock;
+        if (!b) return null;
+        for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) {
+            const cell = board[b.minC + dc] ? board[b.minC + dc][b.minR + dr] : null;
+            if (!cell || cell.id !== WILD_ID || cell.isMatched || !cell.bigWildBlock ||
+                cell.bigWildBlock.minC !== b.minC || cell.bigWildBlock.minR !== b.minR) return null;
+        }
+        return b;
+    }
+
     function drawGem(c, r, gem, extraY = 0) {
+        // 巨型 WILD：整塊完整時只由左上錨點畫一張 192px,其餘 3 格略過
+        const bw = gem.bigWildBlock ? bigWildIntact(gem) : null;
+        if (gem.bigWildBlock && !bw) { delete gem.bigWildBlock; }   // 區塊被打散→退回單格繪製
+        if (bw) {
+            const isAnchor = (c === bw.minC && r === bw.minR);
+            if (!isAnchor) return;                                  // 非錨點格不重複畫
+            if (imgReady(IMG.wildBig)) {
+                const yOff = (colOffsets[c] || 0) + gem.yOffset + extraY;
+                const bx = GRID_X + bw.minC * GEM_SIZE + 4;
+                const by = GRID_Y + bw.minR * GEM_SIZE + 4 + yOff;
+                const bs = GEM_SIZE * 2 - 8;
+                ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
+                ctx.drawImage(IMG.wildBig, bx, by, bs, bs);
+                ctx.shadowBlur = 0;
+                return;
+            }
+            // 圖未載入→退回逐格繪製（不 return，落到下方一般流程）
+        }
         let currentYOffset = (colOffsets[c] || 0) + gem.yOffset + extraY;
         let x = GRID_X + c * GEM_SIZE;
         let y = GRID_Y + r * GEM_SIZE + currentYOffset;
@@ -3009,23 +3120,85 @@ function drawGrid() {
 
 function drawUI() {
     const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列整列位移
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(ux, uy, 1280, 80);
-    ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 1280, uy); ctx.stroke();
-
+    const useArt = imgReady(IMG.publicUI);                  // 公版 UI 條素材（1280×126 貼齊畫面底部）
+    const barY = uy - 46;                                    // 素材頂緣（uy=640 時 = 594）
     const bottomY = uy + 20;
     ctx.textBaseline = 'middle';   // 按鈕文字上下置中
 
-    drawRoundedRect(40 + ux, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
-    ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText("強開 ▲", 90 + ux, bottomY + 20);
+    if (useArt) {
+        ctx.drawImage(IMG.publicUI, ux, barY, 1280, 126);
 
-    // 上拉選單
+        // BET 動態數字（黑底補丁蓋掉素材內建占位「100」）
+        ctx.fillStyle = '#0a0a0a';
+        drawRoundedRect(368 + ux, barY + 74, 154, 38, 4, '#0a0a0a');
+        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 21px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(`${betAmount}`, 445 + ux, barY + 93);
+
+        // WIN 動態數字（蓋掉素材內建占位「82345678」）
+        ctx.fillStyle = '#0d0d0d';
+        ctx.fillRect(555 + ux, barY + 68, 250, 50);
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 26px sans-serif';
+        ctx.fillText(`${Math.round(displayWin)}`, 680 + ux, barY + 92);
+
+        // i 按鈕（INFO）開啟提示框
+        if (showInfoPanel) drawRoundedRect(823 + ux, barY + 40, 88, 68, 12, null, '#38bdf8', 2);
+
+        // SPIN 大圓鈕：非待機時壓暗；可按且滑入時亮框（判定區由 LAYOUT.spinBtn 控制）
+        const sb = LAYOUT.spinBtn;
+        const spinCX = sb.x + sb.w / 2, spinCY = sb.y + sb.h / 2, spinR = Math.min(sb.w, sb.h) / 2;
+        if (!(currentState === STATE.IDLE && !isAutoSpinning)) {
+            ctx.save();
+            ctx.globalAlpha = 0.45; ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(spinCX, spinCY, spinR, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        } else if (isMouseHoverSpin) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(spinCX, spinCY, spinR - 2, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
+
+        // AUTO（右側快轉鈕）：啟用時紅框＋剩餘次數（判定區由 LAYOUT.autoBtn 控制）
+        const ab = LAYOUT.autoBtn;
+        if (isAutoSpinning) {
+            drawRoundedRect(ab.x, ab.y, ab.w, ab.h, 12, null, '#ef4444', 2.5);
+            ctx.fillStyle = '#ef4444'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(`×${autoSpinCount}`, ab.x + ab.w / 2, ab.y + ab.h + 12);
+        } else if (isMouseHoverAuto) {
+            drawRoundedRect(ab.x, ab.y, ab.w, ab.h, 12, null, 'rgba(255,255,255,0.8)', 2);
+        }
+
+        // 強開（測試選單）：疊在左下玩家頭像上
+        drawRoundedRect(8 + ux, uy + 17, 92, 30, 15, forceMenuOpen ? '#0f3460' : 'rgba(15,23,42,0.85)', forceMenuOpen ? '#38bdf8' : '#334155');
+        ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('強開 ▲', 54 + ux, uy + 32);
+    } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(ux, uy, 1280, 80);
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 1280, uy); ctx.stroke();
+
+        drawRoundedRect(40 + ux, bottomY, 100, 40, 20, forceMenuOpen ? '#0f3460' : '#1e293b', forceMenuOpen ? '#38bdf8' : '#334155');
+        ctx.fillStyle = forceMenuOpen ? '#38bdf8' : '#cbd5e1'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText("強開 ▲", 90 + ux, bottomY + 20);
+
+        drawRoundedRect(160 + ux, bottomY, 100, 40, 20, showInfoPanel ? '#0f3460' : '#1e293b', showInfoPanel ? '#38bdf8' : '#334155');
+        ctx.fillStyle = showInfoPanel ? '#38bdf8' : '#cbd5e1';
+        ctx.fillText("INFO", 210 + ux, bottomY + 20);
+
+        drawRoundedRect(280 + ux, bottomY, 150, 40, 20, '#1e293b', '#334155');
+        ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355 + ux, bottomY + 20);
+
+        drawRoundedRect(850 + ux, bottomY, 150, 40, 10, '#1e293b', '#334155');
+        ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${Math.round(displayWin)}`, 925 + ux, bottomY + 20);
+    }
+
+    // 上拉選單（共用；錨點依 UI 模式：素材模式從強開小按鈕上方展開）
     if (forceMenuOpen) {
         const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
         const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-        const my0 = bottomY - totalH - 4;
+        const menuBase = useArt ? uy + 13 : bottomY;
+        const my0 = menuBase - totalH - 4;
         drawRoundedRect(mx0 - 5, my0 - 4, mw + 10, totalH + 4, 8, 'rgba(8,14,26,0.96)', '#334155');
         FORCE_MENU_ITEMS.forEach((item, i) => {
             const iy = my0 + i * (itemH + gap);
@@ -3034,19 +3207,6 @@ function drawUI() {
             ctx.fillText(item.label, mx0 + mw / 2, iy + itemH / 2);
         });
     }
-
-    drawRoundedRect(160 + ux, bottomY, 100, 40, 20, showInfoPanel ? '#0f3460' : '#1e293b', showInfoPanel ? '#38bdf8' : '#334155');
-    ctx.fillStyle = showInfoPanel ? '#38bdf8' : '#cbd5e1';
-    ctx.fillText("INFO", 210 + ux, bottomY + 20);
-
-    drawRoundedRect(280 + ux, bottomY, 150, 40, 20, '#1e293b', '#334155');
-    ctx.fillStyle = '#f8fafc'; ctx.fillText(`BET: ${betAmount}`, 355 + ux, bottomY + 20);
-
-    drawRoundedRect(850 + ux, bottomY, 150, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#facc15'; ctx.fillText(`WIN: ${Math.round(displayWin)}`, 925 + ux, bottomY + 20);
-
-    drawRoundedRect(1020 + ux, bottomY, 220, 40, 10, '#1e293b', '#334155');
-    ctx.fillStyle = '#38bdf8'; ctx.fillText(`SESSION: ${Math.round(displaySession)}`, 1130 + ux, bottomY + 20);
     ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
 
     // FG / BG 狀態橫幅
@@ -3108,19 +3268,22 @@ function drawUI() {
         ctx.shadowBlur = 0;
     }
 
-    ctx.textBaseline = 'middle';   // SPIN / AUTO SPIN 文字上下置中
-    let spinBtnColor = currentState === STATE.IDLE && !isAutoSpinning ? (isMouseHoverSpin ? '#0284c7' : '#38bdf8') : '#475569';
-    drawRoundedRect(490 + ux, uy + 10, 140, 50, 25, spinBtnColor);
-    ctx.fillStyle = 'white'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(currentState === STATE.IDLE && !isAutoSpinning ? "SPIN" : "...", 560 + ux, uy + 35);
+    // 舊版 SPIN / AUTO SPIN 按鈕（僅素材未載入時退回程式繪製；素材模式操作改用圖上按鈕）
+    if (!useArt) {
+        ctx.textBaseline = 'middle';   // SPIN / AUTO SPIN 文字上下置中
+        let spinBtnColor = currentState === STATE.IDLE && !isAutoSpinning ? (isMouseHoverSpin ? '#0284c7' : '#38bdf8') : '#475569';
+        drawRoundedRect(490 + ux, uy + 10, 140, 50, 25, spinBtnColor);
+        ctx.fillStyle = 'white'; ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(currentState === STATE.IDLE && !isAutoSpinning ? "SPIN" : "...", 560 + ux, uy + 35);
 
-    let autoBtnColor = isAutoSpinning ? (isMouseHoverAuto ? '#dc2626' : '#ef4444') : (isMouseHoverAuto ? '#0284c7' : '#38bdf8');
-    drawRoundedRect(650 + ux, uy + 10, 140, 50, 25, autoBtnColor);
-    ctx.fillStyle = 'white'; ctx.font = 'bold 18px sans-serif';
-    if (isAutoSpinning) {
-        ctx.fillText(`STOP (${autoSpinCount})`, 720 + ux, uy + 35);
-    } else {
-        ctx.fillText("AUTO SPIN", 720 + ux, uy + 35);
+        let autoBtnColor = isAutoSpinning ? (isMouseHoverAuto ? '#dc2626' : '#ef4444') : (isMouseHoverAuto ? '#0284c7' : '#38bdf8');
+        drawRoundedRect(650 + ux, uy + 10, 140, 50, 25, autoBtnColor);
+        ctx.fillStyle = 'white'; ctx.font = 'bold 18px sans-serif';
+        if (isAutoSpinning) {
+            ctx.fillText(`STOP (${autoSpinCount})`, 720 + ux, uy + 35);
+        } else {
+            ctx.fillText("AUTO SPIN", 720 + ux, uy + 35);
+        }
     }
     ctx.save();
     ctx.textAlign = 'right';
@@ -3533,11 +3696,9 @@ function update() {
                 if (!isBG) {
                     let cardIdx = cards.findIndex(c => c.elemId === g.elemId);
                     if (cardIdx !== -1) {
-                        const cW = cards.length === 6 ? 85 : 140;
-                        const cGap = cards.length === 6 ? 8 : 20;
-                        const cTotalW = cards.length * cW + (cards.length - 1) * cGap;
-                        let cardCX = LAYOUT.cards.x - cTotalW / 2 + cardIdx * (cW + cGap) + cW / 2;
-                        const cardTY = LAYOUT.cards.y + 15;
+                        const cm = getCardDrawMetrics(cards.length);
+                        let cardCX = cm.startX + cardIdx * (cm.cardW + cm.gap) + cm.cardW / 2;
+                        const cardTY = cm.baseY + 24;
                         const elemColor = ELEMENTS[g.elemId].color, elemIcon = ELEMENTS[g.elemId].icon;
                         const energyLife = TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20;
                         const energyDelay = TF(TIMING.popDissolve);
@@ -3622,9 +3783,6 @@ function update() {
 
     } else if (currentState === STATE.EVALUATING) {
         // 按元素分組，建立攻擊輪次（同元素有 N 組 → N 輪）
-        const cardW = cards.length === 6 ? 85 : 140;
-        const gap   = cards.length === 6 ? 8  : 20;
-        const totalW = cards.length * cardW + (cards.length - 1) * gap;
         let elemGroups = {};
         matchHistory.forEach(m => {
             if (!elemGroups[m.elemId]) elemGroups[m.elemId] = [];
@@ -4076,6 +4234,9 @@ function update() {
 // === 左上收集欄：常駐顯示，收集到 FG / BG 時亮起 ===
 function drawPendingFGBGSlot() {
     const bx = LAYOUT.collectSlot.x, by = LAYOUT.collectSlot.y, bw = 285, bh = 26;
+    const cs = LAYOUT.collectSlot.s || 1;
+    ctx.save();
+    ctx.translate(bx, by); ctx.scale(cs, cs); ctx.translate(-bx, -by);   // 以左上角為基準整體縮放
 
     if (!pendingFGBG) {
         // 空欄位（常駐待機狀態）
@@ -4086,6 +4247,7 @@ function drawPendingFGBGSlot() {
         ctx.textBaseline = 'middle';
         ctx.fillText('⬡  FG / BG  收集欄', bx + 14, by + bh / 2);
         ctx.textBaseline = 'alphabetic';
+        ctx.restore();
         return;
     }
 
@@ -4114,6 +4276,7 @@ function drawPendingFGBGSlot() {
     ctx.textBaseline = 'middle';
     ctx.fillText(`${icon} ${label}`, bx + 28, by + bh / 2);
     ctx.textBaseline = 'alphabetic';
+    ctx.restore();
 }
 
 // 爆擊圖片壓在盤面上（漫畫撞擊感：白閃→snap出現→淡出）
@@ -4150,8 +4313,40 @@ function drawCritOverlay() {
             ctx.lineTo(cx + Math.cos(a) * 500, cy + Math.sin(a) * 500);
             ctx.stroke();
         }
+    } else if (imgReady(IMG.critFx) && imgReady(IMG.critPose)) {
+        // ── 新版爆擊組圖：特效底圖 cover 全盤面 + 角色 snap + 必殺字卡 ──
+        const imageAlpha = frames < 8 ? frames / 7 : 1; // 只有結尾才淡出
+        ctx.globalAlpha = imageAlpha;
+
+        // 1. 全版特效底圖（冰霜斬擊）cover 填滿盤面
+        drawImgFit(IMG.critFx, GRID_X, GRID_Y, GRID_W, GRID_H, 'cover');
+
+        // 2. 海克力士角色：直接 snap 出現，開頭帶輕微縮放回彈（砰的衝擊感）
+        const elapsed = imgF - frames;                       // 全版圖已播幀數
+        const punch = elapsed < 6 ? 1 + 0.12 * (1 - elapsed / 6) : 1;
+        const poseH = GRID_H * 0.92 * punch;
+        const poseW = poseH * (IMG.critPose.naturalWidth / IMG.critPose.naturalHeight);
+        ctx.drawImage(IMG.critPose,
+            GRID_X + GRID_W / 2 - poseW / 2,
+            GRID_Y + GRID_H - poseH,          // 貼齊盤面底部，角色置中
+            poseW, poseH);
+
+        // 3. 必殺技字卡：上方置中，snap 後帶縮放回彈
+        if (imgReady(IMG.critText)) {
+            const textPunch = elapsed < 6 ? 1 + 0.35 * (1 - elapsed / 6) : 1;
+            const tw = GRID_W * 0.52 * textPunch;
+            const th = tw * (IMG.critText.naturalHeight / IMG.critText.naturalWidth);
+            ctx.drawImage(IMG.critText, GRID_X + GRID_W / 2 - tw / 2, GRID_Y + 26, tw, th);
+        }
+
+        // 剛出現後殘留白光（7幀）快速消退，強化「砰」的感覺
+        if (frames > imgF - 7) {
+            ctx.globalAlpha = ((frames - (imgF - 7)) / 7) * imageAlpha;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(GRID_X, GRID_Y, GRID_W, GRID_H);
+        }
     } else if (critImage.complete && critImage.naturalWidth > 0) {
-        // ── 圖片直接 snap（漫畫切換感，不淡入）──
+        // ── 舊版單張占位圖（新素材未載入時退回）──
         const imageAlpha = frames < 8 ? frames / 7 : 1; // 只有結尾才淡出
         ctx.globalAlpha = imageAlpha;
 
@@ -4186,8 +4381,13 @@ function gameLoop() {
 
     if (!isBG) drawBigMonstersRear();   // 後景大怪（龍／巨人），會被外框遮住一部分
     drawGrid();                          // 盤面底 + 寶石
-    if (imgReady(IMG.frame)) ctx.drawImage(IMG.frame, 0, 0, 1280, 721); // 金色外框（含柱／半身像／JP 橫幅底）
+    // 神殿盤面框（jp_num_02 1124×751，透明開口 226,197~895,674 對齊盤面 672×480）
+    if (imgReady(IMG.frame)) ctx.drawImage(IMG.frame, GRID_X - 226, GRID_Y - 197, 1124, 751);
     if (!isBG) drawBigMonstersFront();  // 前景大怪（豬／女戰士）
+    // 場景前景剪影（劍／岩石），壓在大怪之上、血條 UI 之下
+    if (!isBG && imgReady(IMG.foreground)) {
+        ctx.drawImage(IMG.foreground, 0, 720 - 283, 1280, 283);   // 素材 1280×283，貼齊畫面底部
+    }
     if (!isBG) drawMonsters();          // 怪物血條 UI
     if (!isBG) drawJPBanner();          // 上方 JP 數字
 
@@ -4209,17 +4409,20 @@ function handleInput(clientX, clientY, isClick) {
     const mx = (clientX - rect.left) * (canvas.width / rect.width);
     const my = (clientY - rect.top) * (canvas.height / rect.height);
     const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列位移（判定區跟著繪製走）
+    const useArt = imgReady(IMG.publicUI);                   // 判定區與 drawUI 的公版 UI 條模式同步
+    const barY = uy - 46;
 
-    if (mx >= 490 + ux && mx <= 630 + ux && my >= uy + 10 && my <= uy + 60) {
-        isMouseHoverSpin = true;
+    if (useArt) {
+        // SPIN 大圓鈕（圓形判定，範圍由 LAYOUT.spinBtn 控制）
+        const sb = LAYOUT.spinBtn, ab = LAYOUT.autoBtn;
+        const dx = mx - (sb.x + sb.w / 2), dy = my - (sb.y + sb.h / 2);
+        const spinR = Math.min(sb.w, sb.h) / 2;
+        isMouseHoverSpin = dx * dx + dy * dy <= spinR * spinR;
+        // AUTO 快轉鈕（右側方框，範圍由 LAYOUT.autoBtn 控制）
+        isMouseHoverAuto = mx >= ab.x && mx <= ab.x + ab.w && my >= ab.y && my <= ab.y + ab.h;
     } else {
-        isMouseHoverSpin = false;
-    }
-
-    if (mx >= 650 + ux && mx <= 790 + ux && my >= uy + 10 && my <= uy + 60) {
-        isMouseHoverAuto = true;
-    } else {
-        isMouseHoverAuto = false;
+        isMouseHoverSpin = mx >= 490 + ux && mx <= 630 + ux && my >= uy + 10 && my <= uy + 60;
+        isMouseHoverAuto = mx >= 650 + ux && mx <= 790 + ux && my >= uy + 10 && my <= uy + 60;
     }
 
     const overToggle = statToggleRects.some(t => mx >= t.x && mx <= t.x + t.w && my >= t.y && my <= t.y + t.h);
@@ -4232,13 +4435,16 @@ function handleInput(clientX, clientY, isClick) {
         }
     } else {
         const stateBeforeClick = currentState;
-        if (mx >= 40 + ux && mx <= 140 + ux && my >= uy + 20 && my <= uy + 60) {
+        const forceBtnHit = useArt
+            ? (mx >= 8 + ux && mx <= 100 + ux && my >= uy + 17 && my <= uy + 47)
+            : (mx >= 40 + ux && mx <= 140 + ux && my >= uy + 20 && my <= uy + 60);
+        if (forceBtnHit) {
             forceMenuOpen = !forceMenuOpen;
         } else if (forceMenuOpen) {
-            // 點選選單項目
+            // 點選選單項目（錨點與 drawUI 的上拉選單一致）
             const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
             const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-            const my0 = uy + 20 - totalH - 8;
+            const my0 = (useArt ? uy + 13 : uy + 20) - totalH - 4;
             if (mx >= mx0 && mx <= mx0 + mw) {
                 FORCE_MENU_ITEMS.forEach((item, i) => {
                     const iy = my0 + i * (itemH + gap);
@@ -4292,7 +4498,10 @@ function handleInput(clientX, clientY, isClick) {
                 });
             }
         }
-        if (mx >= 160 + ux && mx <= 260 + ux && my >= uy + 20 && my <= uy + 60) {
+        const infoBtnHit = useArt
+            ? (mx >= 823 + ux && mx <= 911 + ux && my >= barY + 40 && my <= barY + 108)
+            : (mx >= 160 + ux && mx <= 260 + ux && my >= uy + 20 && my <= uy + 60);
+        if (infoBtnHit) {
             showInfoPanel = !showInfoPanel;
             infoPanel.classList.toggle('visible', showInfoPanel);
         }
@@ -4346,6 +4555,7 @@ let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔�
 let layoutSelected = null;       // 選中的 LAYOUT key
 let layoutDrag = null;           // { mx, my, ox, oy } 拖曳起點
 let layoutFieldRefs = {};        // 佈局分頁 x/y/w/h 數字框參照（拖曳時同步）
+let layoutRangeRefs = {};        // 佈局分頁 x/y/w/h 滑桿參照（拖曳時同步）
 
 function saveTuning() {
     try {
@@ -4380,7 +4590,8 @@ function loadTuning() {
         if (d.layout) for (const k in DEFAULT_LAYOUT) {
             const o = d.layout[k];
             if (o && typeof o === 'object') for (const p in DEFAULT_LAYOUT[k]) {
-                if (typeof o[p] === 'number' && isFinite(o[p])) LAYOUT[k][p] = Math.round(o[p]);
+                if (typeof o[p] === 'number' && isFinite(o[p]))
+                    LAYOUT[k][p] = p === 's' ? Math.round(o[p] * 100) / 100 : Math.round(o[p]);
             }
         }
     } catch (e) { /* 資料損毀：退回預設 */ }
@@ -4636,20 +4847,33 @@ function buildLayoutTab() {
         const h = document.createElement('div');
         h.className = 'tune-group'; h.textContent = `選中：${meta[1]}`;
         tuneBody.appendChild(h);
-        const props = meta[3] ? ['x', 'y', 'w', 'h'] : ['x', 'y'];
+        // 依物件實際擁有的數值屬性動態產生滑桿（x/y 位置、w/h 尺寸、s 縮放）
+        const props = Object.keys(o).filter(p => typeof o[p] === 'number');
+        // 各屬性滑桿範圍：x/y 涵蓋畫布外可拖出（px），w/h 為尺寸（px），s 為縮放倍率
+        const RANGE = { x: [-300, 1400], y: [-300, 900], w: [0, 800], h: [0, 800], s: [0.2, 3] };
         props.forEach(p => {
+            const isScale = p === 's';
             const row = document.createElement('div'); row.className = 'tune-row';
-            const lab = document.createElement('label'); lab.textContent = p.toUpperCase();
+            const lab = document.createElement('label'); lab.textContent = isScale ? '縮放' : p.toUpperCase();
+            const [min, max] = RANGE[p] || [-500, 1500];
+            const rng = document.createElement('input');
+            rng.type = 'range'; rng.min = min; rng.max = max; rng.step = isScale ? '0.05' : '1'; rng.value = o[p];
             const num = document.createElement('input');
-            num.type = 'number'; num.step = '1'; num.value = o[p];
-            const applyLayoutValue = () => {
-                const v = parseInt(num.value, 10);
-                if (isFinite(v)) { o[p] = v; syncLayoutDerived(); saveTuning(); }
+            num.type = 'number'; num.step = isScale ? '0.05' : '1'; num.value = o[p];
+            const applyLayoutValue = src => {
+                const v = isScale ? Math.round(parseFloat(src.value) * 100) / 100 : parseInt(src.value, 10);
+                if (isFinite(v)) {
+                    o[p] = v; syncLayoutDerived(); saveTuning();
+                    if (src !== rng) rng.value = v;
+                    if (src !== num) num.value = v;
+                }
             };
-            num.addEventListener('input', applyLayoutValue);
-            num.addEventListener('change', applyLayoutValue);
+            rng.addEventListener('input', () => applyLayoutValue(rng));
+            num.addEventListener('input', () => applyLayoutValue(num));
+            num.addEventListener('change', () => applyLayoutValue(num));
             layoutFieldRefs[p] = num;
-            row.appendChild(lab); row.appendChild(num);
+            layoutRangeRefs[p] = rng;
+            row.appendChild(lab); row.appendChild(rng); row.appendChild(num);
             tuneBody.appendChild(row);
         });
     }
@@ -4664,6 +4888,7 @@ function syncLayoutFields() {
     if (!layoutSelected) return;
     const o = LAYOUT[layoutSelected];
     for (const p in layoutFieldRefs) layoutFieldRefs[p].value = o[p];
+    for (const p in layoutRangeRefs) layoutRangeRefs[p].value = o[p];
 }
 
 tuneBtn.addEventListener('click', () => {

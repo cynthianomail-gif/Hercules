@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "hercules-demo",
+      "name": "hercules-demo-2",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8734"],
-      "port": 8734
+      "runtimeArgs": ["-m", "http.server", "8741"],
+      "port": 8741
     }
   ]
 }
