@@ -3006,19 +3006,14 @@ function drawCards() {
             ctx.shadowBlur = 10 + 6 * Math.sin(tickCounter / 12);
         }
 
-        drawRoundedRect(x, drawY, cardW, cardH, 10, '#1e293b', trimColor, card.isCharging ? 4 : 2);
+        // 無美術圖的備援卡：整卡直接用屬性色鋪滿（不留黑色UI底板），只剩徽章/ATK覆蓋在上
+        drawRoundedRect(x, drawY, cardW, cardH, 10, elem.color, trimColor, card.isCharging ? 4 : 2);
         ctx.shadowBlur = 0;
 
         if (card.isCharging) {
             ctx.fillStyle = 'rgba(255,255,255,0.2)';
             drawRoundedRect(x, drawY, cardW, cardH, 10, ctx.fillStyle);
         }
-
-        // 卡牌頭部背景（FG 小卡頭部縮小）
-        const hdrH = isFGMode ? 26 : 35;
-        ctx.fillStyle = elem.color;
-        drawRoundedRect(x, drawY, cardW, hdrH, 10, elem.color);
-        ctx.fillRect(x, drawY + hdrH - 10, cardW, 10);
 
         // 屬性徽章
         const badgeR = isFGMode ? 9 : 12;
