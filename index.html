@@ -1604,8 +1604,8 @@ function startPopWave(groups) {
     // 依組首位置排序（左到右、上到下）
     groups.forEach(g => { g.order = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
     groups.sort((a, b) => a.order - b.order);
-    const scoreF = TF(TIMING.scorePerIcon);   // 每組亮起→消散前的得分演繹停留
-    const gapF   = TF(TIMING.groupGap);        // 組與組輪流錯落（前一組能量起飛時，下一組開始消散）
+    const scoreF = TF(TIMING.scorePerIcon);   // 全亮後的得分演繹停留
+    const gapF   = TF(TIMING.groupGap);        // 組與組錯落間隔（亮起與消散皆用）
     // 逐格歸屬：WILD 可同時屬多組，記錄其「參與的最後一組」→ 只在最後一組時才真正消散（WILD 保留）
     const cellGroups = new Map();
     groups.forEach((g, i) => g.cells.forEach(c => {
@@ -1613,9 +1613,11 @@ function startPopWave(groups) {
         if (!cellGroups.has(k)) cellGroups.set(k, []);
         cellGroups.get(k).push(i);
     }));
+    // 嚴格兩階段（企劃 2026-07-10）：所有組先依序亮起（含得分框）→ 全亮停留 scoreF → 再依序消散
+    const lastLightF = (groups.length - 1) * gapF;   // 最後一組亮起時點
     groups.forEach((g, i) => {
-        g.lightF    = i * gapF;                 // 第 i 組亮起時點（逐組錯落）
-        g.dissolveF = i * gapF + scoreF;        // 亮起停留 scoreF 後，該組才開始消散
+        g.lightF    = i * gapF;                        // 階段1：第 i 組亮起（逐組錯落）
+        g.dissolveF = lastLightF + scoreF + i * gapF;  // 階段2：全亮＋停留後，第 i 組才開始消散
         g.lit = false; g.resolved = false;
         g.dissolveCells = [];                   // 本組負責消散的格（含輪到最後一組的 WILD）
         g.emitWildCells = [];                   // 本組內「保留的 WILD」：射能量但本體不消
