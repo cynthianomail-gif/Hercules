@@ -3375,26 +3375,23 @@ function drawUI() {
         ctx.restore();
     }
     if (isBG) {
-        // BG 倍率面板：置於畫面頂部中央、蓋在 MYTHIC JACKPOT 標題上（企劃 2026-07-09）
-        const bpX = 390, bpY = 6, bpW = 500, bpH = 108;
-        ctx.fillStyle = 'rgba(15,23,42,0.94)';
-        ctx.fillRect(bpX, bpY, bpW, bpH);
-        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(245,158,11,0.10)', '#f59e0b', 1.5);
+        // BG 倍率面板（小型）：頂部 MYTHIC JACKPOT 標題上，只顯示倍率（企劃 2026-07-10：縮小、去除 BONUS GAME 字樣）
+        const bpX = 550, bpY = 10, bpW = 180, bpH = 76;
+        const mcx = 640, mcy = bpY + 56;   // 倍率大字基準點
+        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(15,23,42,0.94)', '#f59e0b', 1.5);
+        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(245,158,11,0.10)');
         ctx.textAlign = 'center';
-        // 標題列
-        ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px sans-serif';
-        ctx.fillText(`✨ BONUS GAME　剩餘 ${bgSpinsRemaining} 局`, 640, bpY + 22);
         // 倍率大字（BG 倍數遞增演繹：舊淡出 → 新飛入 → 先放大後縮回，節奏表）
         const fadeF = TF(TIMING.bgMultFade), flyF = TF(TIMING.bgMultFly), scaleF = TF(TIMING.bgMultScale);
         const t = bgMultAnimT;
-        ctx.font = 'bold 52px sans-serif';
+        ctx.font = 'bold 46px sans-serif';
         ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 22;
         if (t < fadeF) {
             // 舊倍數淡出（與新倍數飛入並行）
             ctx.save();
             ctx.globalAlpha = 1 - t / fadeF;
             ctx.fillStyle = '#b45309';
-            ctx.fillText(`×${bgMultPrev}`, 640, bpY + 85);
+            ctx.fillText(`×${bgMultPrev}`, mcx, mcy);
             ctx.restore();
         }
         ctx.save();
@@ -3406,14 +3403,23 @@ function drawUI() {
             // 先放大後縮回
             const q = (t - flyF) / scaleF;
             const sc = 1 + 0.3 * Math.sin(Math.PI * q);
-            ctx.translate(640, bpY + 85);
+            ctx.translate(mcx, mcy);
             ctx.scale(sc, sc);
-            ctx.translate(-640, -(bpY + 85));
+            ctx.translate(-mcx, -mcy);
         }
         ctx.fillStyle = '#fbbf24';
-        ctx.fillText(`×${getBGMultiplier()}`, 640, bpY + 85);
+        ctx.fillText(`×${getBGMultiplier()}`, mcx, mcy);
         ctx.restore();
         ctx.shadowBlur = 0;
+
+        // 剩餘局數：盤面左側獨立小卡（企劃 2026-07-10）
+        const rsX = 84, rsY = 300, rsW = 140, rsH = 84;
+        drawRoundedRect(rsX, rsY, rsW, rsH, 12, 'rgba(15,23,42,0.94)', '#f59e0b', 1.5);
+        drawRoundedRect(rsX, rsY, rsW, rsH, 12, 'rgba(245,158,11,0.10)');
+        ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('剩餘局數', rsX + rsW / 2, rsY + 26);
+        ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 38px sans-serif';
+        ctx.fillText(`${bgSpinsRemaining}`, rsX + rsW / 2, rsY + 68);
     }
 
     // 舊版 SPIN / AUTO SPIN 按鈕（僅素材未載入時退回程式繪製；素材模式操作改用圖上按鈕）
