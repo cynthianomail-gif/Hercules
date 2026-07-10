@@ -218,6 +218,15 @@
             overflow: hidden;
         }
         #tunePanel.visible { display: flex; }
+        #tuneDragBar {
+            padding: 7px 12px 5px;
+            color: #64748b; font-size: 11px; letter-spacing: 1px;
+            background: #0b1322;
+            border-bottom: 1px solid #1e293b;
+            cursor: move; user-select: none;
+            touch-action: none;
+        }
+        #tuneDragBar:hover { color: #94a3b8; }
         #tuneTabs { display: flex; gap: 6px; padding: 10px 12px 0; }
         .tune-tab {
             flex: 1;
@@ -351,6 +360,7 @@
     <canvas id="gameCanvas" width="1280" height="720"></canvas>
 
     <div id="tunePanel">
+        <div id="tuneDragBar">⠿ 調校面板（按住此列可拖曳移動）</div>
         <div id="tuneTabs">
             <button class="tune-tab active" data-tab="timing">⏱️ 節奏</button>
             <button class="tune-tab" data-tab="layout">📐 佈局</button>
@@ -3994,7 +4004,11 @@ function update() {
                     p.cardRef.chargeTimer = TF(TIMING.cardPullUp);   // 上拉時長（v4.6 無蓄力段）
                     // 卡與怪屬性徽章同步閃爍 2 次（07 定案，提示對應關係）
                     p.cardRef.badgeFlashT = TF(TIMING.badgeFlash);
-                    if (p.targetMonster) p.targetMonster.badgeFlashT = TF(TIMING.badgeFlash);
+                    // 徽章同步閃爍＝場上所有同屬性怪獸一起閃（企劃 2026-07-09），不只被攻擊的目標
+                    monsters.forEach(m => {
+                        if (!m.isDead && m.hp > 0 && m.elemId === p.cardRef.elemId)
+                            m.badgeFlashT = TF(TIMING.badgeFlash);
+                    });
                 }
                 attacksDone = false;
             } else if (p.stage === 1.5) {
@@ -5061,6 +5075,32 @@ tuneBtn.addEventListener('click', () => {
     tunePanel.classList.toggle('visible', tunePanelOpen);
     tuneBtn.classList.toggle('active', tunePanelOpen);
     refreshTuneBody();
+});
+
+// 面板拖曳：按住頂部把手可移動面板（避免佈局編輯時面板擋住要調的區域）
+document.getElementById('tuneDragBar').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const gc = document.getElementById('game-container');
+    const scale = gc.getBoundingClientRect().width / gc.offsetWidth;   // CSS transform 縮放比
+    const startX = e.clientX, startY = e.clientY;
+    const startLeft = tunePanel.offsetLeft, startTop = tunePanel.offsetTop;
+    // 初始為 right 錨定，開始拖曳時轉為 left 定位
+    tunePanel.style.left = startLeft + 'px';
+    tunePanel.style.top = startTop + 'px';
+    tunePanel.style.right = 'auto';
+    const onMove = (ev) => {
+        // 夾住範圍：至少留一角在畫面內，避免面板被拖丟
+        const nl = Math.max(-360, Math.min(1220, startLeft + (ev.clientX - startX) / scale));
+        const nt = Math.max(0, Math.min(660, startTop + (ev.clientY - startY) / scale));
+        tunePanel.style.left = nl + 'px';
+        tunePanel.style.top = nt + 'px';
+    };
+    const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
 });
 tunePanel.querySelectorAll('.tune-tab').forEach(tab => {
     tab.addEventListener('click', () => {
