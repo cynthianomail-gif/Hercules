@@ -579,6 +579,9 @@ IMG.foreground = loadImg('assets/foreground.png');
 IMG.critFx   = loadImg('assets/critical_fx_01.png');
 IMG.critPose = loadImg('assets/critical_pose_01.png');
 IMG.critText = loadImg('assets/critical_text_01.png');
+// 宙斯/赫拉 JACKPOT 全畫面報獎圖（擊殺 Boss 時觸發）
+IMG.jpWinZeus = loadImg('assets/jp_win_zeus.png');
+IMG.jpWinHera = loadImg('assets/jp_win_hera.png');
 // 大怪正常狀態圖（0708 更新版）
 IMG.monArt.rearL  = loadImg('assets/0708_巨龍.png');    // 紅龍（左後）
 IMG.monArt.frontL = loadImg('assets/0708_野豬.png');    // 野豬（左前）
@@ -737,6 +740,10 @@ const DEFAULT_TIMING = {
     critFlash:        0.05,  // 爆擊：觸發瞬間閃白
     critImage:        1.10,  // 爆擊：角色動畫
     chaseGap:         0.70,  // 追擊：與前次攻擊間隔
+    // JP 全畫面報獎（擊殺宙斯/赫拉時觸發，2026-07-10 新增）
+    jpFlyIn:          0.40,  // 全畫面淡入＋彈出
+    jpHold:           2.50,  // 停留時長（顯示金額）
+    jpFadeOut:        0.50,  // 淡出回到遊戲畫面
 };
 // 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
@@ -768,6 +775,8 @@ const TIMING_META = [
         ['bgMultFade','舊倍數退場'], ['bgMultFly','新倍數更新'], ['bgMultScale','倍數縮放'], ['bgRefill','BG補盤(每格)']] },
     { group: '變體', items: [
         ['critFlash','爆擊閃白'], ['critImage','爆擊角色動畫'], ['chaseGap','追擊間隔']] },
+    { group: 'JP 全畫面報獎', items: [
+        ['jpFlyIn','淡入彈出'], ['jpHold','停留時長', 0, 6, 0.1], ['jpFadeOut','淡出']] },
 ];
 // 各參數範圍表（載入時鉗制用）：key → [min, max]
 const TIMING_RANGE = {};
@@ -805,6 +814,8 @@ const GANTT_START_PRESET = {
     bgMultFade: 0.00, bgMultFly: 0.00, bgMultScale: 0.10, bgRefill: 0.15,
     // 變體
     critFlash: 0.00, critImage: 0.10, chaseGap: 0.00,
+    // JP 全畫面報獎
+    jpFlyIn: 0.00, jpHold: 0.40, jpFadeOut: 2.90,
 };
 const DEFAULT_TIMING_START = {};
 TIMING_META.forEach(g => {
@@ -1137,6 +1148,7 @@ let killEffectPhase = 'idle'; // 'flying' | 'showing' | 'applied'
 let killEffectTimer = 0;
 let killEffectProgress = 0;
 const DEATH_HOLD_T = -1;
+let jpCelebration = null; // 擊殺宙斯/赫拉後的全畫面報獎：{ which: 'zeus'|'hera', amount, phase: 'in'|'hold'|'out', timer }
 let isMouseHoverSpin = false;
 let isMouseHoverAuto = false;
 let isAutoSpinning = false;
@@ -3627,6 +3639,19 @@ function updateFlyingScores() {
 }
 
 function update() {
+    // JP 全畫面報獎（擊殺宙斯/赫拉）：期間暫停其餘所有遊戲邏輯，只跑這裡的階段計時
+    if (jpCelebration) {
+        jpCelebration.timer++;
+        const inF = TF(TIMING.jpFlyIn), holdF = TF(TIMING.jpHold), outF = TF(TIMING.jpFadeOut);
+        if (jpCelebration.phase === 'in' && jpCelebration.timer >= inF) {
+            jpCelebration.phase = 'hold'; jpCelebration.timer = 0;
+        } else if (jpCelebration.phase === 'hold' && jpCelebration.timer >= holdF) {
+            jpCelebration.phase = 'out'; jpCelebration.timer = 0;
+        } else if (jpCelebration.phase === 'out' && jpCelebration.timer >= outF) {
+            jpCelebration = null;
+        }
+        return;
+    }
     // 轉場動畫更新（壓黑 transIn → 停留 transHold → 淡出 transOut，見 TIMING）
     if (transitionPhase !== 'idle') {
         transitionTimer++;
@@ -4100,7 +4125,7 @@ function update() {
                             }
                             if (t.jackpot > 0) {
                                 winScore += t.jackpot; totalScore += t.jackpot;
-                                scoreTexts.push({ x: 640, y: 360, text: `🏆 JACKPOT! +${t.jackpot}`, color: '#fbbf24', life: 180 });
+                                jpCelebration = { which: t.elemId === 1 ? 'zeus' : 'hera', amount: t.jackpot, phase: 'in', timer: 0 };
                             } else {
                                 // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                                 flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20, text: `KILL!`, color: '#ef4444', life: 100, delay: 20 });
@@ -4202,11 +4227,10 @@ function update() {
                         if (p.targetMonster.jackpot > 0) {
                             winScore += p.targetMonster.jackpot;
                             totalScore += p.targetMonster.jackpot;
-                            scoreTexts.push({
-                                x: 640, y: 360,
-                                text: `🏆 JACKPOT! +${p.targetMonster.jackpot}`,
-                                color: '#fbbf24', life: 180
-                            });
+                            jpCelebration = {
+                                which: p.targetMonster.elemId === 1 ? 'zeus' : 'hera',
+                                amount: p.targetMonster.jackpot, phase: 'in', timer: 0
+                            };
                         } else {
                             // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                             flyingScores.push({
@@ -4484,6 +4508,32 @@ function drawPendingFGBGSlot() {
 }
 
 // 爆擊圖片壓在盤面上（漫畫撞擊感：白閃→snap出現→淡出）
+// JP 全畫面報獎（擊殺宙斯/赫拉觸發）：淡入彈出→停留顯示金額→淡出，蓋在所有內容之上（設計 2026-07-10）
+function drawJPCelebration() {
+    if (!jpCelebration) return;
+    const img = jpCelebration.which === 'zeus' ? IMG.jpWinZeus : IMG.jpWinHera;
+    if (!imgReady(img)) return;
+
+    const inF = TF(TIMING.jpFlyIn), outF = TF(TIMING.jpFadeOut);
+    const t = jpCelebration.timer;
+    let alpha = 1, scale = 1;
+    if (jpCelebration.phase === 'in') {
+        const p = Math.min(1, t / inF);
+        alpha = p;
+        scale = 0.85 + 0.15 * easeOutBack(p);
+    } else if (jpCelebration.phase === 'out') {
+        alpha = Math.max(0, 1 - t / outF);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(640, 360);
+    ctx.scale(scale, scale);
+    ctx.translate(-640, -360);
+    ctx.drawImage(img, 0, 0, 1280, 720);   // 素材為 16:9 整版圖，直接鋪滿畫布（金額沿用素材內建示意數字）
+    ctx.restore();
+}
+
 function drawCritOverlay() {
     let critP = null;
     for (let p of particles) {
@@ -4603,6 +4653,7 @@ function gameLoop() {
     drawKillEffect();
     drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
     drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
+    drawJPCelebration(); // JP 全畫面報獎（擊殺宙斯/赫拉）：蓋在轉場之上
     drawLayoutOverlay(); // 佈局編輯模式：物件外框與名稱（最上層）
     requestAnimationFrame(gameLoop);
 }
