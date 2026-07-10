@@ -1150,8 +1150,7 @@ let isBG = false;            // Bonus Game 模式：無卡牌/怪獸，倍數遞
 let bgSpinsRemaining = 0;
 let bgMultiplierIndex = 0;   // 當前連爆次數，倍率 = index+1（×1, ×2, ×3...最高×1024）
 let pendingFGBG = null;      // 當前局連爆結束後才正式進入的模式（'FG' | 'BG' | 'NG' | null）
-let savedBoard = null;       // 進入 FG/BG 前保存的盤面，退出後還原繼續連爆
-let shouldCheckAfterTransition = false; // NG 轉場結束後切換至 CHECKING 繼續連爆
+let savedBoard = null;       // 進入 FG/BG 前曾保存盤面；回 NG 時保留獎勵局最後盤面
 
 // === 轉場動畫狀態 ===
 let transitionPhase = 'idle'; // 'in' | 'hold' | 'out' | 'idle'
@@ -1293,6 +1292,27 @@ function generateRandomBoard(initialLight = false) {
         }
     }
     return newBoard;
+}
+
+function resetBoardVisualState() {
+    for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+            const gem = board[c] && board[c][r];
+            if (!gem) continue;
+            gem.yOffset = 0;
+            gem.scale = 1;
+            gem.isMatched = false;
+            gem.lit = false;
+            gem.litAt = 0;
+            gem.canDissolve = false;
+        }
+    }
+    currentMatches = [];
+    spinOldBoard = null;
+    spinSkip = null;
+    colStates = Array(COLS).fill(0);
+    colOffsets = Array(COLS).fill(0);
+    colBounce = Array(COLS).fill(0);
 }
 
 function generateCards() {
@@ -2058,13 +2078,17 @@ function applyPendingModeChange() {
         isBG = false;
         isFG = false;
         bgMultiplierIndex = 0;
-        if (savedBoard) {
-            // 還原進入 FG/BG 前的盤面，淡出時帶著原盤面出現
-            board = savedBoard.map(col => col.map(cell => ({ ...cell })));
-            savedBoard = null;
-            matchHistory = [];
-            shouldCheckAfterTransition = true; // 轉場結束後繼續連爆
-        }
+        // 回到 NG 維持 FG/BG 的最後盤面（企劃 2026-07-10）：不再還原進場前盤面，
+        // 避免蓋回舊盤面（或初始盤面）觸發非預期的連線消除
+        savedBoard = null;
+        resetBoardVisualState();
+        matchHistory = [];
+        pendingRounds = [];
+        pendingCardUpdates = [];
+        pendingKillEffects = [];
+        deferredKillEffects = [];
+        checkPauseTimer = 0;
+        afterMechPause = false;
         generateCards();        // 恢復3張卡，淡出時自然動畫進場
     }
     pendingFGBG = null;
@@ -3376,16 +3400,16 @@ function drawUI() {
     }
     if (isBG) {
         // BG 倍率面板（小型）：頂部 MYTHIC JACKPOT 標題上，只顯示倍率（企劃 2026-07-10：縮小、去除 BONUS GAME 字樣）
-        const bpX = 550, bpY = 10, bpW = 180, bpH = 76;
-        const mcx = 640, mcy = bpY + 56;   // 倍率大字基準點
-        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(15,23,42,0.94)', '#f59e0b', 1.5);
-        drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(245,158,11,0.10)');
+        const bpX = 574, bpY = 14, bpW = 132, bpH = 54;
+        const mcx = 640, mcy = bpY + 39;   // 倍率大字基準點
+        drawRoundedRect(bpX, bpY, bpW, bpH, 10, 'rgba(15,23,42,0.94)', '#f59e0b', 1.5);
+        drawRoundedRect(bpX, bpY, bpW, bpH, 10, 'rgba(245,158,11,0.10)');
         ctx.textAlign = 'center';
         // 倍率大字（BG 倍數遞增演繹：舊淡出 → 新飛入 → 先放大後縮回，節奏表）
         const fadeF = TF(TIMING.bgMultFade), flyF = TF(TIMING.bgMultFly), scaleF = TF(TIMING.bgMultScale);
         const t = bgMultAnimT;
-        ctx.font = 'bold 46px sans-serif';
-        ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 22;
+        ctx.font = 'bold 34px sans-serif';
+        ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 14;
         if (t < fadeF) {
             // 舊倍數淡出（與新倍數飛入並行）
             ctx.save();
@@ -3398,11 +3422,11 @@ function drawUI() {
         if (t < flyF) {
             // 新倍數飛入：自上方落下＋淡入
             ctx.globalAlpha = t / flyF;
-            ctx.translate(0, -24 * (1 - t / flyF));
+            ctx.translate(0, -20 * (1 - t / flyF));
         } else if (t < flyF + scaleF) {
             // 先放大後縮回
             const q = (t - flyF) / scaleF;
-            const sc = 1 + 0.3 * Math.sin(Math.PI * q);
+            const sc = 1 + 0.25 * Math.sin(Math.PI * q);
             ctx.translate(mcx, mcy);
             ctx.scale(sc, sc);
             ctx.translate(-mcx, -mcy);
@@ -3621,11 +3645,6 @@ function update() {
             transitionAlpha = Math.max(0, 1 - transitionTimer / TF(TIMING.transOut));
             if (transitionTimer >= TF(TIMING.transOut)) {
                 transitionPhase = 'idle'; transitionAlpha = 0;
-                // NG 轉場結束後繼續連爆（還原盤面有待消除的情況）
-                if (shouldCheckAfterTransition) {
-                    shouldCheckAfterTransition = false;
-                    currentState = STATE.CHECKING;
-                }
             }
         }
     }
