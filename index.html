@@ -1494,6 +1494,9 @@ function applyGravity() {
             } else if (emptySpaces > 0) {
                 board[c][r + emptySpaces] = board[c][r];
                 board[c][r + emptySpaces].yOffset = -emptySpaces * GEM_SIZE;
+                // 巨型 WILD 錨點跟著位移；兩欄若位移不同，錨點比對自然失效 → 正確退回單格
+                const bwb = board[c][r + emptySpaces].bigWildBlock;
+                if (bwb) board[c][r + emptySpaces].bigWildBlock = { minC: bwb.minC, minR: bwb.minR + emptySpaces };
                 board[c][r] = { id: -1, yOffset: 0, scale: 1, isMatched: false };
             }
         }
@@ -3135,13 +3138,14 @@ function drawGrid() {
 
     drawMechanismTargetHighlights();
 
-    // 巨型 WILD 區塊仍完整（4 格皆為 WILD、同錨點、未消除）時回傳錨點座標,否則清旗標
+    // 巨型 WILD 區塊仍完整（4 格皆為 WILD、同錨點）時回傳錨點座標，否則清旗標。
+    // 注意：參與連線（isMatched/lit）期間仍維持 2×2 整塊外觀（企劃 2026-07-10），不拆成 4 顆小 WILD
     function bigWildIntact(gem) {
         const b = gem.bigWildBlock;
         if (!b) return null;
         for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) {
             const cell = board[b.minC + dc] ? board[b.minC + dc][b.minR + dr] : null;
-            if (!cell || cell.id !== WILD_ID || cell.isMatched || !cell.bigWildBlock ||
+            if (!cell || cell.id !== WILD_ID || !cell.bigWildBlock ||
                 cell.bigWildBlock.minC !== b.minC || cell.bigWildBlock.minR !== b.minR) return null;
         }
         return b;
@@ -3156,10 +3160,11 @@ function drawGrid() {
             if (!isAnchor) return;                                  // 非錨點格不重複畫
             if (imgReady(IMG.wildBig)) {
                 const yOff = (colOffsets[c] || 0) + gem.yOffset + extraY;
-                const bx = GRID_X + bw.minC * GEM_SIZE + 4;
-                const by = GRID_Y + bw.minR * GEM_SIZE + 4 + yOff;
-                const bs = GEM_SIZE * 2 - 8;
-                ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20;
+                const bs = (GEM_SIZE * 2 - 8) * gem.scale;          // 消散時整塊同步縮小
+                const bx = GRID_X + bw.minC * GEM_SIZE + GEM_SIZE - bs / 2;   // 以區塊中心為基準縮放
+                const by = GRID_Y + bw.minR * GEM_SIZE + GEM_SIZE - bs / 2 + yOff;
+                const bigLit = gem.isMatched && gem.lit;
+                ctx.shadowColor = bigLit ? '#ffffff' : '#ffd700'; ctx.shadowBlur = 20;
                 ctx.drawImage(IMG.wildBig, bx, by, bs, bs);
                 ctx.shadowBlur = 0;
                 return;
