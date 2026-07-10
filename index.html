@@ -1508,28 +1508,33 @@ function applyGravity() {
     }
 }
 
-// 把 findMatches 的橫/縱連線段，合併成「相同屬性且相連」的獨立組（L/T 形視為一組）。
-// WILD 跨不同屬性連線時不合併 → 該 WILD 分屬多組（規格 03/04）。
+// 連線規則（企劃 2026-07-10）：橫/直線 3 顆以上成線即得分；
+// 多條同屬性連線若「共用格子」或「上下左右相鄰」→ 合併為一條線，合計顆數（同一格不重複計）。
+// 未成線的散顆即使貼著連線也不計入。
+// WILD 跨不同屬性成線時不合併 → 該 WILD 分屬多組（規格 03/04）。
 function buildWaveGroups() {
     const runs = findMatches().filter(run => run.cells.length >= 3);
     const groups = [];
+    // 判斷一組格子是否與既有組共用格子或上下左右相鄰
+    const touches = (keyset, cells) => cells.some(({ c, r }) =>
+        keyset.has(c + ',' + r) ||
+        keyset.has((c + 1) + ',' + r) || keyset.has((c - 1) + ',' + r) ||
+        keyset.has(c + ',' + (r + 1)) || keyset.has(c + ',' + (r - 1)));
     runs.forEach(run => {
-        const keyset = new Set(run.cells.map(c => c.c + ',' + c.r));
-        // 找可合併的既有組：同屬性且有共用格子
-        let target = groups.find(g => g.elemId === run.elemId && run.cells.some(c => g.keyset.has(c.c + ',' + c.r)));
+        let target = groups.find(g => g.elemId === run.elemId && touches(g.keyset, run.cells));
         if (target) {
             run.cells.forEach(c => { const k = c.c + ',' + c.r; if (!target.keyset.has(k)) { target.keyset.add(k); target.cells.push(c); } });
         } else {
-            groups.push({ elemId: run.elemId, cells: [...run.cells], keyset });
+            groups.push({ elemId: run.elemId, cells: [...run.cells], keyset: new Set(run.cells.map(c => c.c + ',' + c.r)) });
         }
     });
-    // 傳遞性合併（A-B、B-C 相連 → A-C 同組）
+    // 傳遞性合併（A-B、B-C 相鄰 → A-C 同組）
     let merged = true;
     while (merged) {
         merged = false;
         for (let i = 0; i < groups.length && !merged; i++)
             for (let j = i + 1; j < groups.length && !merged; j++)
-                if (groups[i].elemId === groups[j].elemId && [...groups[j].keyset].some(k => groups[i].keyset.has(k))) {
+                if (groups[i].elemId === groups[j].elemId && touches(groups[i].keyset, groups[j].cells)) {
                     groups[j].cells.forEach(c => { const k = c.c + ',' + c.r; if (!groups[i].keyset.has(k)) { groups[i].keyset.add(k); groups[i].cells.push(c); } });
                     groups.splice(j, 1); merged = true;
                 }
