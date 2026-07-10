@@ -3448,21 +3448,8 @@ function drawEffects() {
     ctx.globalAlpha = 1;
     ctx.shadowBlur  = 0;
 
-    particles.forEach(p => {
-        if (p.stage === 1 || p.stage === 1.5) return; // stage 1 由 collect emoji 代替，不畫光球
-
-        let curX = p.startX + (p.tx - p.startX) * p.progress;
-        let curY = p.startY + (p.ty - p.startY) * p.progress;
-
-        ctx.beginPath();
-        ctx.arc(curX, curY, 18, 0, Math.PI*2);
-        ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 20;
-        ctx.fill(); ctx.shadowBlur = 0;
-
-        ctx.beginPath();
-        ctx.arc(curX - (p.tx - p.startX)*0.05, curY - (p.ty - p.startY)*0.05, 12, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,255,255,0.4)`; ctx.fill();
-    });
+    // 舊版攻擊光球（屬性色＋白色兩顆）已移除（企劃 2026-07-09）：
+    // v4.6 定案「不射光束、不撞擊」，attack particles 僅保留計時/傷害邏輯，不再繪製本體
 
     drawEnergyParticles();   // 能量粒子（出發濺／抵達爆開）：蓋在盤面上、得分數字下
 
