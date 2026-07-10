@@ -3375,8 +3375,8 @@ function drawUI() {
         ctx.restore();
     }
     if (isBG) {
-        // BG 倍率面板：緊貼盤面底部，只佔卡牌區上半段
-        const bpX = 390, bpY = 516, bpW = 500, bpH = 108;
+        // BG 倍率面板：置於畫面頂部中央、蓋在 MYTHIC JACKPOT 標題上（企劃 2026-07-09）
+        const bpX = 390, bpY = 6, bpW = 500, bpH = 108;
         ctx.fillStyle = 'rgba(15,23,42,0.94)';
         ctx.fillRect(bpX, bpY, bpW, bpH);
         drawRoundedRect(bpX, bpY, bpW, bpH, 12, 'rgba(245,158,11,0.10)', '#f59e0b', 1.5);
