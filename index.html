@@ -2939,12 +2939,7 @@ function drawCards() {
 
     const { isFGMode, cardW, cardH, gap, count, totalW, startX, baseY } = getCardDrawMetrics(cards.length);
 
-    // 插槽背景
-    for (let i = 0; i < count; i++) {
-        let sx = startX + i * (cardW + gap);
-        drawRoundedRect(sx - 6, baseY - 6, cardW + 12, cardH + 12, 16, '#060d1a', '#1e3a5f', 2);
-        drawRoundedRect(sx - 2, baseY - 2, cardW + 4, cardH + 4, 13, '#0a1628', null);
-    }
+    // 插槽背景已移除（企劃 2026-07-09：卡牌後方不要黑色UI底板，直接顯示卡片）
 
     // 限制卡牌只在插槽範圍內顯示；上緣預留上拉空間——
     // 觸發卡牌上拉時要蓋在盤面之上（觸發的感覺），下緣維持裁切供進場動畫
