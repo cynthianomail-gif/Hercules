@@ -1766,29 +1766,22 @@ function beamPoint(sx, sy, tx, ty, t, arc = 70) {
         y: sy + (ty - sy) * e - Math.sin(Math.PI * clamp01(t)) * arc
     };
 }
+// 機制能量（2026-07-14 定案：純光球無軌跡——不畫路徑弧線、不拖彗星尾，
+// 呼吸脈動光球＝外圈屬性色柔光暈＋內核亮球，尺寸仍依機制等級縮放）
 function drawEnergyBeam(sx, sy, tx, ty, t, style, widthScale = 1) {
     const now = beamPoint(sx, sy, tx, ty, t);
-    const tail = beamPoint(sx, sy, tx, ty, Math.max(0, t - 0.18));
+    const pulse = 1 + 0.18 * Math.sin(t * Math.PI * 5);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = rgba(style.color, 0.32);
-    ctx.lineWidth = Math.max(2, style.beamWidth * widthScale * 0.55);
+    ctx.fillStyle = rgba(style.color, 0.22);
     ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.quadraticCurveTo((sx + tx) / 2, Math.min(sy, ty) - 80, tx, ty);
-    ctx.stroke();
+    ctx.arc(now.x, now.y, (10 + style.beamWidth * widthScale * 2) * pulse, 0, Math.PI * 2);
+    ctx.fill();
     ctx.shadowColor = style.color;
     ctx.shadowBlur = 18;
-    ctx.strokeStyle = rgba(style.color, 0.92);
-    ctx.lineWidth = Math.max(3, style.beamWidth * widthScale);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(tail.x, tail.y);
-    ctx.lineTo(now.x, now.y);
-    ctx.stroke();
     ctx.fillStyle = style.flash;
     ctx.beginPath();
-    ctx.arc(now.x, now.y, 5 + style.beamWidth * widthScale, 0, Math.PI * 2);
+    ctx.arc(now.x, now.y, (5 + style.beamWidth * widthScale) * pulse, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 }
@@ -1883,7 +1876,7 @@ function updateBeamLandings(effect) {
     effect.targets.forEach(target => {
         if (!target.landed && killEffectTimer >= target.index * staggerF + beamF) {
             target.landed = true;
-            spawnCellFlash(target.c, target.r, style.flash, 8, 1);
+            spawnCellFlash(target.c, target.r, style.flash, 12, 1);
         }
     });
 }
@@ -2603,6 +2596,13 @@ function drawMechanismCellFlashes() {
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(center.x, center.y, radius * 0.72, 0, Math.PI * 2);
+        ctx.stroke();
+        // 抵達爆開加強：往外擴散的光環（2026-07-14 純光球定案，補償拿掉拖尾的存在感）
+        const ringRadius = GEM_SIZE * (0.35 + 0.55 * (1 - p)) * (flash.size || 1);
+        ctx.strokeStyle = rgba(flash.color, 0.8);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, ringRadius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
     });
