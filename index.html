@@ -744,6 +744,14 @@ const DEFAULT_TIMING = {
     jpFlyIn:          0.40,  // 全畫面淡入＋彈出
     jpHold:           2.50,  // 停留時長（顯示金額）
     jpFadeOut:        0.50,  // 淡出回到遊戲畫面
+    // JP 里程碑最後結算（2026-08-03 改：不再打到就噴，改在機制跑完＋不能再連爆後結算）
+    jpSettleWait:     0.35,  // 連爆／機制全結束 → 開始結算前的停頓
+    jpStatueGlow:     0.55,  // JP 石像亮起（發光漸強）
+    jpStatueHold:     0.30,  // 石像光峰值停留
+    jpSettleCoin:     0.80,  // 石像噴出金幣（噴錢演繹）
+    jpSettleScoreFly: 0.45,  // 結算得分數字飛入公版
+    jpStatueFade:     0.40,  // 石像光退場（噴錢同時開始退）
+    jpSettleGap:      0.35,  // 多筆里程碑之間的間隔
 };
 // 面板顯示：分組、中文名、範圍（未填 = 0~5 秒、步進 0.05）
 const TIMING_META = [
@@ -777,6 +785,10 @@ const TIMING_META = [
         ['critFlash','爆擊閃白'], ['critImage','爆擊角色動畫'], ['chaseGap','追擊間隔']] },
     { group: 'JP 全畫面報獎', items: [
         ['jpFlyIn','淡入彈出'], ['jpHold','停留時長', 0, 6, 0.1], ['jpFadeOut','淡出']] },
+    { group: 'JP 里程碑結算', items: [
+        ['jpSettleWait','結算前停頓'], ['jpStatueGlow','石像發光'], ['jpStatueHold','發光停留'],
+        ['jpSettleCoin','噴出金幣'], ['jpSettleScoreFly','得分飛入'], ['jpStatueFade','石像光退場'],
+        ['jpSettleGap','多筆間隔']] },
 ];
 // 各參數範圍表（載入時鉗制用）：key → [min, max]
 const TIMING_RANGE = {};
@@ -816,6 +828,9 @@ const GANTT_START_PRESET = {
     critFlash: 0.00, critImage: 0.10, chaseGap: 0.00,
     // JP 全畫面報獎
     jpFlyIn: 0.00, jpHold: 0.40, jpFadeOut: 2.90,
+    // JP 里程碑結算（停頓→石像發光→發光停留→噴錢→得分飛入；石像光在噴錢時開始退）
+    jpSettleWait: 0.00, jpStatueGlow: 0.35, jpStatueHold: 0.90, jpSettleCoin: 1.20,
+    jpSettleScoreFly: 2.00, jpStatueFade: 1.20, jpSettleGap: 2.45,
 };
 const DEFAULT_TIMING_START = {};
 TIMING_META.forEach(g => {
@@ -1044,7 +1059,8 @@ const STATE = {
     GRAVITY: 4,
     EVALUATING: 5,
     ATTACKING: 6,
-    KILL_EFFECT: 7
+    KILL_EFFECT: 7,
+    JP_SETTLE: 8            // JP 里程碑最後結算（石像發光→噴錢），連爆與機制全結束後才進入
 };
 
 const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！', '🎡 輪盤！', '💰 直接給分！'];
@@ -1065,6 +1081,7 @@ const FORCE_MENU_ITEMS = [
     { label: '轉換圖示',    type: 3,           color: '#a78bfa' },
     { label: '清除圖示',    type: 4,           color: '#f87171' },
     { label: '獲得JP',      type: 'jp',        color: '#fb7185' },
+    { label: 'JP噴錢結算',  type: 'jpMilestone', color: '#eab308' },
     { label: '必出4星卡',   type: 'card4',     color: '#ca8a04' },
     { label: '必出5星卡',   type: 'card5',     color: '#c084fc' },
     { label: '強開爆擊',    type: 'crit',      color: '#f97316' },
@@ -1082,6 +1099,10 @@ let flyingScores = [];
 let coinBursts = [];        // 宙斯/赫拉受傷：金幣噴發粒子
 let energyParticles = [];   // 能量飛卡粒子：出發濺／抵達爆開（設計 2026-07-09）
 let bossHitMilestones = {}; // { monIdx: Set<hpLost> } 每局觸發紀錄
+// JP 里程碑最後結算（2026-08-03 改）：打到里程碑當下只記帳，等機制跑完＋不能再連爆才演出
+let jpSettleQueue = [];     // 待結算 [{ kind: 'milestone'|'jackpot', which, reward, coinCount, ... }]
+let jpSettle = null;        // 進行中 { item, phase: 'wait'|'glow'|'hold'|'celebrate'|'coin'|'gap', timer }
+let statueGlow = { zeus: 0, hera: 0 };   // JP 石像發光強度 0~1（結算演出，繪製用）
 
 // 數值與統計系統
 let totalScore = 0;
@@ -2126,17 +2147,19 @@ function startKillEffect(effect) {
     currentState = STATE.KILL_EFFECT;
 }
 
-// 宙斯 / 赫拉 金幣噴發
-function spawnCoinBurst(cx, cy, count) {
+// 宙斯 / 赫拉 金幣噴發（opts.life 覆寫壽命幀數；opts.vy0 覆寫上噴初速）
+function spawnCoinBurst(cx, cy, count, opts) {
+    const baseLife = (opts && opts.life) || TF(TIMING.coinBurst);   // 噴錢演繹時長
+    const vy0 = (opts && opts.vy0 !== undefined) ? opts.vy0 : -1.8;
     for (let i = 0; i < count; i++) {
         let angle = Math.random() * Math.PI * 2;
         let speed = 0.4 + Math.random() * 1.8;
-        let life  = TF(TIMING.coinBurst) + Math.floor(Math.random() * TF(TIMING.coinBurst));   // 噴錢演繹時長
+        let life  = baseLife + Math.floor(Math.random() * baseLife);
         coinBursts.push({
             x: cx + (Math.random() - 0.5) * 50,
             y: cy + (Math.random() - 0.5) * 20,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 1.8,
+            vy: Math.sin(angle) * speed + vy0,
             life, maxLife: life,
             r: 4 + Math.random() * 4
         });
@@ -2194,7 +2217,9 @@ function drawEnergyParticles() {
 }
 
 // 宙斯 / 赫拉 傷害里程碑檢查
-function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
+// 2026-08-03 改：跨過里程碑「當下不給分、不噴錢」，只排入 jpSettleQueue；
+//               等怪獸機制全部觸發完＋盤面不能再連爆，才在最後結算演出（見 updateJPSettle）
+function checkBossMilestones(monIdx, prevHp, newHp) {
     let m = monsters[monIdx];
     if (!m || !m.jackpot) return;
     if (!bossHitMilestones[monIdx]) bossHitMilestones[monIdx] = new Set();
@@ -2203,21 +2228,181 @@ function checkBossMilestones(monIdx, prevHp, newHp, bossX, bossY) {
         let threshold = m.maxHp - ms.hpLost;
         if (prevHp > threshold && newHp <= threshold && !triggered.has(ms.hpLost)) {
             triggered.add(ms.hpLost);
-            let mult   = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
-            let reward = betAmount * mult;
-            winScore  += reward;
-            totalScore += reward;
-            let coinCount = ms.hpLost <= 15 ? 14 : ms.hpLost <= 25 ? 22 : 34;
-            spawnCoinBurst(bossX, bossY, coinCount);
-            // 大字停留 80 幀後飛往 WIN 欄
-            flyingScores.push({
-                type: 'bossHit',
-                x: bossX, y: bossY - 10,
-                tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
-                text: `🪙 +${reward}`,
-                color: '#ffd700',
-                life: 150, delay: 85,
+            let mult = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
+            const which = m.elemId === 1 ? 'zeus' : 'hera';
+            jpSettleQueue.push({
+                kind: 'milestone',
+                monIdx, which,
+                hpLost: ms.hpLost,
+                mult,
+                reward: betAmount * mult,
+                coinCount: ms.hpLost <= 15 ? 14 : ms.hpLost <= 25 ? 22 : 34
             });
+        }
+    });
+}
+
+// 打死宙斯／赫拉：彩金同樣不即時給，排入最後結算（石像發光→全畫面報獎→噴錢）
+function queueBossJackpot(m) {
+    if (!m || !m.jackpot) return;
+    jpSettleQueue.push({
+        kind: 'jackpot',
+        monIdx: monsters.indexOf(m),
+        which: m.elemId === 1 ? 'zeus' : 'hera',
+        reward: m.jackpot,
+        coinCount: 48                   // 彩金噴錢量比里程碑更大
+    });
+}
+
+// 里程碑不疊加（企劃 2026-08-03）：同一尊石像本局跨了幾個階段都只噴一次錢，取獎勵最高的那筆。
+// 宙斯與赫拉各自獨立結算；彩金（打死 Boss）為另一筆，不受影響。
+function collapseJPSettleQueue() {
+    const best = {};   // which → 該石像獎勵最高的里程碑
+    jpSettleQueue.forEach(it => {
+        if (it.kind !== 'milestone') return;
+        if (!best[it.which] || it.reward > best[it.which].reward) best[it.which] = it;
+    });
+    jpSettleQueue = jpSettleQueue.filter(it => it.kind !== 'milestone' || best[it.which] === it);
+}
+
+// === JP 石像（神殿框 jp_num_02 內建：宙斯左上／赫拉右上，框為 1:1 繪製故可直接對位）===
+const JP_STATUE_BOX = {
+    zeus: { x: 0,   y: 104, w: 152, h: 158 },
+    hera: { x: 972, y: 104, w: 152, h: 154 },
+};
+function jpFrameOrigin() { return { x: GRID_X - 226, y: GRID_Y - 197 }; }   // 與框繪製同步
+function jpStatueOrigin(which) {   // 金幣／得分數字的噴出點（石像下半身，避免衝出畫面上緣）
+    const f = jpFrameOrigin(), b = JP_STATUE_BOX[which] || JP_STATUE_BOX.zeus;
+    return { x: f.x + b.x + b.w / 2, y: f.y + b.y + b.h * 0.62 };
+}
+
+// JP 里程碑最後結算：石像發光 → 噴出金幣 → 得分飛入公版（多筆依序，間隔 jpSettleGap）
+function startNextJPSettleItem() {
+    const item = jpSettleQueue.shift();
+    if (!item) { finishJPSettle(); return; }
+    jpSettle.item = item;
+    jpSettle.phase = 'glow';
+    jpSettle.timer = 0;
+}
+function finishJPSettle() {
+    jpSettle = null;
+    statueGlow.zeus = 0; statueGlow.hera = 0;
+    currentState = STATE.CHECKING;   // 回判定：接續 FG/BG 轉場或結束本局
+}
+function spawnJPSettleCoins(item) {
+    const o = jpStatueOrigin(item.which);
+    winScore += item.reward;
+    totalScore += item.reward;
+    spawnCoinBurst(o.x, o.y, item.coinCount, { life: TF(TIMING.jpSettleCoin), vy0: -1.0 });
+    flyingScores.push({
+        type: 'bossHit',
+        x: o.x, y: o.y + 20,
+        tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20,
+        text: item.kind === 'jackpot' ? `🏆 +${item.reward}` : `🪙 +${item.reward}`,
+        color: '#ffd700',
+        life: TF(TIMING.jpSettleCoin) + TF(TIMING.jpSettleScoreFly) + 20,
+        delay: TF(TIMING.jpSettleCoin),          // 噴錢演完才起飛
+        flySec: TIMING.jpSettleScoreFly,         // 飛入時長（覆寫 scoreFly）
+    });
+}
+function updateJPSettle() {
+    if (!jpSettle) { finishJPSettle(); return; }
+    jpSettle.timer++;
+    if (jpSettle.phase === 'wait') {
+        if (jpSettle.timer >= TF(TIMING.jpSettleWait)) startNextJPSettleItem();
+        return;
+    }
+    const item = jpSettle.item;
+    if (!item) { finishJPSettle(); return; }
+    const which = item.which;
+    if (jpSettle.phase === 'glow') {
+        statueGlow[which] = clamp01(jpSettle.timer / TF(TIMING.jpStatueGlow));
+        if (jpSettle.timer >= TF(TIMING.jpStatueGlow)) { jpSettle.phase = 'hold'; jpSettle.timer = 0; }
+    } else if (jpSettle.phase === 'hold') {
+        statueGlow[which] = 1;
+        if (jpSettle.timer >= TF(TIMING.jpStatueHold)) {
+            if (item.kind === 'jackpot') {
+                // 彩金：石像亮到峰值 → 先播全畫面報獎，報獎結束才噴錢
+                jpCelebration = { which, amount: item.reward, phase: 'in', timer: 0 };
+                jpSettle.phase = 'celebrate'; jpSettle.timer = 0;
+            } else {
+                spawnJPSettleCoins(item);        // 里程碑：石像亮到峰值 → 直接噴出金幣
+                jpSettle.phase = 'coin'; jpSettle.timer = 0;
+            }
+        }
+    } else if (jpSettle.phase === 'celebrate') {
+        // 全畫面報獎期間 update() 會在最上方提前 return，故此處只在報獎播完後才會跑到
+        statueGlow[which] = 1;                   // 報獎淡出時石像仍亮著，接著噴錢
+        if (!jpCelebration) { spawnJPSettleCoins(item); jpSettle.phase = 'coin'; jpSettle.timer = 0; }
+    } else if (jpSettle.phase === 'coin') {
+        statueGlow[which] = Math.max(0, 1 - jpSettle.timer / TF(TIMING.jpStatueFade));   // 噴錢同時石像光退場
+        if (jpSettle.timer >= TF(TIMING.jpSettleCoin) + TF(TIMING.jpSettleScoreFly)) {
+            jpSettle.phase = 'gap'; jpSettle.timer = 0;
+        }
+    } else if (jpSettle.phase === 'gap') {
+        statueGlow[which] = 0;
+        if (jpSettle.timer >= TF(TIMING.jpSettleGap)) startNextJPSettleItem();
+    }
+}
+
+// JP 石像演出：結算時金光（本體加色提亮 + 金色光暈）／被打到時紅光（紅色濾鏡 + 紅光暈）
+// 受擊閃紅強度 0~1（宙斯／赫拉被打到時，沿用怪獸本體的 hitFlash / hitFlashAlpha）
+function statueHitLevel(which) {
+    const boss = monsters[which === 'zeus' ? 0 : 3];
+    if (!boss || !(boss.flashT > 0)) return 0;
+    return clamp01(boss.flashT / TF(TIMING.hitFlash));
+}
+// 石像框內重疊一次神殿框＝只影響石像本體（框外為透明像素，疊上去不留痕）
+function overlayStatueRegion(f, b, bx, by, alpha, filter) {
+    if (!imgReady(IMG.frame) || alpha <= 0.001) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx, by, b.w, b.h); ctx.clip();
+    ctx.globalAlpha = alpha;
+    if (filter) ctx.filter = filter;
+    ctx.drawImage(IMG.frame, f.x, f.y, 1124, 751);
+    ctx.restore();
+}
+function drawJPStatueGlow() {
+    ['zeus', 'hera'].forEach(which => {
+        const g   = statueGlow[which] || 0;
+        const hit = statueHitLevel(which);
+        if (g <= 0.001 && hit <= 0.001) return;
+        const f = jpFrameOrigin(), b = JP_STATUE_BOX[which];
+        const bx = f.x + b.x, by = f.y + b.y;
+        const cx = bx + b.w / 2, cy = by + b.h * 0.45;
+
+        // ── 金光（結算發光／充能微閃）：加色混合，不動原素材 ──
+        if (g > 0.001) {
+            const pulse = 0.85 + 0.15 * Math.sin(tickCounter * 0.25);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            overlayStatueRegion(f, b, bx, by, 0.55 * g * pulse);   // 石像本體提亮
+            const r = b.w * (0.75 + 0.35 * g);
+            const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+            grd.addColorStop(0,    `rgba(255,236,150,${0.55 * g * pulse})`);
+            grd.addColorStop(0.45, `rgba(255,196,60,${0.28 * g * pulse})`);
+            grd.addColorStop(1,    'rgba(255,180,40,0)');
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        // ── 受擊閃紅：紅色濾鏡疊繪一次（與大怪本體 drawBigMonster 同一手法）＋外緣紅光暈 ──
+        if (hit > 0.001) {
+            ctx.save();
+            overlayStatueRegion(f, b, bx, by, TIMING.hitFlashAlpha * hit,
+                'sepia(1) saturate(8) hue-rotate(-50deg) brightness(1.2)');
+            ctx.globalCompositeOperation = 'lighter';
+            const rr = b.w * 0.85;
+            const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+            rg.addColorStop(0,    `rgba(255,90,70,${0.34 * hit})`);
+            rg.addColorStop(0.5,  `rgba(220,40,30,${0.18 * hit})`);
+            rg.addColorStop(1,    'rgba(200,30,20,0)');
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = rg;
+            ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
         }
     });
 }
@@ -2432,6 +2617,9 @@ function startSpin() {
     coinBursts = [];
     energyParticles = [];
     bossHitMilestones = {};
+    jpSettleQueue = [];
+    jpSettle = null;
+    statueGlow.zeus = 0; statueGlow.hera = 0;
 
     if (isBG) {
         // BG 模式：無卡牌與怪獸機制，倍率跨局保留
@@ -2476,8 +2664,8 @@ function startSpin() {
                 scale: 1, shake: 0, yOffset: 130, enterDelay: 0, yTarget: 0
             };
         }
-        // 宙斯 HP = 11（下一擊必跨 ≤10 最高里程碑）
-        monsters[0].hp = 11;
+        // 宙斯 HP = 46（下一擊必跨扣血 15 的里程碑；打得夠痛還會連跨 30/45 → 多筆依序結算）
+        monsters[0].hp = 46;
         monsters[0].isDead = false;
     }
 
@@ -3636,7 +3824,9 @@ function updateFlyingScores() {
                 fs.life = 0;
             }
         } else {
-            const k = fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(TIMING.scoreFly)) : 0.15;
+            // bossHit：依 scoreFly（或 flySec 覆寫，JP 結算用 jpSettleScoreFly）收斂到 WIN 欄
+            const flySec = fs.flySec !== undefined ? fs.flySec : TIMING.scoreFly;
+            const k = fs.type === 'bossHit' ? 1 - Math.pow(0.02, 1 / TF(flySec)) : 0.15;
             fs.x += (fs.tx - fs.x) * k;
             fs.y += (fs.ty - fs.y) * k;
         }
@@ -3849,6 +4039,14 @@ function update() {
             // 攻擊後的擊殺機制若改盤形成新連線，會回到 CHECKING 開新循環（B-07）
             if (flowMode === 'B' && !isBG && matchHistory.length > 0) {
                 currentState = STATE.EVALUATING;
+                return;
+            }
+            // ★ JP 里程碑最後結算：此處＝怪獸機制全部觸發完（pendingKillEffects 已排空）
+            //   ＋盤面不能再連爆，才演出「JP 石像發光 → 噴出金幣」（2026-08-03 改）
+            if (jpSettleQueue.length > 0) {
+                collapseJPSettleQueue();   // 同石像多階段只留獎勵最高的那筆
+                jpSettle = { item: null, phase: 'wait', timer: 0 };
+                currentState = STATE.JP_SETTLE;
                 return;
             }
             // 盤面無法繼續連爆：若有收集中的 FG/BG，此時才觸發轉場
@@ -4113,7 +4311,7 @@ function update() {
                         t.hurtT = TF(TIMING.hitReact);    // 切換受擊狀態圖（0.3s）
                         // 宙斯/赫拉里程碑
                         if (t.jackpot > 0) {
-                            checkBossMilestones(monsters.indexOf(t), prevHp, t.hp, p.tx, p.ty);
+                            checkBossMilestones(monsters.indexOf(t), prevHp, t.hp);
                         }
                         if (t.hp === 0 && !t.isDead) {
                             t.isDead = true;   // 先保持死亡狀態圖；淡出改由擊殺特效 'pre' 驅動（淡出後才出機制）
@@ -4131,8 +4329,7 @@ function update() {
                                 deferredKillEffects.push(eff);
                             }
                             if (t.jackpot > 0) {
-                                winScore += t.jackpot; totalScore += t.jackpot;
-                                jpCelebration = { which: t.elemId === 1 ? 'zeus' : 'hera', amount: t.jackpot, phase: 'in', timer: 0 };
+                                queueBossJackpot(t);   // 彩金與全畫面報獎延後到最後結算
                             } else {
                                 // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                                 flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20, text: `KILL!`, color: '#ef4444', life: 100, delay: 20 });
@@ -4183,8 +4380,7 @@ function update() {
                     }
                     // 宙斯/赫拉里程碑
                     if (p.targetMonster.jackpot > 0) {
-                        let { x: bx, y: by } = monsterAnchor(p.targetMonster);
-                        checkBossMilestones(monsters.indexOf(p.targetMonster), prevHp, p.targetMonster.hp, bx, by);
+                        checkBossMilestones(monsters.indexOf(p.targetMonster), prevHp, p.targetMonster.hp);
                     }
 
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
@@ -4232,12 +4428,7 @@ function update() {
                         }
 
                         if (p.targetMonster.jackpot > 0) {
-                            winScore += p.targetMonster.jackpot;
-                            totalScore += p.targetMonster.jackpot;
-                            jpCelebration = {
-                                which: p.targetMonster.elemId === 1 ? 'zeus' : 'hera',
-                                amount: p.targetMonster.jackpot, phase: 'in', timer: 0
-                            };
+                            queueBossJackpot(p.targetMonster);   // 彩金與全畫面報獎延後到最後結算
                         } else {
                             // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                             flyingScores.push({
@@ -4406,6 +4597,10 @@ function update() {
                 finishKillEffect();
             }
         }
+
+    } else if (currentState === STATE.JP_SETTLE) {
+        // JP 里程碑最後結算：石像發光→噴出金幣→得分飛入（結束後回 CHECKING 收尾本局）
+        updateJPSettle();
     }
 
     updatePendingCardUpdates();
@@ -4651,6 +4846,7 @@ function gameLoop() {
     }
     if (!isBG) drawMonsters();          // 怪物血條 UI
     if (!isBG) drawJPBanner();          // 上方 JP 數字
+    if (!isBG) drawJPStatueGlow();      // JP 石像發光（里程碑最後結算）
 
     if (showCards) drawCards();
     drawUI();
@@ -4732,11 +4928,17 @@ function handleInput(clientX, clientY, isClick) {
                                 currentState = STATE.IDLE;
                             }
                         } else if (item.type === 'jp') {
-                            // 獲得JP：直接給予宙斯彩金並噴金幣（測試用）
-                            let jp = monsters[0].jackpot || 15000;
-                            winScore += jp; totalScore += jp;
-                            scoreTexts.push({ x: 640, y: 360, text: `🏆 JACKPOT! +${jp}`, color: '#fbbf24', life: 180 });
-                            spawnCoinBurst(190, 160, 40);
+                            // 獲得JP：走正式結算流程（石像發光→全畫面報獎→噴錢），IDLE 時立即演出
+                            queueBossJackpot(monsters[0]);
+                            if (currentState === STATE.IDLE) {
+                                collapseJPSettleQueue();
+                                jpSettle = { item: null, phase: 'wait', timer: 0 };
+                                currentState = STATE.JP_SETTLE;
+                            }
+                        } else if (item.type === 'jpMilestone') {
+                            // JP 里程碑噴錢：宙斯血量壓到臨界＋注入光屬性連線，驗證最後結算演出
+                            forceCoinBurst = true;
+                            if (currentState === STATE.IDLE) startSpin();
                         } else if (item.type === 'card4' || item.type === 'card5') {
                             // 必出 4 / 5 星卡：本局保證該屬性連線觸發，以展示特殊效果
                             forceCardLevel = item.type === 'card4' ? 4 : 5;
