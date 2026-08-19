@@ -681,7 +681,7 @@ const DEFAULT_TIMING = {
     popDimAlpha:      0.40,  // 壓暗強度 0~1（細節表：亮度壓至約60% → 遮罩40%，RD 參數）
     scorePerIcon:     0.80,  // 每組連線圖示同步得分演繹（保留舊 key 名稱以沿用存檔）
     scorePop:         0.80,  // 得分數字（該組中央）彈出＋停留時長
-    groupGap:         0.30,  // 多組連線：組與組輪流消除的錯落間隔（04 定案）
+    groupGap:         0.30,  // 多組連線：組與組輪流「亮起」的錯落間隔（消散為全組同時）
     popDissolve:      0.30,  // 得分圖示消散（化為能量）
     energyFly:        0.75,  // 能量飛向卡牌攻擊力數字
     // 補盤
@@ -1625,13 +1625,13 @@ function traceGroupOutline(cells, inset = 2) {
     }));
 }
 
-// 開始一波消除：所有組先依序亮起（全亮）→ 再依序消散（規格 03/04 定案）
+// 開始一波消除：所有組依序亮起（亮起即收集攻擊力）→ 全亮停留 → 所有組同時消散（改版 2026-08-19）
 function startPopWave(groups) {
     // 依組首位置排序（左到右、上到下）
     groups.forEach(g => { g.order = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
     groups.sort((a, b) => a.order - b.order);
     const scoreF = TF(TIMING.scorePerIcon);   // 全亮後的得分演繹停留
-    const gapF   = TF(TIMING.groupGap);        // 組與組錯落間隔（亮起與消散皆用）
+    const gapF   = TF(TIMING.groupGap);        // 組與組亮起的錯落間隔（消散已改為同時，不再用此值）
     // 逐格歸屬：WILD 可同時屬多組，記錄其「參與的最後一組」→ 只在最後一組時才真正消散（WILD 保留）
     const cellGroups = new Map();
     groups.forEach((g, i) => g.cells.forEach(c => {
@@ -1639,12 +1639,12 @@ function startPopWave(groups) {
         if (!cellGroups.has(k)) cellGroups.set(k, []);
         cellGroups.get(k).push(i);
     }));
-    // 嚴格兩階段（企劃 2026-07-10）：所有組先依序亮起（含得分框）→ 全亮停留 scoreF → 再依序消散
+    // 嚴格兩階段：所有組先依序亮起（含得分框、亮起即收集攻擊力）→ 全亮停留 scoreF → 所有組同時消散
     const lastLightF = (groups.length - 1) * gapF;   // 最後一組亮起時點
     groups.forEach((g, i) => {
         g.lightF    = i * gapF;                        // 階段1：第 i 組亮起（逐組錯落）
-        g.dissolveF = lastLightF + scoreF + i * gapF;  // 階段2：全亮＋停留後，第 i 組才開始消散
-        g.lit = false; g.resolved = false;
+        g.dissolveF = lastLightF + scoreF;             // 階段2：全亮＋停留後，所有組同時消散（改版 2026-08-19：不再依序）
+        g.lit = false; g.resolved = false; g.collected = false;
         g.dissolveCells = [];                   // 本組負責消散的格（含輪到最後一組的 WILD）
         g.emitWildCells = [];                   // 本組內「保留的 WILD」：射能量但本體不消
         g.cells.forEach(cell => {
@@ -1663,6 +1663,54 @@ function startPopWave(groups) {
     popResolved = false;
     popScoreTotal = scoreF;
     popScoreTimer = scoreF;
+}
+
+// 攻擊力收集（改版 2026-08-19）：時機由「該組開始消散時」改為「該組得分亮起＋得分框框起來時」。
+// 能量自該組中心（含保留的 WILD 各一顆）飛向卡牌 ATK 數字，飛抵後才更新數字。
+function collectGroupAttack(g) {
+    if (g.collected) return;
+    g.collected = true;
+    const atkCardIdx = cards.findIndex(c => c.elemId === g.elemId);
+    if (atkCardIdx === -1) return;
+    const _c = cards[atkCardIdx];
+    const a = computeAttack(g.elemId, g.count, _c.level, forceCrit && g.elemId !== 1 && g.elemId !== 2);
+    if (a.isCrit && forceCrit) forceCrit = false;
+    pendingCardUpdates.push({
+        delay: TF(TIMING.energyFly),   // 亮起即射出能量 → 飛抵後才更新數字
+        card: _c, damage: a.damage, isCrit: a.isCrit, effectLabel: a.effectLabel || ''
+    });
+    if (isBG) return;
+    const cm = getCardDrawMetrics(cards.length);
+    // 能量落點＝攻擊力數字實際位置（與 drawCardAtk 同一算式，含佈局面板 atkNum 偏移）
+    const AL = LAYOUT.atkNum || { x: 0, y: 0 };
+    const cardX = cm.startX + atkCardIdx * (cm.cardW + cm.gap);
+    const cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
+    const cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
+    const elemColor = ELEMENTS[g.elemId].color;
+    const energyLife = TF(TIMING.energyFly) + 20;
+    const energyDelay = 0;                 // 亮起當下立即飛出（不再等消散）
+    // 本組主能量（自整組中心飛出）
+    const startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
+    const startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
+    flyingScores.push({
+        type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
+        tx: cardCX, ty: cardTY,
+        color: elemColor,
+        life: energyLife, delay: energyDelay
+    });
+    // WILD 保留：本組內尚未輪到「最後一組」的 WILD，原地各射 1 顆該組色能量（本體不消）
+    g.emitWildCells.forEach(cell => {
+        const wx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2;
+        const wy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
+        flyingScores.push({
+            type: 'collect', x: wx, y: wy, sx: wx, sy: wy, prog: 0,
+            tx: cardCX, ty: cardTY,
+            color: elemColor,
+            life: energyLife, delay: energyDelay
+        });
+        // 射能量回饋：保留的 WILD 重新高亮，維持「已結算保留」狀態
+        board[cell.c][cell.r].lit = true; board[cell.c][cell.r].litAt = popPhaseT;
+    });
 }
 
 // === 溢出傷害：找相同屬性的目標（不限同側），光球抵達才扣血 ===
@@ -4069,7 +4117,7 @@ function update() {
         }
 
     } else if (currentState === STATE.POPPING) {
-        // 多組：一組一組輪流演完整一輪（亮起得分→消散→能量飛卡→ATK更新），組間錯開 groupGap
+        // 多組：依 groupGap 逐組亮起（亮起當下即收集攻擊力）→ 全亮停留 → 所有組同時消散
         popDimTimer++;
         popPhaseT++;
         updatePendingCardUpdates();
@@ -4077,7 +4125,7 @@ function update() {
 
         const dissolveStep = 1 / TF(TIMING.popDissolve);
 
-        // 階段1：各組到 lightF 時亮起＋顯示該組得分數字＋計分（一次）
+        // 階段1：各組到 lightF 時亮起＋得分框＋得分數字＋計分＋攻擊力收集（一次）
         currentMatches.forEach(g => {
             if (!g.lit && popPhaseT >= g.lightF) {
                 g.lit = true;
@@ -4094,63 +4142,17 @@ function update() {
                     color: isBG ? '#fde047' : '#ffffff',
                     fontSize: 40, life: scorePopLife, life0: scorePopLife, pop: true, fixed: true
                 });
+                collectGroupAttack(g);   // 攻擊力收集：亮起＋得分框出現的當下就收集（改版 2026-08-19）
             }
         });
 
-        // 階段2：各組到 dissolveF 時開始消散＋能量飛卡＋ATK更新（一次）
+        // 階段2：全亮停留後「所有組同時」開始消散（不再依序）＋消除紀錄（一次）
         currentMatches.forEach(g => {
             if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
                 // 標記本組要消散的格；保留的 WILD（非最後一組）不含在內 → 本體不消
                 g.dissolveCells.forEach(cell => { board[cell.c][cell.r].canDissolve = true; });
-
-                let atkCardIdx = cards.findIndex(c => c.elemId === g.elemId);
-                if (atkCardIdx !== -1) {
-                    let _c = cards[atkCardIdx];
-                    let a = computeAttack(g.elemId, g.count, _c.level, forceCrit && g.elemId !== 1 && g.elemId !== 2);
-                    if (a.isCrit && forceCrit) forceCrit = false;
-                    pendingCardUpdates.push({
-                        delay: TF(TIMING.popDissolve) + TF(TIMING.energyFly),   // 消散→能量飛抵後才更新數字
-                        card: _c, damage: a.damage, isCrit: a.isCrit, effectLabel: a.effectLabel || ''
-                    });
-                }
-                if (!isBG) {
-                    let cardIdx = cards.findIndex(c => c.elemId === g.elemId);
-                    if (cardIdx !== -1) {
-                        const cm = getCardDrawMetrics(cards.length);
-                        // 能量落點＝攻擊力數字實際位置（與 drawCardAtk 同一算式，含佈局面板 atkNum 偏移）
-                        const AL = LAYOUT.atkNum || { x: 0, y: 0 };
-                        const cardX = cm.startX + cardIdx * (cm.cardW + cm.gap);
-                        let cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
-                        const cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
-                        const elemColor = ELEMENTS[g.elemId].color, elemIcon = ELEMENTS[g.elemId].icon;
-                        const energyLife = TF(TIMING.popDissolve) + TF(TIMING.energyFly) + 20;
-                        const energyDelay = TF(TIMING.popDissolve);
-                        // 本組主能量（自整組中心飛出）
-                        let startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
-                        let startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
-                        flyingScores.push({
-                            type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
-                            tx: cardCX, ty: cardTY,
-                            color: elemColor,
-                            life: energyLife, delay: energyDelay
-                        });
-                        // WILD 保留：本組內尚未輪到「最後一組」的 WILD，原地各射 1 顆該組色能量（本體不消）
-                        g.emitWildCells.forEach(cell => {
-                            const wx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2;
-                            const wy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
-                            flyingScores.push({
-                                type: 'collect', x: wx, y: wy, sx: wx, sy: wy, prog: 0,
-                                tx: cardCX, ty: cardTY,
-                                color: elemColor,
-                                life: energyLife, delay: energyDelay
-                            });
-                            // 射能量回饋：保留的 WILD 重新高亮，維持「已結算保留」狀態
-                            board[cell.c][cell.r].lit = true; board[cell.c][cell.r].litAt = popPhaseT;
-                        });
-                    }
-                }
                 if (isBG) { bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0; }
             }
         });
