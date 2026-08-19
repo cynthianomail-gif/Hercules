@@ -4125,7 +4125,7 @@ function update() {
 
         const dissolveStep = 1 / TF(TIMING.popDissolve);
 
-        // 階段1：各組到 lightF 時亮起＋得分框＋得分數字＋計分＋攻擊力收集（一次）
+        // 階段1：各組到 lightF 時亮起＋得分框＋得分數字＋計分＋攻擊力收集＋BG 倍數遞增（一次）
         currentMatches.forEach(g => {
             if (!g.lit && popPhaseT >= g.lightF) {
                 g.lit = true;
@@ -4143,17 +4143,19 @@ function update() {
                     fontSize: 40, life: scorePopLife, life0: scorePopLife, pop: true, fixed: true
                 });
                 collectGroupAttack(g);   // 攻擊力收集：亮起＋得分框出現的當下就收集（改版 2026-08-19）
+                // BG 倍數遞增（改版 2026-08-19）：改在「亮起＋得分框出現」當下 +1，
+                // 且在本組得分算完之後才進位 → 下一組亮起時直接套用新倍數
+                if (isBG) { bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0; }
             }
         });
 
-        // 階段2：全亮停留後「所有組同時」開始消散（不再依序）＋消除紀錄（一次）
+        // 階段2：全亮停留後「所有組同時」開始消散（BG 亦同）＋消除紀錄（一次）
         currentMatches.forEach(g => {
             if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
                 // 標記本組要消散的格；保留的 WILD（非最後一組）不含在內 → 本體不消
                 g.dissolveCells.forEach(cell => { board[cell.c][cell.r].canDissolve = true; });
-                if (isBG) { bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0; }
             }
         });
 
