@@ -385,53 +385,45 @@
                 <p>• 直線或橫線 <b>3 個以上</b>相同元素即可消除</p>
                 <p>• L / T 形合計總顆數，視為一組消除</p>
                 <p>• 消除後觸發對應屬性卡片攻擊，補入新寶石後繼續判定（連爆）</p>
-                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，不重複屬性 ※ 「雷霆」與「聖心」不會同時出現</p>
-                <p>• 有消除該屬性 → 觸發卡片；消除 N 組 → 攻擊 <b>N 次</b></p>
+                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，屬性可重複（2～3 張同屬性會集中攻擊同一隻怪）※ 「雷霆」與「聖心」不會同時出現</p>
+                <p>• 有消除該屬性 → 觸發卡片；同屬性消除多組時累加後一次打出（每張卡每局出手 1 次）</p>
+                <p>• 卡牌飛到對應屬性的怪物身上撞擊；打死後多出來的傷害不轉移（無溢傷追擊）</p>
 
                 <h3>▌ 怪物血量</h3>
                 <table>
                     <tr><th>怪物</th><th>屬性</th><th>血量</th><th>獎勵</th></tr>
-                    <tr><td>⚡ 宙斯</td><td>雷霆</td><td>60 格</td><td>JP</td></tr>
-                    <tr><td>💖 赫拉</td><td>聖心</td><td>60 格</td><td>JP</td></tr>
-                    <tr><td>Lv.4 小怪</td><td>隨機</td><td>40 格</td><td>怪獸機制</td></tr>
-                    <tr><td>Lv.3 小怪</td><td>隨機</td><td>30 格</td><td>怪獸機制</td></tr>
-                    <tr><td>Lv.2 小怪</td><td>隨機</td><td>20 格</td><td>怪獸機制</td></tr>
-                    <tr><td>Lv.1 小怪</td><td>隨機</td><td>10 格</td><td>怪獸機制</td></tr>
+                    <tr><td>⚡ 宙斯</td><td>雷霆</td><td>40 格</td><td>JP</td></tr>
+                    <tr><td>💖 赫拉</td><td>聖心</td><td>40 格</td><td>JP</td></tr>
+                    <tr><td>Lv.4 小怪</td><td>祕法</td><td>30 格</td><td>怪獸機制</td></tr>
+                    <tr><td>Lv.3 小怪</td><td>冰霜</td><td>20 格</td><td>怪獸機制</td></tr>
+                    <tr><td>Lv.2 小怪</td><td>大地</td><td>15 格</td><td>怪獸機制</td></tr>
+                    <tr><td>Lv.1 小怪</td><td>烈焰</td><td>10 格</td><td>怪獸機制</td></tr>
                 </table>
 
-                <h3>▌ 卡片等級倍率（雷霆/聖心）</h3>
+                <h3>▌ 卡牌攻擊力</h3>
                 <table>
-                    <tr><th>等級</th><th>邊框色</th><th>基礎倍率</th></tr>
-                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>× 1</td></tr>
-                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>× 2</td></tr>
-                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>× 3</td></tr>
-                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>× 4</td></tr>
-                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>× 5</td></tr>
+                    <tr><th>等級</th><th>邊框色</th><th>基礎攻擊力</th></tr>
+                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>1</td></tr>
+                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>3</td></tr>
+                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>5</td></tr>
+                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>10</td></tr>
+                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>15</td></tr>
                 </table>
-                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 烈焰/冰霜/大地 4·5 星基礎降為 ×3/×4，改以特殊機制補強</p>
+                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 傷害＝基礎攻擊力＋本局消除該屬性的總顆數。例：1 星卡消除 5 顆＋3 顆 → 1+5+3＝9</p>
 
-                <h3>▌ 屬性特殊效果（4·5 星）</h3>
+                <h3>▌ 爆擊（4·5 星）</h3>
                 <table>
                     <tr><th>屬性</th><th>效果</th><th>觸發率(Lv4/Lv5)</th></tr>
-                    <tr><td>🔥 烈焰</td><td>爆擊：高倍單次傷害</td><td>25% / 20%</td></tr>
-                    <tr><td>❄️ 冰霜</td><td>追擊：追加額外傷害</td><td>50% / 50%</td></tr>
-                    <tr><td>🌿 大地</td><td>三值：隨機抽選傷害</td><td>必定</td></tr>
-                    <tr><td>🔮 祕法</td><td>連擊：總傷 ×2</td><td>33.3% / 25%</td></tr>
+                    <tr><td>🔥 烈焰／🔮 祕法／🌿 大地／❄️ 冰霜</td><td>出手前判定，傷害 ×1.5（無條件進位）</td><td>20% / 30%</td></tr>
+                    <tr><td>⚡ 雷霆／💖 聖心</td><td>無爆擊</td><td>—</td></tr>
                 </table>
             </div>
 
             <div>
-                <h3>▌ 消除傷害對照（格）</h3>
-                <table>
-                    <tr><th>消除顆數</th><th>Lv.1 ×1</th><th>Lv.2 ×2</th><th>Lv.3 ×3</th><th>Lv.4 ×4</th><th>Lv.5 ×5</th></tr>
-                    <tr><td>3 顆</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
-                    <tr><td>4 顆</td><td>2</td><td>4</td><td>6</td><td>8</td><td>10</td></tr>
-                    <tr><td>5 顆</td><td>3</td><td>6</td><td>9</td><td>12</td><td>15</td></tr>
-                    <tr><td>6~7 顆</td><td>4</td><td>8</td><td>12</td><td>16</td><td>20</td></tr>
-                    <tr><td>8~9 顆</td><td>5</td><td>10</td><td>15</td><td>20</td><td>25</td></tr>
-                    <tr><td>10~11 顆</td><td>6</td><td>12</td><td>18</td><td>24</td><td>30</td></tr>
-                    <tr><td>12+ 顆</td><td>7</td><td>14</td><td>21</td><td>28</td><td>35</td></tr>
-                </table>
+                <h3>▌ BONUS GAME 倍數</h3>
+                <p>• BG 無卡牌與怪獸機制，倍數欄位預設 <b>×2</b></p>
+                <p>• 該局有消除 → 以當前倍數計分，局末倍數 ×2 遞增（×2、×4、×8…最高 ×1024）；沒消除則不得分、倍數不變</p>
+                <p>• 倍數不重置，直到 BG 結束</p>
 
                 <h3>▌ 卡片牌池（30 張）</h3>
                 <p style="margin-bottom:6px;color:#64748b;font-size:12px">邊框色對應卡片等級 Lv.1 → Lv.5</p>
@@ -697,6 +689,21 @@ const DEFAULT_TIMING = {
     attackDim:        0.25,  // 卡牌觸發時盤面／他卡壓暗
     cardGap:          0.55,  // 多卡觸發：卡與卡攻擊間隔
     cardReturn:       0.30,  // 卡牌攻擊完畢歸位（定案：歸位同時 ATK 瞬間歸零）
+    cardFly:          0.25,  // 卡牌飛向怪物撞擊（改版 2026-10-13）
+    cardFlyBack:      0.30,  // 卡牌撞擊後飛回卡位
+    hitBurst:         0.45,  // 打擊光效（白閃＋屬性色擴散光環＋放射光芒）
+    // 節奏分支（改版 2026-10-13）：沒打死→快節奏；打死→維持原節奏並立刻接擊殺機制；打死 Lv.4／JP→重擊加長
+    fastAtkUpdate:    0.05,  // 未擊殺：數字更新
+    fastPullUp:       0.15,  // 未擊殺：卡牌上拉
+    fastFly:          0.15,  // 未擊殺：卡牌飛向怪物
+    fastFlyBack:      0.15,  // 未擊殺：撞擊後直接飛回（不停頓）
+    fastGap:          0.10,  // 未擊殺：卡與卡間隔
+    heavyAim:         1.80,  // 重擊（這一下會打死 Lv.4／JP）：瞄準慢動作（上拉＋徽章閃爍＋壓暗鎖定）
+    heavyHitStop:     0.15,  // 重擊：命中停格
+    heavyShake:       0.45,  // 重擊：全畫面震動
+    heavyFlash:       0.35,  // 重擊：全畫面白閃
+    heavyDeathHold:   0.80,  // 重擊：死亡狀態額外停留
+    refillFastScale:  0.40,  // 本波消除沒對到任何卡牌 → 補盤時間 ×此倍率（非時間值）
     // 受擊／擊殺
     hitReact:         0.50,  // 受擊+血量（血條位移）
     hitFlash:         0.45,  // 受擊閃紅（本體疊乘紅色，1 次）
@@ -767,7 +774,14 @@ const TIMING_META = [
     { group: '卡牌攻擊', items: [
         ['atkUpdate','數字更新'], ['atkTier2Mult','藍字門檻(×倍)', 1, 10, 0.5], ['atkTier3Mult','紅字門檻(×倍)', 1, 20, 0.5],
         ['cardPullUp','卡牌上拉'], ['cardPullDist','上拉幅度(px)', 0, 100, 1], ['badgeFlash','徽章同步閃爍'],
-        ['attackDim','攻擊時壓暗'], ['cardGap','卡與卡間隔'], ['cardReturn','卡牌歸位']] },
+        ['attackDim','攻擊時壓暗'], ['cardGap','卡與卡間隔'], ['cardReturn','卡牌歸位'],
+        ['cardFly','卡牌飛向怪物'], ['cardFlyBack','卡牌飛回'], ['hitBurst','打擊光效']] },
+    { group: '節奏分支', items: [
+        ['fastAtkUpdate','未擊殺:數字更新'], ['fastPullUp','未擊殺:上拉'], ['fastFly','未擊殺:飛向怪物'],
+        ['fastFlyBack','未擊殺:飛回'], ['fastGap','未擊殺:卡間隔'],
+        ['heavyAim','重擊:瞄準慢動作'], ['heavyHitStop','重擊:命中停格'], ['heavyShake','重擊:震畫面'],
+        ['heavyFlash','重擊:白閃'], ['heavyDeathHold','重擊:死亡停留'],
+        ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
         ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
@@ -795,7 +809,7 @@ const TIMING_RANGE = {};
 TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !== undefined ? it[2] : 0, it[3] !== undefined ? it[3] : 5]; }));
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
-    'atkTier2Mult', 'atkTier3Mult', 'hitTiers']);
+    'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -814,6 +828,9 @@ const GANTT_START_PRESET = {
     refillPerCell: 0.00, refillStagger: 0.00,
     // 卡牌攻擊（接續消除段：數字更新→上拉→受擊→歸位）
     atkUpdate: 1.00, cardPullUp: 1.15, badgeFlash: 1.15, attackDim: 1.15, cardGap: 1.15, cardReturn: 1.80,
+    cardFly: 1.90, cardFlyBack: 2.15, hitBurst: 2.15,
+    fastAtkUpdate: 1.00, fastPullUp: 1.05, fastFly: 1.20, fastFlyBack: 1.35, fastGap: 1.50,
+    heavyAim: 1.15, heavyHitStop: 2.95, heavyShake: 2.95, heavyFlash: 2.95, heavyDeathHold: 3.10, refillFastScale: 0.00,
     // 受擊／擊殺
     hitReact: 1.90, hitFlash: 1.90, deathSwitch: 2.15, effectFly: 2.65, effectShow: 3.05, respawnFade: 3.45, fgbgCollect: 2.65,
     // WILD／機制（各機制為互斥分支，起點自 0 起排）
@@ -968,12 +985,14 @@ function getRandomMonsterData(level, excludeName) {
 
 // 依血格數判斷小怪等級（Lv.1=10 / Lv.2=20 / Lv.3=30 / Lv.4=40）
 function levelFromHp(hp) {
-    return hp >= 40 ? 4 : hp >= 30 ? 3 : hp >= 20 ? 2 : 1;
+    // 改版 2026-10-13：小怪血量 Lv1~4 = 10/15/20/30
+    return hp >= 30 ? 4 : hp >= 20 ? 3 : hp >= 15 ? 2 : 1;
 }
 
 function getBGMultiplier() {
     if (!isBG) return 1;
-    return Math.min(bgMultiplierIndex + 1, 1024);
+    // 改版 2026-10-13：預設 ×2，每局有消除則局末 ×2 遞增（×2、×4、×8…最高 ×1024），BG 結束前不重置
+    return Math.min(Math.pow(2, bgMultiplierIndex + 1), 1024);
 }
 
 function getScore(count, elemId = 3) {
@@ -1014,7 +1033,23 @@ function normalAttack(elemId, count, level) {
     return base * (level === 4 ? 3 : 4);   // 烈焰/冰霜/祕法 4/5 星基礎降階
 }
 
-// 計算單次攻擊：回傳 { damage, isCrit, effectLabel }
+// 改版 2026-10-13：卡牌基礎攻擊力（依星等），卡面顯示＝基礎＋本局消除顆數
+const CARD_BASE_ATK = { 1: 1, 2: 3, 3: 5, 4: 10, 5: 15 };
+function cardBaseAtk(card) { return CARD_BASE_ATK[card.level] || 1; }
+// 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
+const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
+function rollCardAttack(card) {
+    let damage = cardBaseAtk(card) + (card.atk || 0);
+    const canCrit = card.elemId !== 1 && card.elemId !== 2 && card.level >= 4;
+    let isCrit = false;
+    if (canCrit && (forceCrit || Math.random() < CARD_CRIT_RATE[card.level])) {
+        isCrit = true; forceCrit = false;
+        damage = Math.ceil(damage * 1.5);
+    }
+    return { damage, isCrit };
+}
+
+// （舊版，已不使用）計算單次攻擊：回傳 { damage, isCrit, effectLabel }
 function computeAttack(elemId, count, level, forced) {
     const base = baseDamage(count);
     const normal = normalAttack(elemId, count, level);
@@ -1066,11 +1101,11 @@ const STATE = {
 const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示(弱)！', '🎡 輪盤！', '💰 直接給分！'];
 const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀', '🎡', '💰'];
 
-// 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=60（扣血 15/30/45 = 25%/50%/75%）
+// 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=40（改版 2026-10-13：扣血 10/20/30 = 25%/50%/75%）
 const BOSS_MILESTONES = [
-    { hpLost: 15, minMult:  5, maxMult:  10 },   // ≈25%
-    { hpLost: 30, minMult: 20, maxMult:  25 },   // ≈50%
-    { hpLost: 45, minMult: 90, maxMult: 100 },   // ≈75%
+    { hpLost: 10, minMult:  5, maxMult:  10 },   // ≈25%
+    { hpLost: 20, minMult: 20, maxMult:  25 },   // ≈50%
+    { hpLost: 30, minMult: 90, maxMult: 100 },   // ≈75%
 ];
 
 // 強開選單（企劃書 NG 出牌規則）
@@ -1130,6 +1165,18 @@ let spinOldDrops = [];      // 舊盤面各欄已下墜距離（px）
 let spinSkip = null;        // 跳過1（定案）：{ t, total, from[] } 全輪齊停落定
 let spinTimer = 0;          // 本次 spin 經過幀數（停輪節奏依 TIMING 計算）
 let roundGapTimer = 0;      // 卡與卡攻擊間隔倒數
+// 節奏分支（改版 2026-10-13）
+let killNowQueue = [];         // 本張卡打死怪 → 立刻播放的擊殺機制（播完才換下一張卡）
+let killReturnToAttack = false; // 擊殺機制播完後回到 ATTACKING 繼續下一張卡
+let lastAttackTier = 'kill';   // 上一張卡的節奏分支：fast（沒打死）／kill（打死）／heavy（打死 Lv.4／JP）
+let heavyAim = null;           // 重擊瞄準：{ target, t }，期間壓暗＋鎖定目標
+let hitStopT = 0;              // 重擊命中停格倒數（期間暫停遊戲邏輯）
+let screenShakeT = 0;          // 重擊全畫面震動倒數
+let screenFlashT = 0;          // 重擊全畫面白閃倒數
+let heavyPostWait = 0;         // 打死 JP 後，下一張卡前額外停留（幀）
+let refillFast = false;        // 本波消除沒對到任何卡牌 → 補盤加快
+function attackAimDur(p) { return p.tier === 'fast' ? TIMING.fastPullUp : p.tier === 'heavy' ? TIMING.heavyAim : TIMING.cardPullUp; }
+function refillCellFrames() { return Math.max(1, TF((isBG ? TIMING.bgRefill : TIMING.refillPerCell) * (refillFast ? TIMING.refillFastScale : 1))); }
 let popDimTimer = 0;        // 消除壓暗淡入計時
 let popPhaseT = 0;          // 消除相位時鐘（POPPING 開始後幀數；甘特圖起點為絕對相對此）
 let popResolved = false;    // 本批是否已結算（得分/能量飛卡/數字更新只觸發一次）
@@ -1181,7 +1228,7 @@ let isFG = false;            // Free Game 模式：6張卡，自動旋轉10局
 let fgSpinsRemaining = 0;
 let isBG = false;            // Bonus Game 模式：無卡牌/怪獸，倍數遞增
 let bgSpinsRemaining = 0;
-let bgMultiplierIndex = 0;   // 當前連爆次數，倍率 = index+1（×1, ×2, ×3...最高×1024）
+let bgMultiplierIndex = 0;   // BG 有消除的局數，倍率 = 2^(index+1)（×2, ×4, ×8...最高×1024）
 let pendingFGBG = null;      // 當前局連爆結束後才正式進入的模式（'FG' | 'BG' | 'NG' | null）
 let savedBoard = null;       // 進入 FG/BG 前曾保存盤面；回 NG 時保留獎勵局最後盤面
 
@@ -1196,15 +1243,12 @@ let transitionAccentColor = '#ffffff';
 
 // 各位置固定血量（企劃書）：Lv.1=10 / Lv.2=20 / Lv.3=30 / Lv.4=40
 // 左第二=Lv4(40)、左最下=Lv1(10)、右第二=Lv3(30)、右最下=Lv2(20)
-const MONSTER_FIXED_HP = { 1: 40, 2: 10, 4: 30, 5: 20 };
+const MONSTER_FIXED_HP = { 1: 30, 2: 10, 4: 20, 5: 15 };   // 改版 2026-10-13：Lv4=30／Lv1=10／Lv3=20／Lv2=15
 
 // 根據 maxHp 判斷怪獸等級（JP Boss 回傳 0）
 function getMonsterLevel(m) {
-    if (m.maxHp >= 60) return 0;   // JP Boss（宙斯/赫拉 60 格）
-    if (m.maxHp >= 40) return 4;
-    if (m.maxHp >= 30) return 3;
-    if (m.maxHp >= 20) return 2;
-    return 1;
+    if (m.jackpot > 0) return 0;   // JP Boss（宙斯/赫拉 40 格；改版後 Boss 血量與小怪重疊，改以 jackpot 判斷）
+    return levelFromHp(m.maxHp);
 }
 
 // 各等級對應的擊殺效果池，隨機抽一個
@@ -1245,30 +1289,27 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
 
 // === 初始化 ===
 function initMonsters() {
-    // 宙斯固定雷霆屬性(1)，赫拉固定聖心屬性(2)，皆 60 格
+    // 宙斯固定雷霆屬性(1)，赫拉固定聖心屬性(2)，皆 40 格（改版 2026-10-13）
     monsters = [
-        { elemId: 1, side: 'left',  yIndex: 0, hp: 60, maxHp: 60, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
-        { elemId: 0, side: 'left',  yIndex: 1, hp: 40, maxHp: 40, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 1, side: 'left',  yIndex: 0, hp: 40, maxHp: 40, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
+        { elemId: 0, side: 'left',  yIndex: 1, hp: 30, maxHp: 30, shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 3, side: 'left',  yIndex: 2, hp: 10, maxHp: 10, shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 2, side: 'right', yIndex: 0, hp: 60, maxHp: 60, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
-        { elemId: 4, side: 'right', yIndex: 1, hp: 30, maxHp: 30, shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 5, side: 'right', yIndex: 2, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false }
+        { elemId: 2, side: 'right', yIndex: 0, hp: 40, maxHp: 40, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
+        { elemId: 4, side: 'right', yIndex: 1, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false },
+        { elemId: 5, side: 'right', yIndex: 2, hp: 15, maxHp: 15, shake: 0, name: '',     jackpot: 0,     isDead: false }
     ];
 
-    // 小怪使用 6 種屬性中隨機不重複的四種屬性；外觀依等級綁定
-    let smallPool = [0, 1, 2, 3, 4, 5];
-    smallPool.sort(() => Math.random() - 0.5);
-    [1, 2, 4, 5].forEach((idx, i) => {
+    // 小怪屬性依等級固定（改版 2026-10-13）；外觀依等級綁定
+    [1, 2, 4, 5].forEach(idx => {
         let hp = MONSTER_FIXED_HP[idx];
         let md = getRandomMonsterData(levelFromHp(hp));
-        monsters[idx] = { ...monsters[idx], elemId: smallPool[i], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: 0 };
+        monsters[idx] = { ...monsters[idx], elemId: MONSTER_FIXED_ELEM[idx], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: 0 };
     });
 }
 
-function getMonsterElemPool() {
-    let pool = cards.map(c => c.elemId);
-    return pool.length > 0 ? pool : [0, 1, 2, 3, 4, 5];
-}
+// 每個等級的小怪固定屬性（改版 2026-10-13）：讓玩家看得出「這張卡要打哪隻」
+// Lv.1=烈焰(3)／Lv.2=大地(5)／Lv.3=冰霜(4)／Lv.4=祕法(0)；宙斯=雷霆(1)、赫拉=聖心(2)
+const MONSTER_FIXED_ELEM = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 4, 5: 5 };
 
 function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     let m = monsters[idx];
@@ -1277,20 +1318,8 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
         let { x: ex, y: ey } = monsterAnchor(m);
         scoreTexts.push({ x: ex, y: ey, text: `${m.name} 逃跑了！`, color: '#fbbf24', life: 90, fontSize: 26 });
     }
-    let newElem;
-    if (fixedElem >= 0) {
-        newElem = fixedElem;
-    } else {
-        // 替換屬性一定是卡牌屬性；並優先補上「目前沒有對應存活小怪」的卡牌屬性，
-        // 確保每張卡都有可攻擊目標（避免某張卡在盤面上找不到對應怪）。
-        const pool = [...new Set(getMonsterElemPool())];
-        const covered = new Set([1, 2, 4, 5]
-            .filter(i => i !== idx && monsters[i] && !monsters[i].isDead)
-            .map(i => monsters[i].elemId));
-        const uncovered = pool.filter(e => !covered.has(e));
-        const choose = uncovered.length ? uncovered : pool;
-        newElem = choose[Math.floor(Math.random() * choose.length)];
-    }
+    // 補怪沿用該等級的固定屬性
+    let newElem = fixedElem >= 0 ? fixedElem : (MONSTER_FIXED_ELEM[idx] !== undefined ? MONSTER_FIXED_ELEM[idx] : m.elemId);
     let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
     // 外觀依等級綁定，且不替換成相同外觀（企劃書）
     let md = getRandomMonsterData(levelFromHp(blocks), m.name);
@@ -1350,26 +1379,21 @@ function resetBoardVisualState() {
 
 function generateCards() {
     cards = [];
-    let usedElems = new Set();
-    let attempts = 0;
 
-    // 決定本局是否出現雷霆/聖心卡（最多1張，不同時出現）
-    let bossElemForThisSpin = Math.random() < 0.3 ? (Math.random() < 0.5 ? 1 : 2) : -1;
-
-    while (cards.length < 3 && attempts < 300) {
-        attempts++;
+    // 改版 2026-10-13：3 張各自獨立抽屬性，可重複（可能 2 張或 3 張同屬性 → 集中打同一隻怪）
+    // 每張 CARD_BOSS_RATE 機率為雷霆/聖心（約維持舊版「每局 30% 有 Boss 卡」），雷霆與聖心仍不同時出現
+    const CARD_BOSS_RATE = 0.11;
+    let bossElem = -1;
+    while (cards.length < 3) {
         let elemId;
-        // 第一張嘗試放光或暗（若本局有）
-        if (bossElemForThisSpin >= 0 && cards.length === 0) {
-            elemId = bossElemForThisSpin;
-            bossElemForThisSpin = -1;
+        if (Math.random() < CARD_BOSS_RATE) {
+            if (bossElem < 0) bossElem = Math.random() < 0.5 ? 1 : 2;
+            elemId = bossElem;
         } else {
-            let avail = [0, 3, 4, 5].filter(e => !usedElems.has(e));
-            if (avail.length === 0) continue;
-            elemId = avail[Math.floor(Math.random() * avail.length)];
+            const normal = [0, 3, 4, 5];
+            elemId = normal[Math.floor(Math.random() * normal.length)];
         }
 
-        usedElems.add(elemId);
         let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
         let def = defs[Math.floor(Math.random() * defs.length)];
 
@@ -1406,43 +1430,8 @@ function generateCards() {
 }
 
 function generateCardsForFG() {
-    // FG：3張卡，從存活怪獸的屬性中抽取
-    let aliveElems = monsters
-        .filter(m => m.maxHp > 0 && !m.isDead)
-        .map(m => m.elemId);
-    aliveElems.sort(() => Math.random() - 0.5);
-    // 不足3種時補上其他屬性
-    let allElems = [0, 1, 2, 3, 4, 5];
-    let extra = allElems.filter(e => !aliveElems.includes(e));
-    extra.sort(() => Math.random() - 0.5);
-    // 光(1)與暗(2)不同時出現：若兩者都在候選中，隨機保留其一
-    let uniqueAlive = [...new Set(aliveElems)];
-    if (uniqueAlive.includes(1) && uniqueAlive.includes(2)) {
-        uniqueAlive = uniqueAlive.filter(e => e !== (Math.random() < 0.5 ? 1 : 2));
-    }
-    let selectedElems = uniqueAlive.slice(0, 3);
-    while (selectedElems.length < 3 && extra.length > 0) {
-        let e = extra.shift();
-        if ((e === 1 && selectedElems.includes(2)) || (e === 2 && selectedElems.includes(1))) continue;
-        selectedElems.push(e);
-    }
-
-    cards = [];
-    selectedElems.forEach((elemId, i) => {
-        let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
-        let def = defs[Math.floor(Math.random() * defs.length)];
-        let targetCount = 4;
-        if (def.level === 2) targetCount = Math.floor(Math.random() * 2) + 5;
-        else if (def.level === 3) targetCount = Math.floor(Math.random() * 2) + 7;
-        else if (def.level === 4) targetCount = Math.floor(Math.random() * 2) + 9;
-        else if (def.level === 5) targetCount = Math.floor(Math.random() * 3) + 11;
-        cards.push({
-            elemId: def.elemId, level: def.level, name: def.name,
-            targetCount, atk: 0,  // 本局該卡累計攻擊力（同屬性連續消除會疊加）
-            activated: false, isCharging: false, chargeTimer: 0,
-            scale: 1, shake: 0, yOffset: 130, enterDelay: i * 10, yTarget: 0
-        });
-    });
+    // 改版 2026-10-13：FG 與 NG 同規則（3 張獨立隨機、可重複）；怪獸屬性依等級固定，每種屬性都有對應怪
+    generateCards();
 }
 
 // === 核心邏輯 ===
@@ -1505,9 +1494,9 @@ function findMatches() {
 
 function applyGravity() {
     // 補盤每欄錯落（節奏總表 0.05s）：右欄新圖示多墊一段起始距離，落定時間依欄遞延
-    const fallSpeed = GEM_SIZE / TF(isBG ? TIMING.bgRefill : TIMING.refillPerCell);
+    const fallSpeed = GEM_SIZE / refillCellFrames();
     for (let c = 0; c < COLS; c++) {
-        const staggerDist = c * fallSpeed * TF(TIMING.refillStagger);
+        const staggerDist = c * fallSpeed * TF(TIMING.refillStagger * (refillFast ? TIMING.refillFastScale : 1));
         let emptySpaces = 0;
         for (let r = ROWS - 1; r >= 0; r--) {
             if (board[c][r].id === -1) {
@@ -1670,14 +1659,16 @@ function startPopWave(groups) {
 function collectGroupAttack(g) {
     if (g.collected) return;
     g.collected = true;
-    const atkCardIdx = cards.findIndex(c => c.elemId === g.elemId);
-    if (atkCardIdx === -1) return;
+    // 改版 2026-10-13：卡牌屬性可重複 → 同屬性的每一張卡都各自集氣
+    cards.forEach((c, i) => { if (c.elemId === g.elemId) collectGroupAttackToCard(g, i); });
+}
+
+function collectGroupAttackToCard(g, atkCardIdx) {
     const _c = cards[atkCardIdx];
-    const a = computeAttack(g.elemId, g.count, _c.level, forceCrit && g.elemId !== 1 && g.elemId !== 2);
-    if (a.isCrit && forceCrit) forceCrit = false;
+    // 改版 2026-10-13：消除幾顆 → 攻擊力 +幾（基礎攻擊力另計，見 CARD_BASE_ATK）；爆擊改在出手前判定
     pendingCardUpdates.push({
         delay: TF(TIMING.energyFly),   // 亮起即射出能量 → 飛抵後才更新數字
-        card: _c, damage: a.damage, isCrit: a.isCrit, effectLabel: a.effectLabel || ''
+        card: _c, damage: g.count, isCrit: false, effectLabel: ''
     });
     if (isBG) return;
     const cm = getCardDrawMetrics(cards.length);
@@ -2017,7 +2008,7 @@ function holdMonsterDeath(monster) {
 function startKillSourceFade(effect) {
     const idx = effect && effect.monIdx;
     const monster = Number.isInteger(idx) ? monsters[idx] : null;
-    if (monster && monster.isDead) monster.deathT = TF(TIMING.deathSwitch) + 1;
+    if (monster && monster.isDead) monster.deathT = TF(TIMING.deathSwitch) + (effect.heavy ? TF(TIMING.heavyDeathHold) : 0) + 1;
 }
 function respawnKillSource(effect) {
     const idx = effect && effect.monIdx;
@@ -2032,6 +2023,14 @@ function finishKillEffect() {
     killEffectPhase = 'idle';
     killEffectCurrent = null;
     respawnKillSource(finishedEffect);
+    if (killReturnToAttack) {
+        // 攻擊途中插播的擊殺機制：播完回到 ATTACKING 接下一張卡；補盤／連爆判定等所有卡打完再一起做
+        if (killNowQueue.length > 0) { startKillEffect(killNowQueue.shift()); return; }
+        killReturnToAttack = false;
+        lastAttackTier = 'kill';
+        currentState = STATE.ATTACKING;
+        return;
+    }
     applyGravity();
     afterMechPause = true;   // 機制改盤落定後，連線判定前改用 mechCheckPause 停頓
     currentState = STATE.GRAVITY;
@@ -2123,7 +2122,7 @@ function applyKillEffect(effect) {
 
     } else if (effectType === 6) {
         // BG：收集到左上欄位，等盤面連爆結束後才觸發轉場
-        bgSpinsRemaining = 8;
+        bgSpinsRemaining = 10;   // 改版 2026-10-13：BG 8 局 → 10 局（倍數可達 ×1024）
         bgMultiplierIndex = 0;
         pendingFGBG = 'BG';
         // startModeTransition 延後到 CHECKING 無消除時才呼叫
@@ -2609,14 +2608,24 @@ function drawKillEffect() {
 
 function fireAttackRound(round) {
     const { cardW, gap, startX, baseY } = getCardDrawMetrics(cards.length);
-    round.forEach(({ elemId }) => {
-        let cardIdx = cards.findIndex(c => c.elemId === elemId);
-        if (cardIdx === -1) return;
+    round.forEach(({ elemId, cardIdx: ci }) => {
+        let cardIdx = ci !== undefined ? ci : cards.findIndex(c => c.elemId === elemId);
+        if (cardIdx === -1 || !cards[cardIdx]) return;
         let card = cards[cardIdx];
         let candidates = monsters.filter(m => m.elemId === elemId && m.hp > 0);
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) {
+            // 同屬性前一張卡已把目標打死（卡牌可重複）→ 本卡沒有目標，攻擊力歸零不出手
+            card.atk = 0; card.atkCrit = false; card.atkLabel = '';
+            return;
+        }
         let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
         const cardX = startX + cardIdx * (cardW + gap) + cardW / 2;
+        // 節奏分支（改版 2026-10-13）：出手前就知道這一下打不打得死 → fast／kill／heavy
+        const roll = rollCardAttack(card);
+        const lethal = roll.damage >= targetMonster.hp
+            || (forceKill && (!forceTargetLv4 || getMonsterLevel(targetMonster) === 4));
+        const tier = !lethal ? 'fast'
+            : (targetMonster.jackpot > 0 || getMonsterLevel(targetMonster) === 4) ? 'heavy' : 'kill';
         // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
         particles.push({
             stage: 1,
@@ -2626,9 +2635,9 @@ function fireAttackRound(round) {
             color: ELEMENTS[elemId].color,
             cardRef: card,
             targetMonster,
-            damage: card.atk,
-            isCrit: !!card.atkCrit,
-            effectLabel: card.atkLabel || '',
+            ...roll,   // 傷害＝基礎＋消除顆數；4/5 星特殊屬性出手前判定爆擊
+            tier,
+            effectLabel: '',
         });
     });
 }
@@ -2659,6 +2668,7 @@ function startSpin() {
     pendingCardUpdates = [];
     pendingKillEffects = [];
     deferredKillEffects = [];
+    killNowQueue = []; killReturnToAttack = false; heavyAim = null; refillFast = false; heavyPostWait = 0;
     pendingFGBG = null;
     stats.spins++;
     hasHitThisSpin = false;
@@ -2673,29 +2683,17 @@ function startSpin() {
         // BG 模式：無卡牌與怪獸機制，倍率跨局保留
         cards = [];
     } else if (isFG) {
-        // FG 模式：血量跨局保留，卡牌與小怪屬性對應（同 NG 邏輯）
+        // FG 模式：血量跨局保留；小怪屬性依等級固定（改版 2026-10-13，不再跟著卡牌換屬性）
         generateCards();
-        let monsterElemPool = cards.map(c => c.elemId);
-        if (monsterElemPool.length === 0) monsterElemPool = [0, 1, 2, 3, 4, 5];
-        let assigned = [];
-        for (let i = 0; i < 4; i++) assigned.push(monsterElemPool[i % monsterElemPool.length]);
-        assigned.sort(() => Math.random() - 0.5);
-        const smallIdxs = [1, 2, 4, 5];
-        smallIdxs.forEach((idx, i) => { monsters[idx].elemId = assigned[i]; });
+        [1, 2, 4, 5].forEach(idx => { monsters[idx].elemId = MONSTER_FIXED_ELEM[idx]; });
     } else {
         // 一般模式
         [0, 3].forEach(idx => { let m = monsters[idx]; m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
         generateCards();
-        let monsterElemPool = cards.map(c => c.elemId);
-        if (monsterElemPool.length === 0) monsterElemPool = [0, 1, 2, 3, 4, 5];
-        let assigned = [];
-        for (let i = 0; i < 4; i++) assigned.push(monsterElemPool[i % monsterElemPool.length]);
-        assigned.sort(() => Math.random() - 0.5);
-        const smallIdxs = [1, 2, 4, 5];
-        smallIdxs.forEach((idx, i) => {
+        [1, 2, 4, 5].forEach(idx => {
             let m = monsters[idx];
             m.hp = m.maxHp; m.isDead = false; m.shake = 0;
-            m.elemId = assigned[i];
+            m.elemId = MONSTER_FIXED_ELEM[idx];
         });
     }
 
@@ -2712,8 +2710,8 @@ function startSpin() {
                 scale: 1, shake: 0, yOffset: 130, enterDelay: 0, yTarget: 0
             };
         }
-        // 宙斯 HP = 46（下一擊必跨扣血 15 的里程碑；打得夠痛還會連跨 30/45 → 多筆依序結算）
-        monsters[0].hp = 46;
+        // 宙斯 HP = 31（下一擊必跨扣血 10 的里程碑；打得夠痛還會連跨 20/30 → 多筆依序結算）
+        monsters[0].hp = 31;
         monsters[0].isDead = false;
     }
 
@@ -3188,13 +3186,13 @@ function drawCardBadgeFlash(card, x, drawY, cardW, isFGMode) {
 
 // 卡牌動態攻擊力數字（含 punch 放大 + 強度分級變色）——藝術卡與備援卡共用
 function drawCardAtk(card, x, drawY, cardW, cardH, isFGMode) {
-    const base = normalAttack(card.elemId, 3, card.level);
-    const atkVal = card.atk > 0 ? card.atk : base;
+    const base = cardBaseAtk(card);
+    const atkVal = base + (card.atk || 0);   // 改版 2026-10-13：基礎攻擊力＋本局消除顆數
     // 強度分級（細節表 05）：達 ×atkTier3Mult → 紅字外框；達 ×atkTier2Mult → 藍字外框
     let fill = { 1: '#fef08a', 2: '#bfdbfe', 3: '#fecaca', 4: '#fde68a', 5: '#e9d5ff' }[card.level] || '#facc15';
     let outline = 'rgba(0,0,0,0.85)';
-    if (card.atk >= base * TIMING.atkTier3Mult)      { fill = '#fecaca'; outline = '#dc2626'; }
-    else if (card.atk >= base * TIMING.atkTier2Mult) { fill = '#bfdbfe'; outline = '#2563eb'; }
+    if (atkVal >= base * TIMING.atkTier3Mult)      { fill = '#fecaca'; outline = '#dc2626'; }
+    else if (atkVal >= base * TIMING.atkTier2Mult) { fill = '#bfdbfe'; outline = '#2563eb'; }
     const punch = card.atkPunchT > 0 ? 1 + 0.3 * Math.sin(Math.PI * (1 - card.atkPunchT / TF(TIMING.atkUpdate))) : 1;
     const AL = LAYOUT.atkNum || { x: 0, y: 0, s: 1 };   // 佈局面板：偏移 + 縮放
     const as = AL.s || 1;
@@ -3238,7 +3236,7 @@ function drawCards() {
     ctx.rect(startX - 8, baseY - 8 - pullMargin, totalW + 16, cardH + 16 + pullMargin);
     ctx.clip();
 
-    cards.forEach((card, i) => {
+    const drawOne = (card, i) => {
         let x = startX + i * (cardW + gap);
         let drawY = baseY + card.yOffset;
         let elem = ELEMENTS[card.elemId];
@@ -3251,8 +3249,16 @@ function drawCards() {
         let shakeX = card.shake > 0 ? (Math.random() - 0.5) * card.shake : 0;
         let shakeY = card.shake > 0 ? (Math.random() - 0.5) * card.shake : 0;
 
+        // 飛向怪物（改版 2026-10-13）：自卡位位移到怪物中心，邊飛邊縮小、微傾
+        let flyScale = 1;
+        if (card.fly) {
+            const e = Math.max(0, Math.min(1, card.fly.prog));
+            ctx.translate((card.fly.tx - cx) * e, (card.fly.ty - cy) * e);
+            flyScale = 1 - 0.35 * e;
+            ctx.translate(cx, cy); ctx.rotate((card.fly.tx < cx ? -1 : 1) * 0.25 * e); ctx.translate(-cx, -cy);
+        }
         ctx.translate(cx + shakeX, cy + shakeY);
-        ctx.scale(card.scale, card.scale);
+        ctx.scale(card.scale * flyScale, card.scale * flyScale);
         ctx.translate(-cx, -cy);
 
         // activated 不降低透明度，維持原色
@@ -3316,9 +3322,83 @@ function drawCards() {
 
         ctx.globalAlpha = 1.0;
         ctx.restore();
-    });
+    };
+    cards.forEach((card, i) => { if (!card.fly) drawOne(card, i); });
 
     ctx.restore(); // 結束 clip
+    // 飛向怪物的卡牌畫在卡槽裁切區之外（改版 2026-10-13）
+    cards.forEach((card, i) => { if (card.fly) drawOne(card, i); });
+}
+
+// 重擊瞄準（改版 2026-10-13）：這一下會打死 Lv.4／JP → 全畫面壓暗＋目標怪物脈動光圈與準星
+function drawHeavyAim() {
+    if (!heavyAim || !heavyAim.target) return;
+    const h = heavyAim; h.t++;
+    const k = Math.min(1, h.t / 12);
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${0.5 * k})`;
+    ctx.fillRect(0, 0, 1280, 720);
+    const c = monsterArtCenter(h.target);
+    const col = (ELEMENTS[h.target.elemId] || WILD_ELEM).color;
+    const pulse = 0.5 + 0.5 * Math.sin(h.t / 5);
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, 150);
+    g.addColorStop(0, `rgba(255,255,255,${0.35 * k})`); g.addColorStop(0.5, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = (0.35 + 0.25 * pulse) * k;
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 150, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = k;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#fde047'; ctx.lineWidth = 4; ctx.shadowColor = '#fde047'; ctx.shadowBlur = 18;
+    const R = 95 - 20 * k + 6 * pulse;
+    ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 4; i++) {   // 準星四角
+        const a = i * Math.PI / 2 + h.t / 40;
+        ctx.beginPath();
+        ctx.moveTo(c.x + Math.cos(a) * (R + 8), c.y + Math.sin(a) * (R + 8));
+        ctx.lineTo(c.x + Math.cos(a) * (R + 30), c.y + Math.sin(a) * (R + 30));
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// 打擊光效（改版 2026-10-13）：卡牌撞到怪物瞬間 — 白色核心閃光＋屬性色擴散光環＋放射光芒；爆擊放大 1.6 倍
+let hitBursts = [];
+function drawHitBursts() {
+    for (let i = hitBursts.length - 1; i >= 0; i--) {
+        const h = hitBursts[i];
+        h.t++;
+        const q = h.t / Math.max(1, h.life);
+        if (q >= 1) { hitBursts.splice(i, 1); continue; }
+        const R = h.big ? 1.6 : 1;
+        const out = 1 - Math.pow(1 - q, 3);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        // 核心閃光（前 40% 時間）
+        const fa = Math.max(0, 1 - q * 2.5);
+        if (fa > 0) {
+            const g = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 95 * R);
+            g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, h.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.globalAlpha = fa;
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(h.x, h.y, 95 * R, 0, Math.PI * 2); ctx.fill();
+        }
+        // 擴散光環
+        ctx.globalAlpha = 1 - q;
+        ctx.shadowColor = h.color; ctx.shadowBlur = 20;
+        ctx.strokeStyle = h.color; ctx.lineWidth = 10 * (1 - q) + 2;
+        ctx.beginPath(); ctx.arc(h.x, h.y, (25 + 115 * out) * R, 0, Math.PI * 2); ctx.stroke();
+        // 放射光芒
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4 * (1 - q) + 1;
+        h.rays.forEach(r => {
+            const r0 = (18 + 70 * out) * R, r1 = r0 + (45 * (1 - q) + 10) * R * r.l;
+            ctx.beginPath();
+            ctx.moveTo(h.x + Math.cos(r.a) * r0, h.y + Math.sin(r.a) * r0);
+            ctx.lineTo(h.x + Math.cos(r.a) * r1, h.y + Math.sin(r.a) * r1);
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
 }
 
 function drawAccumulator() {
@@ -3884,6 +3964,9 @@ function updateFlyingScores() {
 }
 
 function update() {
+    if (screenShakeT > 0) screenShakeT--;
+    if (screenFlashT > 0) screenFlashT--;
+    if (hitStopT > 0) { hitStopT--; return; }   // 重擊命中停格：暫停遊戲邏輯（畫面照畫）
     // JP 全畫面報獎（擊殺宙斯/赫拉）：期間暫停其餘所有遊戲邏輯，只跑這裡的階段計時
     if (jpCelebration) {
         jpCelebration.timer++;
@@ -3948,6 +4031,13 @@ function update() {
 
     cards.forEach(card => {
         if (card.atkPunchT > 0) card.atkPunchT--;   // ATK 數字更新 punch-scale 計時
+        if (card.fly && card.fly.back) {             // 撞擊後停頓 → 飛回卡位
+            if (card.fly.hold > 0) card.fly.hold--;
+            else {
+                card.fly.prog -= 1 / (card.fly.backDur || TF(TIMING.cardFlyBack));
+                if (card.fly.prog <= 0) card.fly = null;
+            }
+        }
         if (card.isCharging) {
             card.scale = Math.min(1.15, card.scale + 0.05);
             card.shake = 8;
@@ -4104,11 +4194,15 @@ function update() {
                 if (pendingFGBG === 'FG') {
                     startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
                 } else if (pendingFGBG === 'BG') {
-                    startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 8局', '#431407', '#f59e0b');
+                    startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 10局', '#431407', '#f59e0b');
                 }
                 currentState = STATE.IDLE;
             } else {
                 forcedEffectType = 0;    // 局末清除殘留強制效果
+                // BG 倍數遞增（改版 2026-10-13）：本局有消除 → 局末倍數 ×2（最高 ×1024）；沒消除不變
+                if (isBG && hasHitThisSpin && getBGMultiplier() < 1024) {
+                    bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0;
+                }
                 forceTargetLv4 = false;
                 currentState = STATE.IDLE;
                 // 停頓三檔（定案）：有得分局間 0.5s、無連線局間 0.3s
@@ -4143,9 +4237,7 @@ function update() {
                     fontSize: 40, life: scorePopLife, life0: scorePopLife, pop: true, fixed: true
                 });
                 collectGroupAttack(g);   // 攻擊力收集：亮起＋得分框出現的當下就收集（改版 2026-08-19）
-                // BG 倍數遞增（改版 2026-08-19）：改在「亮起＋得分框出現」當下 +1，
-                // 且在本組得分算完之後才進位 → 下一組亮起時直接套用新倍數
-                if (isBG) { bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0; }
+                // BG 倍數（改版 2026-10-13）：同一局所有消除都用同一個倍數，局末才遞增（見 CHECKING 局末）
             }
         });
 
@@ -4177,14 +4269,18 @@ function update() {
 
         // 全部組亮起→消散完畢＋卡牌數字更新排空 → 進入攻擊（A）或補盤（B/BG）
         if (allDone && pendingCardUpdates.length === 0) {
-            if (isBG || flowMode === 'B') { applyGravity(); currentState = STATE.GRAVITY; }
+            if (isBG || flowMode === 'B') {
+                // 改版 2026-10-13：本波消除沒有任何一組對到卡牌（沒累積 ATK）→ 補盤加快（BG 無卡牌，不適用）
+                refillFast = !isBG && !currentMatches.some(g => cards.some(c => c.elemId === g.elemId));
+                applyGravity(); currentState = STATE.GRAVITY;
+            }
             else currentState = STATE.EVALUATING;
         }
 
     } else if (currentState === STATE.GRAVITY) {
         let gravityDone = true;
         // 補盤掉落速度：每格 refillPerCell 秒（BG 用 bgRefill，節奏表）
-        const fallSpeed = GEM_SIZE / TF(isBG ? TIMING.bgRefill : TIMING.refillPerCell);
+        const fallSpeed = GEM_SIZE / refillCellFrames();
         for (let c = 0; c < COLS; c++) {
             for (let r = 0; r < ROWS; r++) {
                 if (board[c][r].yOffset < 0) {
@@ -4200,6 +4296,7 @@ function update() {
         }
         if (gravityDone) {
             pendingBoardShake = 0;
+            refillFast = false;
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
             if (pendingKillEffects.length > 0) {
                 startKillEffect(pendingKillEffects.shift());
@@ -4229,16 +4326,10 @@ function update() {
         });
 
         pendingRounds = [];
-        // 卡牌攻擊順序：由左到右，每張卡連續打完所有輪次後才換下一張
-        const sortedElems = Object.keys(elemGroups)
-            .sort((eidA, eidB) => {
-                let ia = cards.findIndex(c => c.elemId === parseInt(eidA));
-                let ib = cards.findIndex(c => c.elemId === parseInt(eidB));
-                return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-            });
-        sortedElems.forEach(eid => {
-            // 同屬性無論消除幾組，本輪只發動一次攻擊（傷害已累積在卡牌 ATK）
-            pendingRounds.push([{ elemId: parseInt(eid) }]);
+        // 卡牌攻擊順序：由左到右逐張出手（改版 2026-10-13：同屬性重複卡各自出手，集中打同一隻怪）
+        cards.forEach((c, i) => {
+            // 同屬性無論消除幾組，每張卡本輪只發動一次攻擊（傷害已累積在卡牌 ATK）
+            if (elemGroups[c.elemId]) pendingRounds.push([{ elemId: c.elemId, cardIdx: i }]);
         });
 
         if (pendingRounds.length > 0) {
@@ -4256,13 +4347,15 @@ function update() {
             
             if (p.stage === 1) {
                 // 數字更新（v4.6）：能量收整到卡牌、ATK 顯示最新值的節奏段
-                p.progress += 1 / TF(TIMING.atkUpdate);
+                p.progress += 1 / TF(p.tier === 'fast' ? TIMING.fastAtkUpdate : TIMING.atkUpdate);
                 if (p.progress >= 1.0) {
                     p.stage = 1.5;
                     p.cardRef.isCharging = true;
-                    p.cardRef.chargeTimer = TF(TIMING.cardPullUp);   // 上拉時長（v4.6 無蓄力段）
+                    // 上拉時長依節奏分支：沒打死縮短／重擊放慢瞄準（改版 2026-10-13）
+                    p.cardRef.chargeTimer = TF(attackAimDur(p));
+                    if (p.tier === 'heavy') heavyAim = { target: p.targetMonster, t: 0 };
                     // 卡與怪屬性徽章同步閃爍 2 次（07 定案，提示對應關係）
-                    p.cardRef.badgeFlashT = TF(TIMING.badgeFlash);
+                    p.cardRef.badgeFlashT = TF(p.tier === 'kill' ? TIMING.badgeFlash : attackAimDur(p));
                     // 徽章同步閃爍＝場上所有同屬性怪獸一起閃（企劃 2026-07-09），不只被攻擊的目標
                     monsters.forEach(m => {
                         if (!m.isDead && m.hp > 0 && m.elemId === p.cardRef.elemId)
@@ -4288,6 +4381,8 @@ function update() {
                     // 定案：卡牌維持拉出直到受擊結束（不先歸位）
                     p.startX = p.tx; p.startY = p.ty;
                     { const a = monsterAnchor(p.targetMonster); p.tx = a.x; p.ty = a.y; }
+                    // 改版 2026-10-13：卡牌本體飛到怪物身上撞擊（目標＝怪獸插畫中心）
+                    { const c = monsterArtCenter(p.targetMonster); p.cardRef.fly = { tx: c.x, ty: c.y, prog: 0, back: false, hold: 0 }; p.flyT = 0; }
                 }
                 attacksDone = false;
             } else if (p.stage === 2) {
@@ -4297,7 +4392,28 @@ function update() {
                     if (p.cardRef) p.cardRef.holdT = Math.max(p.cardRef.holdT || 0, 2);
                     attacksDone = false; continue;
                 }
-                // 攻擊視覺（v4.6 定案）：不射光束、不撞擊，直接於怪物上顯示受擊特效
+                // 攻擊視覺（改版 2026-10-13）：卡牌本體飛到怪物上撞擊 → 命中瞬間打擊光效＋受擊
+                if (!p.isOverflow && p.cardRef && p.cardRef.fly && !p.cardRef.fly.back) {
+                    p.flyT++;
+                    const q = Math.min(1, p.flyT / TF(p.tier === 'fast' ? TIMING.fastFly : TIMING.cardFly));
+                    p.cardRef.fly.prog = q * q;   // 加速衝撞
+                    p.cardRef.holdT = Math.max(p.cardRef.holdT || 0, 2);
+                    if (q < 1) { attacksDone = false; continue; }
+                    p.cardRef.fly.back = true;
+                    // 撞擊後停一下再飛回；沒打死直接飛回不停頓（改版 2026-10-13）
+                    p.cardRef.fly.hold = p.tier === 'fast' ? 0 : Math.round(TF(TIMING.cardFlyBack) * 0.3);
+                    p.cardRef.fly.backDur = TF(p.tier === 'fast' ? TIMING.fastFlyBack : TIMING.cardFlyBack);
+                    lastAttackTier = p.tier;
+                    if (p.tier === 'heavy') {   // 重擊：命中停格＋震畫面＋白閃
+                        heavyAim = null;
+                        hitStopT = TF(TIMING.heavyHitStop);
+                        screenShakeT = TF(TIMING.heavyShake);
+                        screenFlashT = TF(TIMING.heavyFlash);
+                    }
+                    hitBursts.push({ x: p.cardRef.fly.tx, y: p.cardRef.fly.ty, color: ELEMENTS[p.cardRef.elemId].color,
+                                     t: 0, life: TF(TIMING.hitBurst), big: !!p.isCrit || p.tier === 'heavy',
+                                     rays: Array.from({ length: 10 }, (_, k) => ({ a: k * Math.PI / 5 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
+                }
                 p.progress = 1.0;
                 if (p.progress >= 1.0) {
                     if (p.isOverflow) {
@@ -4338,7 +4454,6 @@ function update() {
                                 // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                                 flyingScores.push({ type: 'kill', x: mx, y: my, tx: 925 + LAYOUT.bottomUI.x, ty: LAYOUT.bottomUI.y + 20, text: `KILL!`, color: '#ef4444', life: 100, delay: 20 });
                             }
-                            applyOverflow(t.side, p.overflowDamage - prevHp, p.tx, p.ty, p.overflowElemId, false, p.cardRef);
                         }
                         particles.splice(i, 1); continue;
                     }
@@ -4353,14 +4468,14 @@ function update() {
                     p.targetMonster.shake = TF(TIMING.hitReact);
                     p.targetMonster.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
                     p.targetMonster.hurtT = TF(TIMING.hitReact);    // 切換受擊狀態圖（0.3s）
-                    // 卡牌維持拉出至受擊結束，之後才歸位（節奏表：受擊 0.3 → 歸位 0.25）
+                    // 卡牌維持拉出至受擊結束，之後才歸位（節奏表：受擊 0.3 → 歸位 0.25）；沒打死直接歸位
                     if (p.cardRef) {
                         p.cardRef.isCharging = false;
                         p.cardRef.activated = true;
-                        p.cardRef.holdT = TF(TIMING.hitReact);
+                        p.cardRef.holdT = TF(p.tier === 'fast' ? TIMING.fastFlyBack : TIMING.hitReact);
                     }
                     // 打完怪獸後，該卡攻擊力回到預設值（待該卡所有攻擊輪次都打完才歸零）
-                    if (p.cardRef && !pendingRounds.some(rd => rd.some(x => x.elemId === p.cardRef.elemId))) {
+                    if (p.cardRef && !pendingRounds.some(rd => rd.some(x => (x.cardIdx !== undefined ? cards[x.cardIdx] === p.cardRef : x.elemId === p.cardRef.elemId)))) {
                         p.cardRef.atk = 0;
                         p.cardRef.atkCrit = false;
                         p.cardRef.atkLabel = '';
@@ -4390,12 +4505,14 @@ function update() {
                     if (p.targetMonster.hp === 0 && !p.targetMonster.isDead) {
                         p.targetMonster.isDead = true;
                         p.targetMonster.deathT = TF(TIMING.deathSwitch) + TF(TIMING.effectFly);   // 死亡狀態圖停留→淡出消散
+                        if (p.tier === 'heavy') {   // 重擊：死亡停留加長＋KILL 大字
+                            p.targetMonster.deathT += TF(TIMING.heavyDeathHold);
+                            const hc = monsterArtCenter(p.targetMonster);
+                            scoreTexts.push({ x: Math.max(180, Math.min(1100, hc.x)), y: hc.y - 40, text: '💀 KILL!!', color: '#fde047',
+                                              life: TF(TIMING.heavyDeathHold) + 60, fontSize: 64, fixed: true });
+                        }
                         if (!p.targetMonster.jackpot) holdMonsterDeath(p.targetMonster);
-                        let { x: omx, y: omy } = monsterAnchor(p.targetMonster);
-                        let overflowDmg = p.damage - prevHp;
-                        let ignoreElem = false;
-                        if (forceOverflow) { overflowDmg = Math.max(overflowDmg, 999); forceOverflow = false; }
-                        applyOverflow(p.targetMonster.side, overflowDmg, omx, omy, p.targetMonster.elemId, ignoreElem, p.cardRef);
+                        // 改版 2026-10-13：移除溢傷追擊，打死後多出來的傷害不再轉移
 
                         const artC = monsterArtCenter(p.targetMonster);   // 原本怪獸的位置（插畫中心）
                         let mx = artC.x, my = artC.y;
@@ -4428,11 +4545,14 @@ function update() {
                             }
                             effect.orbColor = (ELEMENTS[p.targetMonster.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
                             effect.monIdx = monsters.indexOf(p.targetMonster);
-                            deferredKillEffects.push(effect);
+                            // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
+                            effect.heavy = p.tier === 'heavy';
+                            killNowQueue.push(effect);
                         }
 
                         if (p.targetMonster.jackpot > 0) {
-                            queueBossJackpot(p.targetMonster);   // 彩金與全畫面報獎延後到最後結算
+                            queueBossJackpot(p.targetMonster);
+                            if (p.tier === 'heavy') heavyPostWait = TF(TIMING.heavyDeathHold);   // 打死 JP：多停一下再換下一張卡   // 彩金與全畫面報獎延後到最後結算
                         } else {
                             // 擊倒小怪不給固定分，獎勵改由小怪機制提供（企劃書）
                             flyingScores.push({
@@ -4449,10 +4569,18 @@ function update() {
                 attacksDone = false;
             }
         }
-        if (attacksDone && particles.length === 0) {
+        if (attacksDone && particles.length === 0 && killNowQueue.length > 0) {
+            // 改版 2026-10-13：這張卡打死怪 → 立刻接掉落物→飛入盤面→觸發機制，播完回來再換下一張卡
+            killReturnToAttack = true;
+            roundGapTimer = 0;
+            startKillEffect(killNowQueue.shift());
+        } else if (attacksDone && particles.length === 0) {
             if (pendingRounds.length > 0) {
-                // 卡與卡攻擊間隔（節奏表）：前一張打完後停頓再換下一張
-                if (roundGapTimer === 0) roundGapTimer = TF(TIMING.cardGap);
+                // 卡與卡攻擊間隔（節奏表）：前一張打完後停頓再換下一張；沒打死用快節奏間隔
+                if (roundGapTimer === 0) {
+                    roundGapTimer = Math.max(1, TF(lastAttackTier === 'fast' ? TIMING.fastGap : TIMING.cardGap) + heavyPostWait);
+                    heavyPostWait = 0;
+                }
                 roundGapTimer--;
                 if (roundGapTimer === 0) fireAttackRound(pendingRounds.shift());
                 // 留在 ATTACKING 等下一輪完成
@@ -4471,7 +4599,7 @@ function update() {
         killEffectTimer++;
         if (killEffectPhase === 'pre') {
             // 死亡切換（節奏表 0.5s）：怪物維持死亡狀態停留，之後才淡出＋光效飛行
-            if (killEffectTimer >= TF(TIMING.deathSwitch)) {
+            if (killEffectTimer >= TF(TIMING.deathSwitch) + (killEffectCurrent.heavy ? TF(TIMING.heavyDeathHold) : 0)) {
                 if (isWildEffect(killEffectCurrent)) {
                     prepareWildEffect(killEffectCurrent);
                     killEffectPhase = 'wildSpawn';
@@ -4834,6 +4962,11 @@ function drawCritOverlay() {
 function gameLoop() {
     update();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    if (screenShakeT > 0) {   // 重擊全畫面震動（改版 2026-10-13）
+        const a = 12 * screenShakeT / Math.max(1, TF(TIMING.heavyShake));
+        ctx.translate((Math.random() - 0.5) * 2 * a, (Math.random() - 0.5) * 2 * a);
+    }
 
     // 背景
     if (imgReady(IMG.bg)) ctx.drawImage(IMG.bg, 0, 0, 1280, 720);
@@ -4852,13 +4985,20 @@ function gameLoop() {
     if (!isBG) drawJPBanner();          // 上方 JP 數字
     if (!isBG) drawJPStatueGlow();      // JP 石像發光（里程碑最後結算）
 
+    drawHeavyAim();    // 重擊瞄準：壓暗＋鎖定目標（卡牌畫在其上）
     if (showCards) drawCards();
+    drawHitBursts();   // 打擊光效畫在卡牌與怪物之上
     drawUI();
     drawStatsPanel();
     if (showCollectSlot && !isBG) drawPendingFGBGSlot(); // 左上收集欄
     drawEffects();
     drawKillEffect();
     drawCritOverlay(); // 爆擊全版圖片（蓋在盤面之上）
+    ctx.restore();     // 結束全畫面震動
+    if (screenFlashT > 0) {   // 重擊全畫面白閃
+        ctx.fillStyle = `rgba(255,255,255,${0.75 * screenFlashT / Math.max(1, TF(TIMING.heavyFlash))})`;
+        ctx.fillRect(0, 0, 1280, 720);
+    }
     drawTransition(); // 轉場遮罩：最後繪製，蓋在所有內容之上
     drawJPCelebration(); // JP 全畫面報獎（擊殺宙斯/赫拉）：蓋在轉場之上
     drawLayoutOverlay(); // 佈局編輯模式：物件外框與名稱（最上層）
@@ -4924,11 +5064,11 @@ function handleInput(clientX, clientY, isClick) {
                         } else if (item.type === 'forceBG') {
                             // 強開BG：立即觸發 Bonus Game 轉場
                             if (!isFG && !isBG) {
-                                bgSpinsRemaining = 8;
+                                bgSpinsRemaining = 10;
                                 bgMultiplierIndex = 0;
                                 pendingFGBG = 'BG';
                                 savedBoard = board.map(col => col.map(cell => ({ ...cell })));
-                                startModeTransition('✨ BONUS GAME', '8 局獎勵遊戲開始！', '#1c0f00', '#f59e0b');
+                                startModeTransition('✨ BONUS GAME', '10 局獎勵遊戲開始！', '#1c0f00', '#f59e0b');
                                 currentState = STATE.IDLE;
                             }
                         } else if (item.type === 'jp') {
