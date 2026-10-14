@@ -1927,6 +1927,15 @@ function wildScoreAt(c, r, extraWild) {
     const here = board[c][r].id;
     return best + (here === STONE_ID ? 0.6 : 0) - (cardSet.has(here) ? 0.3 : 0) + Math.random() * 0.1;
 }
+// 盤面第一波會消多少分（把 cells 暫時當成 WILD 算）：WILD 放置用的真實評分（2026-10-14）
+function firstWaveScoreWithWilds(cells) {
+    const saved = [];
+    cells.forEach(({ c, r }) => { saved.push([c, r, board[c][r].id]); board[c][r].id = WILD_ID; });
+    let score = 0;
+    try { buildWaveGroups().forEach(g => { score += getScore(g.count, g.elemId); }); } catch (e) { score = 0; }
+    saved.forEach(([c, r, id]) => { board[c][r].id = id; });
+    return score;
+}
 function prepareWildEffect(effect) {
     if (effect._prepared) return;
     effect._prepared = true;
@@ -1942,12 +1951,20 @@ function prepareWildEffect(effect) {
             const cx = sc + 0.5, cy = sr + 0.5;                       // 區塊中心
             const dist = Math.abs(cx - (COLS - 1) / 2) + Math.abs(cy - (ROWS - 1) / 2);
             const blockSet = new Set([[0, 0], [1, 0], [0, 1], [1, 1]].map(([dc, dr]) => (sc + dc) + ',' + (sr + dr)));
-            let lineScore = 0, hasWild = false;
-            for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) { if (board[sc + dc][sr + dr].id === WILD_ID) hasWild = true; lineScore += wildScoreAt(sc + dc, sr + dr, blockSet); }
+            let hasWild = false; const cells4 = [];
+            for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) { if (board[sc + dc][sr + dr].id === WILD_ID) hasWild = true; cells4.push({ c: sc + dc, r: sr + dr }); }
             if (hasWild) continue;   // WILD 不能生成在原本的 WILD 上
+            const lineScore = firstWaveScoreWithWilds(cells4);   // 放下去第一波實際會消多少分
             blocks.push({ sc, sr, dist, lineScore });
         }
-        blocks.sort((a, b) => (a.dist - b.dist) || (b.lineScore - a.lineScore));
+        // 分數高的優先；分數差不多（八成以內）的再挑靠中間的（企劃：盡量放中間）
+        const top = Math.max(0, ...blocks.map(b => b.lineScore));
+        blocks.sort((a, b) => {
+            const aNear = a.lineScore >= top * 0.8, bNear = b.lineScore >= top * 0.8;
+            if (aNear !== bNear) return aNear ? -1 : 1;
+            if (aNear && bNear) return (a.dist - b.dist) || (b.lineScore - a.lineScore);
+            return b.lineScore - a.lineScore;
+        });
         for (const b of blocks) {
             if (effect.flights.length >= n) break;
             const cells = []; let overlap = false;
@@ -1966,16 +1983,18 @@ function prepareWildEffect(effect) {
             });
             return;
         }
+        // 一顆一顆挑：放下去之後「盤面第一波實際會消多少分」最大的格子（WILD 是百搭，排成線會同時帶動好幾個顏色）
+        const picked = [];
         for (let i = 0; i < wildCount; i++) {
             let best = null, bestScore = -Infinity;
             for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
                 const key = c + ',' + r;
                 if (chosen.has(key) || board[c][r].id === WILD_ID || board[c][r].id === -1) continue;
-                const sc = wildScoreAt(c, r, chosen);
+                const sc = firstWaveScoreWithWilds(picked.concat([{ c, r }])) + wildScoreAt(c, r, chosen) * 0.01 + Math.random() * 0.001;
                 if (sc > bestScore) { bestScore = sc; best = { c, r }; }
             }
             if (!best) break;
-            chosen.add(best.c + ',' + best.r);
+            chosen.add(best.c + ',' + best.r); picked.push(best);
             effect.flights.push({ cells: [{ c: best.c, r: best.r }], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 });
         }
     }
