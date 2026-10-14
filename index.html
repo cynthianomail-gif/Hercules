@@ -1966,7 +1966,8 @@ function prepareWildEffect(effect) {
             if (aNear && bNear) return (a.dist - b.dist) || (b.lineScore - a.lineScore);
             return b.lineScore - a.lineScore;
         });
-        for (const b of blocks) {
+        const order = TIMING.placeSmart === 0 ? shuffled(blocks) : blocks;   // 落點 0 = 隨機放（伺服器壓分用），巨型 WILD 也照這個開關
+        for (const b of order) {
             if (effect.flights.length >= n) break;
             const cells = []; let overlap = false;
             for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) { const k = (b.sc + dc) + ',' + (b.sr + dr); if (taken.has(k)) overlap = true; cells.push({ c: b.sc + dc, r: b.sr + dr }); }
