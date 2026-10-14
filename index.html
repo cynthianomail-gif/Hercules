@@ -737,9 +737,9 @@ const DEFAULT_TIMING = {
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
     lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
     lv2ConvertMin:    10,    // Lv2 轉換：全部石頭，不足此數就多轉非本局圖示到此數（同一色）
-    lv3GenMin:        10,    // Lv3 生成顆數下限（一種本局圖示成塊相鄰，可蓋石頭）
-    lv3GenMax:        15,    // Lv3 生成顆數上限（10→11 顆是 10 倍→50 倍的懸崖，伺服器調）
-    lv3GenColors:     1,     // Lv3 生成幾種顏色（實驗 2026-10-14）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
+    lv3GenMin:        7,     // Lv3 生成顆數下限（2026-10-14 定案 7~10，原 10~15）
+    lv3GenMax:        10,    // Lv3 生成顆數上限
+    lv3GenColors:     2,     // Lv3 生成幾種顏色（2026-10-14 定案 2）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
     payCurve:         0,     // 賠率曲線（實驗 2026-10-14）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10，12~13／14~15／16 顆起 的倍數由下面三個旋鈕決定）
     pay12:            20,    // 階梯：12~13 顆的倍數（雷聖加倍）
     pay14:            40,    // 階梯：14~15 顆的倍數
@@ -1388,7 +1388,7 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
         () => ({ type: 10, multiplier: rnd(8, 20) }),                       // 直接給分 8~20
     ];
     let p3 = [
-        () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆
+        () => ({ type: 1,  wildCount: rnd(5, 7) }),                        // WILD 5~7 顆（2026-10-14 定案，原 7~10：原賠率表下 12 顆起 50 倍，顆數少才不會每次都爆）
         () => ({ type: 1,  big: true, bigCount: 2 }),                       // 巨型 WILD 2 顆，盡量放中間
         () => { const lo = TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, hi = TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax;
                 return { type: 2, gemCount: rnd(lo, hi), gemCount2: rnd(lo, hi), gemColors: TIMING.lv3GenColors === undefined ? 1 : TIMING.lv3GenColors, cluster: true }; }, // 生成本局圖示 N 顆成塊（可蓋石頭）；lv3GenColors=2 時兩種顏色各自成塊
