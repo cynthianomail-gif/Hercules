@@ -1563,9 +1563,9 @@ function generateCards(elemPool = null) {
 }
 
 function generateCardsForFG() {
-    // FG（2026-10-14）：怪留屬性、卡配怪抽 — 卡牌屬性從場上四隻小怪的屬性抽（可重複），雷聖卡照 CARD_BOSS_RATE
-    const monElems = [...new Set([1, 2, 4, 5].map(i => monsters[i].elemId).filter(e => NORMAL_ELEMS.includes(e)))];
-    generateCards(monElems);
+    // FG 與 NG 同規則（企劃決定 2026-10-14）：三張卡重抽、小怪屬性從手牌抽
+    generateCards();
+    assignMonsterElemsFromCards();
 }
 
 // === 核心邏輯 ===
@@ -2301,7 +2301,8 @@ function applyPendingModeChange() {
         isFG = true;
         // FG 進場時重置全部怪獸血量
         monsters.forEach(m => { if (m.maxHp > 0) { m.hp = m.maxHp; m.isDead = false; m.shake = 0; } });
-        generateCardsForFG();   // 全黑時生成3張卡，淡出時已就位
+        generateCards();        // 全黑時生成3張卡，淡出時已就位（FG 與 NG 同規則）
+        assignMonsterElemsFromCards();
 
     } else if (pendingFGBG === 'BG') {
         // savedBoard 已在 GRAVITY done 儲存，此處只需切換模式
@@ -2840,8 +2841,9 @@ function startSpin() {
         // BG 模式：無卡牌與怪獸機制，倍率跨局保留
         cards = [];
     } else if (isFG) {
-        // FG 模式：血量跨局保留；怪留屬性、卡配怪抽（2026-10-14）
-        generateCardsForFG();
+        // FG 模式：血量跨局保留；卡牌與小怪屬性照 NG 規則每局重抽（企劃決定：跟 NG 一樣，玩家不用重學）
+        generateCards();
+        assignMonsterElemsFromCards();
     } else {
         // 一般模式
         [0, 3].forEach(idx => { let m = monsters[idx]; m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
