@@ -724,9 +724,6 @@ const DEFAULT_TIMING = {
     starW4:           25,
     starW5:           10,
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
-    mechStoneLv1:     4,     // Lv1 轉換石頭顆數
-    mechStoneLv2:     8,     // Lv2 轉換石頭顆數（Lv3 = 全部＋1 種非本局屬性）
-    mechClearLv1:     6,     // Lv1 清除石頭顆數（Lv2 = 全部；Lv3 = 全部＋1 種非本局屬性）
     lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
     payScale:         1.0,   // 連線賠率整體倍率（石頭壓低得分率後可整體拉高；1 = 企劃書賠率表原值）
     stoneAfterMech:   0.0,   // 怪死、機制播過之後，這局補盤掉石頭的倍率（0 = 不再掉石頭，讓機制炸掉的石頭不會補回來）
@@ -821,8 +818,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['mechStoneLv1','Lv1 轉換石頭顆數', 0, 20, 1], ['mechStoneLv2','Lv2 轉換石頭顆數', 0, 30, 1],
-        ['mechClearLv1','Lv1 清除石頭顆數', 0, 20, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
     { group: '受擊／擊殺', items: [
@@ -854,7 +850,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'mechStoneLv1', 'mechStoneLv2', 'mechClearLv1', 'lv4DirectAbove', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1315,28 +1311,23 @@ function getMonsterLevel(m) {
 
 // 各等級對應的擊殺效果池，隨機抽一個
 function pickKillEffect(level, fromX, fromY, canFGBG) {
-    // 機制池（2026-10-14 石頭版）：轉換／清除改用「顆數」分檔，石頭優先；WILD 放在能連線的位置
-    const n1 = TIMING.mechStoneLv1 === undefined ? 4 : TIMING.mechStoneLv1;
-    const n2 = TIMING.mechStoneLv2 === undefined ? 8 : TIMING.mechStoneLv2;
-    const c1 = TIMING.mechClearLv1 === undefined ? 6 : TIMING.mechClearLv1;
+    // 機制池（2026-10-14 定案）：Lv1 不碰石頭、Lv2 掃石頭、Lv3 把石頭變成本局屬性。沒石頭時退回企劃書原本的「種數」規則
     let p1 = [
-        () => ({ type: 1,  wildCount: 1 + Math.floor(Math.random() * 2) }),          // 生成WILD 1~2個（智慧放置）
-        () => ({ type: 8,  stoneCount: n1 }),                                          // 轉換 n1 顆石頭 → 本局屬性（沒石頭：轉 1 種）
-        () => ({ type: 4,  stoneCount: c1, extraTypes: 0 }),                           // 清除 c1 顆石頭（沒石頭：清 1 種）
+        () => ({ type: 1,  wildCount: 1 + Math.floor(Math.random() * 2) }),          // 生成WILD 1~2個（不蓋石頭）
+        () => ({ type: 8,  noStone: true }),                                           // 轉換 1 種非本局屬性 → 本局屬性
+        () => ({ type: 4,  noStone: true, clearCount: 1 }),                            // 清除 1 種非本局屬性
         () => ({ type: 10, multiplier:  3 + Math.floor(Math.random() * 3) }),         // 直接給分 3~5倍
     ];
     let p2 = [
-        () => ({ type: 1,  wildCount: 3 + Math.floor(Math.random() * 2) }),           // 生成WILD 3~4個（智慧放置）
+        () => ({ type: 1,  wildCount: 3 + Math.floor(Math.random() * 2) }),           // 生成WILD 3~4個（可蓋石頭）
         () => ({ type: 2,  gemCount:  5 + Math.floor(Math.random() * 6) }),           // 生成圖示 5~10個（優先放石頭格）
-        () => ({ type: 8,  stoneCount: n2 }),                                          // 轉換 n2 顆石頭 → 本局屬性
-        () => ({ type: 4,  stoneCount: 99, extraTypes: 0 }),                           // 清除全部石頭
+        () => ({ type: 4,  stoneCount: 99, extraTypes: 0, clearCount: 2 }),            // 清除全部石頭（沒石頭：清 2 種）
         () => ({ type: 10, multiplier:  5 + Math.floor(Math.random() * 6) }),         // 直接給分 5~10倍
     ];
     let p3 = [
-        () => ({ type: 1,  wildCount: 5 + Math.floor(Math.random() * 2) }),           // 生成WILD 5~6個（智慧放置）
+        () => ({ type: 1,  wildCount: 5 + Math.floor(Math.random() * 2) }),           // 生成WILD 5~6個
         () => ({ type: 1,  big: true }),                                               // 生成巨型WILD (2×2)，優先蓋石頭
-        () => ({ type: 3,  stoneCount: 99, extraTypes: 1 }),                           // 轉換全部石頭＋1 種非本局屬性
-        () => ({ type: 4,  stoneCount: 99, extraTypes: 1 }),                           // 清除全部石頭＋1 種非本局屬性
+        () => ({ type: 3,  stoneCount: 99, extraTypes: 0, convertCount: 3 }),          // 全部石頭 → 同一種本局屬性（沒石頭：轉 3 種）
         () => ({ type: 10, multiplier: 10 + Math.floor(Math.random() * 6) }),         // 直接給分 10~15倍
     ];
     // Lv4（2026-10-14）：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75（NG 大獎路線）；低分局才開 FG 或 BG
@@ -1942,6 +1933,7 @@ function prepareWildEffect(effect) {
             for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
                 const key = c + ',' + r;
                 if (chosen.has(key) || board[c][r].id === WILD_ID || board[c][r].id === -1) continue;
+                if ((effect.level || 1) === 1 && board[c][r].id === STONE_ID) continue;   // Lv1 不碰石頭
                 const sc = wildScoreAt(c, r, chosen);
                 if (sc > bestScore) { bestScore = sc; best = { c, r }; }
             }
@@ -1961,38 +1953,32 @@ function prepareTargetBeamEffect(effect) {
     const presentNonCard = nonCardElems.filter(id => board.some(col => col.some(gem => gem.id === id)));
     const stoneCells = allBoardCells((cell, gem) => gem.id === STONE_ID);
     const cardSet = getCardElems();
-    // 石頭挑法（2026-10-14）：先挑旁邊有本局卡牌屬性圖示的（轉完容易連線），其餘隨機
-    const adjScore = cell => [[1, 0], [-1, 0], [0, 1], [0, -1]].reduce((sum, [dc, dr]) => { const g = board[cell.c + dc] && board[cell.c + dc][cell.r + dr]; return sum + (g && cardSet.has(g.id) ? 1 : 0); }, 0);
-    const pickStones = n => shuffled(stoneCells).sort((a, b) => adjScore(b) - adjScore(a)).slice(0, Math.min(n, stoneCells.length));
-    const extraTypeCells = k => { if (k <= 0) return []; const types = shuffled(presentNonCard).slice(0, k); return allBoardCells((cell, gem) => types.includes(gem.id)); };
-    const cnt = effect.stoneCount === undefined ? 99 : effect.stoneCount;
-    const nonCardCells = allBoardCells((cell, gem) => nonCardElems.includes(gem.id));   // 非本局屬性的一般圖示（不含石頭、WILD）
-    const noStone = stoneCells.length === 0;
+    const cardElems = [...cardSet];
+    const oneCardElem = () => cardElems.length ? cardElems[Math.floor(Math.random() * cardElems.length)] : randomCardElem();
+    const typeCells = k => { if (k <= 0) return []; const types = shuffled(presentNonCard).slice(0, k); return allBoardCells((cell, gem) => types.includes(gem.id)); };
+    const useStones = !effect.noStone && stoneCells.length > 0;
 
     if (effect.type === 2) {
-        // 生成圖示：優先放在石頭格，其次非本局屬性格
+        // 生成圖示（Lv2）：優先放在石頭格，其次非本局屬性格
         const count = effect.gemCount || 5;
         let candidates = shuffled(stoneCells).concat(shuffled(allBoardCells((cell, gem) => nonCardElems.includes(gem.id))));
         if (!candidates.length) candidates = shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID));
         targets = candidates.slice(0, count).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 3) {
-        // 轉換（強，Lv3 算「種類」）：全部石頭＋k 種非本局屬性 → 本局卡牌屬性（每格隨機一種）；沒石頭 → 多轉一種
-        const k = (effect.extraTypes === undefined ? (effect.convertCount || 1) : effect.extraTypes) + (noStone ? 1 : 0);
-        targets = pickStones(cnt).concat(extraTypeCells(k)).map(cell => ({ ...cell, newId: randomCardElem() }));
+        // 轉換（Lv3）：全部石頭 → 同一種本局屬性；沒石頭 → 轉 convertCount 種非本局屬性（每格隨機一種本局屬性）
+        if (useStones) { const to = oneCardElem(); targets = stoneCells.map(cell => ({ ...cell, newId: to })); }
+        else targets = typeCells(effect.convertCount || 3).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 8) {
-        // 轉換（弱，Lv1/Lv2 算「顆數」）：cnt 顆石頭 → 同一種本局卡牌屬性；沒石頭 → 改轉 cnt 顆非本局屬性圖示
-        const cardElems = [...cardSet];
-        if (effect.toElemId === undefined) effect.toElemId = cardElems.length ? cardElems[Math.floor(Math.random() * cardElems.length)] : randomCardElem();
-        if (!noStone) { effect.fromElemId = STONE_ID; targets = pickStones(cnt); }
-        else { targets = shuffled(nonCardCells).slice(0, cnt); effect.fromElemId = targets.length ? targets[0].oldId : null; }
-        targets = targets.map(cell => ({ ...cell, newId: effect.toElemId }));
+        // 轉換 1 種（Lv1，不碰石頭）：挑一種盤上有的非本局屬性 → 同一種本局屬性
+        if (effect.toElemId === undefined) effect.toElemId = oneCardElem();
+        effect.fromElemId = presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
+        targets = effect.fromElemId === null ? [] : allBoardCells((cell, gem) => gem.id === effect.fromElemId).map(cell => ({ ...cell, newId: effect.toElemId }));
     } else if (effect.type === 4) {
-        // 清除：Lv1/Lv2 算「顆數」（cnt 顆石頭；沒石頭 → cnt 顆非本局屬性圖示）；Lv3 算「種類」（全部石頭＋k 種；沒石頭 → 多清一種）
-        const k0 = effect.extraTypes === undefined ? (effect.clearCount || 1) : effect.extraTypes;
-        if (!noStone) targets = pickStones(cnt).concat(extraTypeCells(k0));
-        else targets = k0 > 0 ? extraTypeCells(k0 + 1) : shuffled(nonCardCells).slice(0, cnt);
+        // 清除：Lv2 = 全部石頭（沒石頭 → 清 clearCount 種）；Lv1 noStone = 清 clearCount 種非本局屬性
+        if (useStones) targets = stoneCells.slice();
+        else targets = typeCells(effect.clearCount || 1);
     }
-    // 退回鏈最後一層：什麼都沒得轉、沒得清（盤上全是本局屬性）→ 改送 WILD，顆數依等級（1~2／3~4／5~6）
+    // 退回鏈最後一層：什麼都沒得轉、沒得清（盤上全是本局屬性）→ 改送 WILD，顆數依等級
     if (!targets.length && (effect.type === 3 || effect.type === 4 || effect.type === 8)) {
         effect.fallbackToWild = true;
     }
