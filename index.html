@@ -1196,7 +1196,7 @@ const STATE = {
     JP_SETTLE: 8            // JP 里程碑最後結算（石像發光→噴錢），連爆與機制全結束後才進入
 };
 
-const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示！', '🎡 輪盤！', '💰 直接給分！'];
+const EFFECT_NAMES = ['', '🌟 生成WILD！', '💎 生成圖示！', '🔄 轉換圖示(強)！', '💥 清除圖示！', '🎰 FREE GAME！', '✨ BONUS GAME！', '', '🔀 轉換圖示！', '', '💰 直接給分！'];   // index 9 原為輪盤，2026-10-14 晚 ned 決定拿掉
 const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '🔀', '🎡', '💰'];
 
 // 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=40（改版 2026-10-13：扣血 10/20/30 = 25%/50%/75%）
@@ -1453,11 +1453,11 @@ function drawMonsterElemFromCards() {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 function assignMonsterElemsFromCards() {
-    // 先保證手上每種屬性至少有一隻怪（每張卡都有小怪目標），剩下的怪再從手上屬性隨機抽（可重複）
+    // 每張卡各自保證一隻同屬性的小怪（AAB → 至少兩隻 A、一隻 B；AAA → 三隻 A），剩下的位子從手上屬性隨機（可重複）— 2026-10-14 晚 ned 定案
     const pool = cardAllElems();
+    const need = shuffled(cards.map(c => c.elemId));
     const idxs = shuffled([1, 2, 4, 5]);
-    const firsts = shuffled(pool).slice(0, idxs.length);
-    idxs.forEach((idx, k) => { monsters[idx].elemId = k < firsts.length ? firsts[k] : pool[Math.floor(Math.random() * pool.length)]; });
+    idxs.forEach((idx, k) => { monsters[idx].elemId = k < need.length ? need[k] : pool[Math.floor(Math.random() * pool.length)]; });
 }
 
 function respawnMonster(idx, showEscape = true, fixedElem = -1) {
@@ -2462,13 +2462,6 @@ function applyKillEffect(effect) {
         pendingFGBG = 'BG'; stats.bg++;
         // startModeTransition 延後到 CHECKING 無消除時才呼叫
 
-    } else if (effectType === 9) {
-        // 輪盤（待實裝，暫以隨機彩金代替）
-        let mult = 10 + Math.floor(Math.random() * 16);
-        let reward = betAmount * mult;
-        winScore += reward; totalScore += reward;
-        scoreTexts.push({ x: 640, y: 320, text: `🎡 輪盤！ ×${mult} = +${reward}`, color: '#ffd700', life: 150, fontSize: 40 });
-
     } else if (effectType === 10) {
         // 直接給分：依等級倍率（噴錢演繹 = coinBurst，數字飛入公版）
         startDirectScoreEffect(effect);
@@ -2916,8 +2909,6 @@ function drawKillEffect() {
             let fromIcon = elemInfo(eff.fromElemId).icon;
             let toIcon   = elemInfo(eff.toElemId).icon;
             ctx.fillText(`${fromIcon}  →  ${toIcon}`, cx, cy + 68);
-        } else if (eff.type === 9) {
-            ctx.fillText('待開獎...', cx, cy + 68);
         } else if (eff.type === 10) {
             ctx.fillText(`×${eff.multiplier} = +${betAmount * eff.multiplier}`, cx, cy + 68);
         }
@@ -3099,7 +3090,7 @@ function startSpin() {
 // === 跳過（節奏表定案）===
 // 跳過1：下落期間點擊 → 全輪齊停落定（skipStop）
 // 跳過2：得分演繹期間點擊 → 直接顯示分數並開始消除
-// LV1~3 擊殺演出可快轉；LV4／FG／BG／輪盤（涉及彩金）不可跳過
+// LV1~3 擊殺演出可快轉；LV4／FG／BG（涉及彩金）不可跳過
 function triggerSkip() {
     if (currentState === STATE.SPINNING && !spinSkip) {
         spinSkip = {
