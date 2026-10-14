@@ -2210,7 +2210,9 @@ function finishKillEffect() {
     const finishedEffect = killEffectCurrent;
     killEffectPhase = 'idle';
     killEffectCurrent = null;
-    respawnKillSource(finishedEffect);
+    // 補怪時機（企劃 2026-10-14）：攻擊途中插播的機制播完「不補怪」，等這輪三張卡都打完再一起補；
+    // 攻擊全部結束後才播的機制（FG/BG 等）照舊播完就補
+    if (!killReturnToAttack) respawnKillSource(finishedEffect);
     if (killReturnToAttack) {
         // 攻擊途中插播的擊殺機制：播完回到 ATTACKING 接下一張卡；補盤／連爆判定等所有卡打完再一起做
         if (killNowQueue.length > 0) { startKillEffect(killNowQueue.shift()); return; }
@@ -4795,6 +4797,7 @@ function update() {
                 // FG/BG 效果排到最後，確保一般效果先觸發
                 // FG/BG 排到最後，其餘依死亡順序
                 pendingKillEffects.sort((a, b) => ((a.type === 5 || a.type === 6) ? 1 : 0) - ((b.type === 5 || b.type === 6) ? 1 : 0));
+                respawnDeadSmallMonsters();   // 三張卡都打完才補怪（企劃 2026-10-14）：途中打死的怪此時一起換新
                 applyGravity();
                 currentState = STATE.GRAVITY;
             }
