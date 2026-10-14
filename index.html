@@ -731,6 +731,8 @@ const DEFAULT_TIMING = {
     lv2ConvertMin:    10,    // Lv2 轉換：全部石頭，不足此數就多轉非本局圖示到此數（同一色）
     lv3GenMin:        10,    // Lv3 生成顆數下限（一種本局圖示成塊相鄰，可蓋石頭）
     lv3GenMax:        15,    // Lv3 生成顆數上限（10→11 顆是 10 倍→50 倍的懸崖，伺服器調）
+    lv3GenColors:     1,     // Lv3 生成幾種顏色（實驗 2026-10-14）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
+    payCurve:         0,     // 賠率曲線（實驗 2026-10-14）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）
     placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
     cardTilt:         8,     // 卡牌扇形（照正式版 Unity，2026-10-14）：左右兩張向外傾的角度（度），0 = 不斜
     cardFanGap:       4,     // 卡牌扇形：卡與卡的間距（px，負數 = 重疊）
@@ -829,7 +831,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1區間放大 2加過渡)', 0, 2, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -862,7 +864,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1055,8 +1057,23 @@ function getScore(count, elemId = 3) {
     const highOdds  = { 3: 0.2, 4: 0.4, 5: 0.8, 6: 2, 8: 6, 10: 20, 12: 100 };
     const otherOdds = { 3: 0.1, 4: 0.2, 5: 0.4, 6: 1, 8: 3, 10: 10, 12: 50  };
     const table = isHighElem ? highOdds : otherOdds;
-    let key = count >= 12 ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
-    return Math.floor(table[key] * betAmount * (TIMING.payScale || 1) * getBGMultiplier());
+    const curve = TIMING.payCurve || 0;
+    let odds;
+    if (curve === 1) {
+        // 區間放大：10~13 顆都算 10 倍那一檔，14 顆起才 50 倍
+        const key = count >= 14 ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
+        odds = table[key];
+    } else if (curve === 2) {
+        // 加過渡：11 顆 15、12 顆 25、13 顆 35、14 顆起 50（高賠率屬性加倍）
+        const mid = { 11: 15, 12: 25, 13: 35 };
+        if (count >= 14) odds = table[12];
+        else if (mid[count] !== undefined) odds = mid[count] * (isHighElem ? 2 : 1);
+        else { const key = count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count; odds = table[key]; }
+    } else {
+        const key = count >= 12 ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
+        odds = table[key];
+    }
+    return Math.floor(odds * betAmount * (TIMING.payScale || 1) * getBGMultiplier());
 }
 
 // === 傷害系統（賠率表）===
@@ -1351,7 +1368,8 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     let p3 = [
         () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆
         () => ({ type: 1,  big: true, bigCount: 2 }),                       // 巨型 WILD 2 顆，盡量放中間
-        () => ({ type: 2,  gemCount: rnd(TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax), cluster: true }), // 生成一種本局圖示 N 顆（成塊相鄰，可蓋石頭）
+        () => { const lo = TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, hi = TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax;
+                return { type: 2, gemCount: rnd(lo, hi), gemCount2: rnd(lo, hi), gemColors: TIMING.lv3GenColors === undefined ? 1 : TIMING.lv3GenColors, cluster: true }; }, // 生成本局圖示 N 顆成塊（可蓋石頭）；lv3GenColors=2 時兩種顏色各自成塊
         () => ({ type: 10, multiplier: rnd(20, 75) }),                      // 直接給分 20~75
     ];
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
@@ -2046,9 +2064,21 @@ function prepareTargetBeamEffect(effect) {
     };
 
     if (effect.type === 2) {
-        // 生成（Lv2）：一種本局圖示 5~8 顆，成塊相鄰，長在石頭或非本局屬性格上
+        // 生成：本局圖示 N 顆成塊相鄰，長在石頭或非本局屬性格上；gemColors=2 時第二種顏色（盤上第二多的本局屬性）另外成一塊
         const count = effect.gemCount || 5;
-        targets = pickAdjacent(stoneCells.concat(junkCells), count).map(cell => ({ ...cell, newId: toElem }));
+        const colors = Math.max(1, effect.gemColors || 1);
+        const cnt = {}; cardNormalElems().forEach(e => { cnt[e] = 0; });
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) { const id = board[c][r].id; if (cnt[id] !== undefined) cnt[id]++; }
+        const order = [toElem].concat(Object.keys(cnt).map(Number).filter(e => e !== toElem).sort((a, b) => cnt[b] - cnt[a]));
+        let pool = stoneCells.concat(junkCells);
+        targets = [];
+        for (let k = 0; k < Math.min(colors, order.length); k++) {
+            const n = k === 0 ? count : (effect.gemCount2 || count);
+            const picked = pickAdjacent(pool, n);
+            const taken = new Set(picked.map(c => c.c + ',' + c.r));
+            pool = pool.filter(c => !taken.has(c.c + ',' + c.r));
+            targets = targets.concat(picked.map(cell => ({ ...cell, newId: order[k] })));
+        }
     } else if (effect.type === 3) {
         // 轉換：fixedCount = 剛好 N 顆（石頭優先、貼著挑，不足補非本局圖示）；stoneAll = 全部石頭、不足補到 minCount
         if (effect.fixedCount) {
