@@ -1350,7 +1350,11 @@ function drawMonsterElemFromCards() {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 function assignMonsterElemsFromCards() {
-    [1, 2, 4, 5].forEach(idx => { monsters[idx].elemId = drawMonsterElemFromCards(); });
+    // 先保證手上每種一般屬性至少有一隻怪（每張卡都有目標），剩下的怪再從池裡隨機抽（可重複）
+    const pool = cardNormalElems();
+    const idxs = shuffled([1, 2, 4, 5]);
+    const firsts = shuffled(pool).slice(0, idxs.length);
+    idxs.forEach((idx, k) => { monsters[idx].elemId = k < firsts.length ? firsts[k] : pool[Math.floor(Math.random() * pool.length)]; });
 }
 
 function respawnMonster(idx, showEscape = true, fixedElem = -1) {
