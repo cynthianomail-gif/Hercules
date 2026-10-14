@@ -1336,12 +1336,13 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     ];
     let p2 = [
         () => ({ type: 1,  wildCount: rnd(4, 6) }),                        // WILD 4~6 顆
+        () => ({ type: 1,  big: true, bigCount: 1 }),                       // 巨型 WILD 1 顆（2026-10-14 新增）
         () => ({ type: 3,  stoneAll: true, minCount: TIMING.lv2ConvertMin === undefined ? 10 : TIMING.lv2ConvertMin }), // 轉全部石頭，不足就多轉非本局圖示到至少 N（同一色）
         () => ({ type: 10, multiplier: rnd(8, 20) }),                       // 直接給分 8~20
     ];
     let p3 = [
         () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆
-        () => ({ type: 1,  big: true, bigCount: rnd(1, 2) }),               // 巨型 WILD 1~2 顆，盡量放中間
+        () => ({ type: 1,  big: true, bigCount: 2 }),                       // 巨型 WILD 2 顆，盡量放中間
         () => ({ type: 2,  gemCount: rnd(TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax), cluster: true }), // 生成一種本局圖示 N 顆（成塊相鄰，可蓋石頭）
         () => ({ type: 10, multiplier: rnd(20, 75) }),                      // 直接給分 20~75
     ];
