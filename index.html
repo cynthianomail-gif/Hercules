@@ -751,6 +751,7 @@ const DEFAULT_TIMING = {
     // 自訂賠率表（payCurve 5，2026-10-14 ned：照競品的上升方式調低、多加兩檔）：9 檔 3／4／5／6~7／8~9／10~11／12~13／14~15／16+，雷聖加倍
     pt3: 0.1, pt4: 0.2, pt5: 0.4, pt6: 0.8, pt8: 2, pt10: 5, pt12: 12, pt14: 25, pt16: 60,   // 表 C（定案）
     placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
+    wildSmartRate:    0.3,   // WILD 落點（2026-10-14 晚 ned）：這個比例的 WILD 機制放在「第一波會消最多分」的位置，其餘亂撒；placeSmart=0 或咬模式一律亂撒、補模式一律貼著放
     cardTilt:         8,     // 卡牌扇形（照正式版 Unity，2026-10-14）：左右兩張向外傾的角度（度），0 = 不斜
     cardFanGap:       4,     // 卡牌扇形：卡與卡的間距（px，負數 = 重疊）
     cardFanDrop:      10,    // 卡牌扇形：左右兩張比中間那張低多少（px）
@@ -848,7 +849,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['wildSmartRate','WILD 貼著放的比例', 0, 1, 0.05], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -881,7 +882,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -2036,6 +2037,8 @@ function prepareWildEffect(effect) {
     effect.level = effect.level || 1;
     effect.style = mechStyle(effect.level);
     effect.flights = [];
+    // 這次 WILD 要不要「貼著放」：咬模式一律亂撒、補模式一律貼著放，其餘照 wildSmartRate 抽
+    const smart = effPlaceSmart() !== 0 && (rtpMode === 'feed' || Math.random() < (TIMING.wildSmartRate === undefined ? 0.3 : TIMING.wildSmartRate));
     if (effect.big) {
         // 巨型 WILD 1~2 顆：盡量放中間（離盤面中心近的 2×2 優先，同距離挑最能連線的），兩顆不重疊
         const n = Math.max(1, effect.bigCount || 1);
@@ -2059,7 +2062,7 @@ function prepareWildEffect(effect) {
             if (aNear && bNear) return (a.dist - b.dist) || (b.lineScore - a.lineScore);
             return b.lineScore - a.lineScore;
         });
-        const order = effPlaceSmart() === 0 ? shuffled(blocks) : blocks;   // 落點 0 = 隨機放（伺服器壓分用），巨型 WILD 也照這個開關
+        const order = smart ? blocks : shuffled(blocks);   // 落點 0 = 隨機放（伺服器壓分用），巨型 WILD 也照這個開關
         for (const b of order) {
             if (effect.flights.length >= n) break;
             const cells = []; let overlap = false;
@@ -2072,7 +2075,7 @@ function prepareWildEffect(effect) {
         // 小 WILD：逐顆貪婪挑「最能讓本局屬性連線」的格子，可蓋石頭（已選的格子視為 WILD 再評下一顆）
         const wildCount = Math.min(effect.wildCount || 1, COLS * ROWS);
         const chosen = new Set();
-        if (effPlaceSmart() === 0) {   // 隨機散放
+        if (!smart) {   // 隨機散放
             shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, wildCount).forEach((cell, i) => {
                 effect.flights.push({ cells: [{ c: cell.c, r: cell.r }], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 });
             });
@@ -2166,10 +2169,7 @@ function prepareTargetBeamEffect(effect) {
         effect.fromElemId = presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
         targets = effect.fromElemId === null ? [] : allBoardCells((cell, gem) => gem.id === effect.fromElemId).map(cell => ({ ...cell, newId: toElem }));
     }
-    // 退回鏈最後一層：什麼都沒得轉、沒得清、沒地方生（盤上全是本局屬性）→ 改送 WILD，顆數依等級
-    if (!targets.length && (effect.type === 2 || effect.type === 3 || effect.type === 4 || effect.type === 8)) {
-        effect.fallbackToWild = true;
-    }
+    // 什麼都沒得轉、沒得清、沒地方生（盤上全是本局屬性）→ 就什麼都不做（2026-10-14 晚 ned：不改送 WILD）
 
     effect.targets = targets.map((target, index) => ({ ...target, index, landed: false }));
 }
@@ -5006,17 +5006,7 @@ function update() {
                     killEffectPhase = 'wildSpawn';
                 } else if (isTargetBeamEffect(killEffectCurrent)) {
                     prepareTargetBeamEffect(killEffectCurrent);
-                    if (killEffectCurrent.fallbackToWild) {
-                        // 沒東西可轉可清 → 改送 WILD（顆數依等級），機制名稱同步換
-                        const lv = killEffectCurrent.level || 1;
-                        killEffectCurrent.type = 1;
-                        killEffectCurrent.wildCount = lv >= 3 ? 7 + Math.floor(Math.random() * 4) : lv === 2 ? 4 + Math.floor(Math.random() * 3) : 2 + Math.floor(Math.random() * 2);
-                        killEffectCurrent._prepared = false;
-                        prepareWildEffect(killEffectCurrent);
-                        killEffectPhase = 'wildSpawn';
-                    } else {
-                        killEffectPhase = 'targetPreLight';
-                    }
+                    killEffectPhase = 'targetPreLight';
                 } else if (isDirectScoreEffect(killEffectCurrent)) {
                     startDirectScoreEffect(killEffectCurrent);
                     killEffectPhase = 'coinBurst';
