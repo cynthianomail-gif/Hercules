@@ -1331,19 +1331,19 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
     let p1 = [
         () => ({ type: 1,  wildCount: rnd(2, 3) }),                        // WILD 2~3 顆，可蓋石頭，放在能連線的位置
-        () => ({ type: 4,  stoneAll: true, topUpIf: 5, minCount: 10 }),     // 清全部石頭；石頭不足 5 顆就多清非本局圖示到 10 顆
-        () => ({ type: 10, multiplier: rnd(3, 5) }),                        // 直接給分 3~5
+        () => ({ type: 4,  stoneAll: true, topUpIf: 5, minCount: 5 }),      // 清全部石頭；石頭不足 5 顆就多清非本局圖示到 5 顆
+        () => ({ type: 10, multiplier: rnd(3, 8) }),                        // 直接給分 3~8
     ];
     let p2 = [
         () => ({ type: 1,  wildCount: rnd(4, 6) }),                        // WILD 4~6 顆
         () => ({ type: 3,  stoneAll: true, minCount: TIMING.lv2ConvertMin === undefined ? 10 : TIMING.lv2ConvertMin }), // 轉全部石頭，不足就多轉非本局圖示到至少 N（同一色）
-        () => ({ type: 10, multiplier: rnd(5, 15) }),                       // 直接給分 5~15
+        () => ({ type: 10, multiplier: rnd(8, 20) }),                       // 直接給分 8~20
     ];
     let p3 = [
         () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆
         () => ({ type: 1,  big: true, bigCount: rnd(1, 2) }),               // 巨型 WILD 1~2 顆，盡量放中間
         () => ({ type: 2,  gemCount: rnd(TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax), cluster: true }), // 生成一種本局圖示 N 顆（成塊相鄰，可蓋石頭）
-        () => ({ type: 10, multiplier: rnd(15, 75) }),                      // 直接給分 15~75
+        () => ({ type: 10, multiplier: rnd(20, 75) }),                      // 直接給分 20~75
     ];
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
@@ -1938,8 +1938,9 @@ function prepareWildEffect(effect) {
             const cx = sc + 0.5, cy = sr + 0.5;                       // 區塊中心
             const dist = Math.abs(cx - (COLS - 1) / 2) + Math.abs(cy - (ROWS - 1) / 2);
             const blockSet = new Set([[0, 0], [1, 0], [0, 1], [1, 1]].map(([dc, dr]) => (sc + dc) + ',' + (sr + dr)));
-            let lineScore = 0;
-            for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) { if (board[sc + dc][sr + dr].id === WILD_ID) lineScore -= 3; lineScore += wildScoreAt(sc + dc, sr + dr, blockSet); }
+            let lineScore = 0, hasWild = false;
+            for (let dc = 0; dc < 2; dc++) for (let dr = 0; dr < 2; dr++) { if (board[sc + dc][sr + dr].id === WILD_ID) hasWild = true; lineScore += wildScoreAt(sc + dc, sr + dr, blockSet); }
+            if (hasWild) continue;   // WILD 不能生成在原本的 WILD 上
             blocks.push({ sc, sr, dist, lineScore });
         }
         blocks.sort((a, b) => (a.dist - b.dist) || (b.lineScore - a.lineScore));
