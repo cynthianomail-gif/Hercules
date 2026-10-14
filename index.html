@@ -909,8 +909,8 @@ function TS(key) {
 }
 const TF = s => Math.max(1, Math.round(s * 60));   // 秒 → 幀（60fps）
 
-// 流程架構（流程架構B提案）：A = 現行（每波消除後立刻攻擊）；B = 連鎖累積後一次結算
-let flowMode = 'B';
+// 流程架構定案 B：連鎖累積後一次結算（A 案已移除，2026-10-14）
+const flowMode = 'B';
 
 // 佈局預設值 = 原程式寫死座標
 const DEFAULT_LAYOUT = {
@@ -5449,7 +5449,6 @@ function loadTuning() {
             localStorage.removeItem(TUNE_KEY);
             return;
         }
-        if (d.flow === 'A' || d.flow === 'B') flowMode = d.flow;
         if (d.timing) for (const k in DEFAULT_TIMING) {
             const v = d.timing[k];
             const [lo, hi] = TIMING_RANGE[k] || [0, 5];
@@ -5660,19 +5659,6 @@ function buildTimingTab() {
     hint.textContent = '甘特圖：拖曳色條改起點，拖右緣改時長。右側兩欄為起點/時長；px 與 0~1 強度仍用數值滑桿。';
     tuneBody.appendChild(hint);
 
-    // 流程架構切換（流程架構B提案）：A = 每波消除後立刻攻擊；B = 連鎖累積後一次結算
-    const flowHead = document.createElement('div');
-    flowHead.className = 'tune-group'; flowHead.textContent = '流程架構（A/B 案）';
-    tuneBody.appendChild(flowHead);
-    const flowRow = document.createElement('div'); flowRow.className = 'tune-obj-list';
-    [['A', 'A案：每波攻擊（現行）'], ['B', 'B案：連鎖後一次結算']].forEach(([mode, label]) => {
-        const b = document.createElement('button');
-        b.className = 'tune-obj-btn' + (flowMode === mode ? ' selected' : '');
-        b.textContent = label;
-        b.addEventListener('click', () => { flowMode = mode; saveTuning(); buildTimingTab(); });
-        flowRow.appendChild(b);
-    });
-    tuneBody.appendChild(flowRow);
     TIMING_META.forEach(g => {
         const h = document.createElement('div');
         h.className = 'tune-group'; h.textContent = g.group;
