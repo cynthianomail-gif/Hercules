@@ -740,7 +740,10 @@ const DEFAULT_TIMING = {
     lv3GenMin:        10,    // Lv3 生成顆數下限（一種本局圖示成塊相鄰，可蓋石頭）
     lv3GenMax:        15,    // Lv3 生成顆數上限（10→11 顆是 10 倍→50 倍的懸崖，伺服器調）
     lv3GenColors:     1,     // Lv3 生成幾種顏色（實驗 2026-10-14）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
-    payCurve:         0,     // 賠率曲線（實驗 2026-10-14）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10、12~13 顆 20、14~15 顆 30、16 顆起 50）
+    payCurve:         0,     // 賠率曲線（實驗 2026-10-14）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10，12~13／14~15／16 顆起 的倍數由下面三個旋鈕決定）
+    pay12:            20,    // 階梯：12~13 顆的倍數（雷聖加倍）
+    pay14:            40,    // 階梯：14~15 顆的倍數
+    pay16:            100,   // 階梯：16 顆以上的倍數
     placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
     cardTilt:         8,     // 卡牌扇形（照正式版 Unity，2026-10-14）：左右兩張向外傾的角度（度），0 = 不斜
     cardFanGap:       4,     // 卡牌扇形：卡與卡的間距（px，負數 = 重疊）
@@ -839,7 +842,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯)', 0, 4, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯)', 0, 4, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -872,7 +875,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1073,8 +1076,9 @@ function getScore(count, elemId = 3) {
         const key = count >= cliff ? 12 : count >= 10 ? 10 : count >= 8 ? 8 : count >= 6 ? 6 : count;
         odds = table[key];
     } else if (curve === 4) {
-        // 階梯：10~11 顆 10 倍、12~13 顆 20、14~15 顆 30、16 顆起 50（高賠率屬性加倍）
-        const base = count >= 16 ? 50 : count >= 14 ? 30 : count >= 12 ? 20 : count >= 10 ? 10 : count >= 8 ? 3 : count >= 6 ? 1 : null;
+        // 階梯：10~11 顆 10 倍，12~13／14~15／16 顆起 由旋鈕 pay12／pay14／pay16 決定（高賠率屬性加倍）
+        const p12 = TIMING.pay12 === undefined ? 20 : TIMING.pay12, p14 = TIMING.pay14 === undefined ? 40 : TIMING.pay14, p16 = TIMING.pay16 === undefined ? 100 : TIMING.pay16;
+        const base = count >= 16 ? p16 : count >= 14 ? p14 : count >= 12 ? p12 : count >= 10 ? 10 : count >= 8 ? 3 : count >= 6 ? 1 : null;
         odds = base === null ? table[count] : base * (isHighElem ? 2 : 1);
     } else if (curve === 2) {
         // 加過渡：11 顆 15、12 顆 25、13 顆 35、14 顆起 50（高賠率屬性加倍）
