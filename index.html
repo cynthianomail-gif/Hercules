@@ -726,6 +726,7 @@ const DEFAULT_TIMING = {
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
     lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
     lv3ConvertCount:  12,    // Lv3 轉換固定顆數（石頭優先，不夠拿非本局屬性圖示補），轉成盤上最多的那個本局屬性
+    respawnAfterRound: 0,    // 補怪時機：1 = 三張卡都打完才補；0 = 打死、機制播完馬上補（下一張同屬性卡可以接著打新怪）
     payScale:         1.0,   // 連線賠率整體倍率（石頭壓低得分率後可整體拉高；1 = 企劃書賠率表原值）
     stoneAfterMech:   0.0,   // 怪死、機制播過之後，這局補盤掉石頭的倍率（0 = 不再掉石頭，讓機制炸掉的石頭不會補回來）
     killFloorLv1:     0,     // 擊殺保底（倍）：本局最高打死 Lv1 時，局末分數不足就補到此倍數；0 = 關
@@ -820,6 +821,7 @@ const TIMING_META = [
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
         ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv3ConvertCount','Lv3 轉換顆數', 4, 30, 1],
+        ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
     { group: '受擊／擊殺', items: [
@@ -851,7 +853,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv3ConvertCount', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv3ConvertCount', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -2231,7 +2233,7 @@ function finishKillEffect() {
     killEffectCurrent = null;
     // 補怪時機（企劃 2026-10-14）：攻擊途中插播的機制播完「不補怪」，等這輪三張卡都打完再一起補；
     // 攻擊全部結束後才播的機制（FG/BG 等）照舊播完就補
-    if (!killReturnToAttack) respawnKillSource(finishedEffect);
+    if (!killReturnToAttack || !TIMING.respawnAfterRound) respawnKillSource(finishedEffect);
     if (killReturnToAttack) {
         // 攻擊途中插播的擊殺機制：播完回到 ATTACKING 接下一張卡；補盤／連爆判定等所有卡打完再一起做
         if (killNowQueue.length > 0) { startKillEffect(killNowQueue.shift()); return; }
