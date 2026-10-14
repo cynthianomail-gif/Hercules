@@ -406,13 +406,13 @@
                 <h3>▌ 卡牌攻擊力</h3>
                 <table>
                     <tr><th>等級</th><th>邊框色</th><th>基礎攻擊力</th></tr>
-                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>2</td></tr>
-                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>4</td></tr>
-                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>7</td></tr>
-                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>12</td></tr>
-                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>17</td></tr>
+                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>1</td></tr>
+                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>3</td></tr>
+                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>5</td></tr>
+                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>10</td></tr>
+                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>15</td></tr>
                 </table>
-                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 傷害＝基礎攻擊力＋本局消除該屬性的總顆數。例：1 星卡消除 5 顆＋3 顆 → 2+5+3＝10</p>
+                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 傷害＝基礎攻擊力＋本局消除該屬性的總顆數。例：1 星卡消除 5 顆＋3 顆 → 1+5+3＝9</p>
 
                 <h3>▌ 爆擊（4·5 星）</h3>
                 <table>
@@ -744,12 +744,12 @@ const DEFAULT_TIMING = {
     lv3GenMin:        7,     // Lv3 生成顆數下限（2026-10-14 定案 7~10，原 10~15）
     lv3GenMax:        10,    // Lv3 生成顆數上限
     lv3GenColors:     2,     // Lv3 生成幾種顏色（2026-10-14 定案 2）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
-    payCurve:         0,     // 賠率曲線（實驗 2026-10-14）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10，12~13／14~15／16 顆起 的倍數由下面三個旋鈕決定）
+    payCurve:         5,     // 賠率曲線（2026-10-14 晚 ned 定案：5 = 自訂表 C）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10，12~13／14~15／16 顆起 的倍數由下面三個旋鈕決定）
     pay12:            20,    // 階梯：12~13 顆的倍數（雷聖加倍）
     pay14:            40,    // 階梯：14~15 顆的倍數
     pay16:            100,   // 階梯：16 顆以上的倍數
     // 自訂賠率表（payCurve 5，2026-10-14 ned：照競品的上升方式調低、多加兩檔）：9 檔 3／4／5／6~7／8~9／10~11／12~13／14~15／16+，雷聖加倍
-    pt3: 0.1, pt4: 0.2, pt5: 0.3, pt6: 0.5, pt8: 1, pt10: 2, pt12: 4, pt14: 8, pt16: 20,
+    pt3: 0.1, pt4: 0.2, pt5: 0.4, pt6: 0.8, pt8: 2, pt10: 5, pt12: 12, pt14: 25, pt16: 60,   // 表 C（定案）
     placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
     cardTilt:         8,     // 卡牌扇形（照正式版 Unity，2026-10-14）：左右兩張向外傾的角度（度），0 = 不斜
     cardFanGap:       4,     // 卡牌扇形：卡與卡的間距（px，負數 = 重疊）
@@ -1132,7 +1132,7 @@ function normalAttack(elemId, count, level) {
 }
 
 // 改版 2026-10-13：卡牌基礎攻擊力（依星等），卡面顯示＝基礎＋本局消除顆數
-const CARD_BASE_ATK = { 1: 2, 2: 4, 3: 7, 4: 12, 5: 17 };   // 改版 2026-10-14：加入石頭後上調（原 1/3/5/10/15）
+const CARD_BASE_ATK = { 1: 1, 2: 3, 3: 5, 4: 10, 5: 15 };   // 2026-10-14 晚 ned 定案：回原本 1/3/5/10/15（配賠率表 C、石頭 12 顆、旺局 1%）
 function cardBaseAtk(card) { return CARD_BASE_ATK[card.level] || 1; }
 // 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
 const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
@@ -1443,13 +1443,18 @@ function cardNormalElems() {
     const s = [...new Set(cards.map(c => c.elemId).filter(e => NORMAL_ELEMS.includes(e)))];
     return s.length ? s : NORMAL_ELEMS.slice();   // 三張全是雷聖卡 → 小怪屬性退回四屬隨機
 }
+// 手上所有卡牌屬性（含雷霆／聖心）：2026-10-14 晚 ned 定案，Lv1~4 小怪必須涵蓋手上每一種屬性（AAB 不可以四隻全是 B）
+function cardAllElems() {
+    const s = [...new Set(cards.map(c => c.elemId))];
+    return s.length ? s : NORMAL_ELEMS.slice();
+}
 function drawMonsterElemFromCards() {
-    const pool = cardNormalElems();
+    const pool = cardAllElems();
     return pool[Math.floor(Math.random() * pool.length)];
 }
 function assignMonsterElemsFromCards() {
-    // 先保證手上每種一般屬性至少有一隻怪（每張卡都有目標），剩下的怪再從池裡隨機抽（可重複）
-    const pool = cardNormalElems();
+    // 先保證手上每種屬性至少有一隻怪（每張卡都有小怪目標），剩下的怪再從手上屬性隨機抽（可重複）
+    const pool = cardAllElems();
     const idxs = shuffled([1, 2, 4, 5]);
     const firsts = shuffled(pool).slice(0, idxs.length);
     idxs.forEach((idx, k) => { monsters[idx].elemId = k < firsts.length ? firsts[k] : pool[Math.floor(Math.random() * pool.length)]; });
