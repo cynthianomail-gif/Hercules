@@ -1265,7 +1265,7 @@ let spinMaxKillLv = 0;                           // 本局打死的最高階小�
 let refillCardOnly = false;                      // 清除機制之後的那次補盤只補本局屬性、不掉石頭（2026-10-14）
 // 盤上最多的那個本局屬性（程式內部選法，不是玩家規則）：轉換／生成都往它推，讓機制互相疊加
 function dominantCardElem() {
-    const pool = cardNormalElems();
+    const pool = cardAllElems();   // 2026-10-14 晚 ned：轉換／生成的顏色也可以是雷霆／聖心（手上有的話）
     const cnt = {}; pool.forEach(e => cnt[e] = 0);
     for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) { const id = board[c][r].id; if (cnt[id] !== undefined) cnt[id]++; }
     const best = Math.max(...pool.map(e => cnt[e]));
@@ -1732,7 +1732,7 @@ function applyGravity() {
     // 補盤每欄錯落（節奏總表 0.05s）：右欄新圖示多墊一段起始距離，落定時間依欄遞延
     const fallSpeed = GEM_SIZE / refillCellFrames();
     const cardOnly = refillCardOnly; refillCardOnly = false;   // 清除機制後的那一次補盤：只補本局屬性（一次性）
-    const cardOnlyDraw = () => { const pool = cardNormalElems(); return pool[Math.floor(Math.random() * pool.length)]; };
+    const cardOnlyDraw = () => { const pool = cardAllElems(); return pool[Math.floor(Math.random() * pool.length)]; };
     for (let c = 0; c < COLS; c++) {
         const staggerDist = c * fallSpeed * TF(TIMING.refillStagger * (refillFast ? TIMING.refillFastScale : 1));
         let emptySpaces = 0;
@@ -2122,7 +2122,7 @@ function prepareTargetBeamEffect(effect) {
         // 生成：本局圖示 N 顆成塊相鄰，長在石頭或非本局屬性格上；gemColors=2 時第二種顏色（盤上第二多的本局屬性）另外成一塊
         const count = effect.gemCount || 5;
         const colors = Math.max(1, effect.gemColors || 1);
-        const cnt = {}; cardNormalElems().forEach(e => { cnt[e] = 0; });
+        const cnt = {}; cardAllElems().forEach(e => { cnt[e] = 0; });
         for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) { const id = board[c][r].id; if (cnt[id] !== undefined) cnt[id]++; }
         const order = [toElem].concat(Object.keys(cnt).map(Number).filter(e => e !== toElem).sort((a, b) => cnt[b] - cnt[a]));
         let pool = stoneCells.concat(junkCells);
