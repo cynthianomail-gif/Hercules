@@ -731,6 +731,9 @@ const DEFAULT_TIMING = {
     lv3GenMin:        10,    // Lv3 生成顆數下限（一種本局圖示成塊相鄰，可蓋石頭）
     lv3GenMax:        15,    // Lv3 生成顆數上限（10→11 顆是 10 倍→50 倍的懸崖，伺服器調）
     placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
+    cardTilt:         8,     // 卡牌扇形（照正式版 Unity，2026-10-14）：左右兩張向外傾的角度（度），0 = 不斜
+    cardFanGap:       4,     // 卡牌扇形：卡與卡的間距（px，負數 = 重疊）
+    cardFanDrop:      10,    // 卡牌扇形：左右兩張比中間那張低多少（px）
     respawnAfterRound: 0,    // 補怪時機：1 = 三張卡都打完才補；0 = 打死、機制播完馬上補（下一張同屬性卡可以接著打新怪）
     payScale:         1.0,   // 連線賠率整體倍率（石頭壓低得分率後可整體拉高；1 = 企劃書賠率表原值）
     stoneAfterMech:   0.0,   // 怪死、機制播過之後，這局補盤掉石頭的倍率（0 = 不再掉石頭，讓機制炸掉的石頭不會補回來）
@@ -825,7 +828,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -858,7 +861,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'placeSmart', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -978,7 +981,7 @@ function getCardDrawMetrics(count = cards.length) {
     const isFGMode = count === 6;
     const cardW = isFGMode ? 85 : (LAYOUT.cards.w || 199);
     const cardH = isFGMode ? 84 : (LAYOUT.cards.h || 276);
-    const gap = isFGMode ? 8 : 20;
+    const gap = isFGMode ? 8 : (TIMING.cardFanGap === undefined ? 20 : TIMING.cardFanGap);
     const drawCount = Math.max(count, isFGMode ? 6 : 3);
     const totalW = drawCount * cardW + (drawCount - 1) * gap;
     const startX = LAYOUT.cards.x - totalW / 2;
@@ -3493,7 +3496,8 @@ function drawCards() {
     const pullMargin = TIMING.cardPullDist + 24;   // 上拉幅度 + 蓄力放大/震動餘裕
     ctx.save();
     ctx.beginPath();
-    ctx.rect(startX - 8, baseY - 8 - pullMargin, totalW + 16, cardH + 16 + pullMargin);
+    const fanMargin = isFGMode ? 0 : 70;   // 扇形外傾後，兩側卡的上角會超出原本的卡槽寬度
+    ctx.rect(startX - 8 - fanMargin, baseY - 8 - pullMargin, totalW + 16 + fanMargin * 2, cardH + 16 + pullMargin);
     ctx.clip();
 
     const drawOne = (card, i) => {
@@ -3516,6 +3520,13 @@ function drawCards() {
             ctx.translate((card.fly.tx - cx) * e, (card.fly.ty - cy) * e);
             flyScale = 1 - 0.35 * e;
             ctx.translate(cx, cy); ctx.rotate((card.fly.tx < cx ? -1 : 1) * 0.25 * e); ctx.translate(-cx, -cy);
+        }
+        // 扇形手牌（照正式版 Unity，2026-10-14）：左右兩張繞「卡牌底邊中點」向外傾，並略低於中間那張；飛向怪物時不套
+        if (!isFGMode && !card.fly && count === 3) {
+            const tilt = (TIMING.cardTilt || 0) * Math.PI / 180 * (i - 1);
+            const drop = (TIMING.cardFanDrop || 0) * Math.abs(i - 1);
+            ctx.translate(0, drop);
+            ctx.translate(cx, drawY + cardH); ctx.rotate(tilt); ctx.translate(-cx, -(drawY + cardH));
         }
         ctx.translate(cx + shakeX, cy + shakeY);
         ctx.scale(card.scale * flyScale, card.scale * flyScale);
@@ -3583,7 +3594,10 @@ function drawCards() {
         ctx.globalAlpha = 1.0;
         ctx.restore();
     };
-    cards.forEach((card, i) => { if (!card.fly) drawOne(card, i); });
+    // 畫的順序：先左右、最後中間（中間那張壓在上面，跟正式版一樣）
+    const order = cards.map((_, i) => i);
+    if (!isFGMode && cards.length === 3) { order.splice(1, 1); order.push(1); }
+    order.forEach(i => { const card = cards[i]; if (!card.fly) drawOne(card, i); });
 
     ctx.restore(); // 結束 clip
     // 飛向怪物的卡牌畫在卡槽裁切區之外（改版 2026-10-13）
