@@ -728,6 +728,7 @@ const DEFAULT_TIMING = {
     lv2ConvertMin:    10,    // Lv2 轉換：全部石頭，不足此數就多轉非本局圖示到此數（同一色）
     lv3GenMin:        10,    // Lv3 生成顆數下限（一種本局圖示成塊相鄰，可蓋石頭）
     lv3GenMax:        15,    // Lv3 生成顆數上限（10→11 顆是 10 倍→50 倍的懸崖，伺服器調）
+    placeSmart:       1,     // 機制落點：1 = 貼著本局屬性、連成一塊（伺服器要給分時）；0 = 隨機散放（伺服器要壓分時）
     respawnAfterRound: 0,    // 補怪時機：1 = 三張卡都打完才補；0 = 打死、機制播完馬上補（下一張同屬性卡可以接著打新怪）
     payScale:         1.0,   // 連線賠率整體倍率（石頭壓低得分率後可整體拉高；1 = 企劃書賠率表原值）
     stoneAfterMech:   0.0,   // 怪死、機制播過之後，這局補盤掉石頭的倍率（0 = 不再掉石頭，讓機制炸掉的石頭不會補回來）
@@ -822,7 +823,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -855,7 +856,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'placeSmart', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1954,6 +1955,12 @@ function prepareWildEffect(effect) {
         // 小 WILD：逐顆貪婪挑「最能讓本局屬性連線」的格子，可蓋石頭（已選的格子視為 WILD 再評下一顆）
         const wildCount = Math.min(effect.wildCount || 1, COLS * ROWS);
         const chosen = new Set();
+        if (TIMING.placeSmart === 0) {   // 隨機散放
+            shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, wildCount).forEach((cell, i) => {
+                effect.flights.push({ cells: [{ c: cell.c, r: cell.r }], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 });
+            });
+            return;
+        }
         for (let i = 0; i < wildCount; i++) {
             let best = null, bestScore = -Infinity;
             for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
@@ -1981,6 +1988,7 @@ function prepareTargetBeamEffect(effect) {
     const toElem = dominantCardElem();   // 轉換／生成的顏色：盤上最多的那個本局屬性（程式內部選法）
     // 挑格子的原則：貼著本局屬性、WILD、或已經挑到的格子優先（轉完、生完、清完比較容易連成線）
     const pickAdjacent = (pool, n, seedSet) => {
+        if (TIMING.placeSmart === 0) return shuffled(pool).slice(0, n);   // 隨機散放（伺服器壓分用）
         const out = []; const chosen = new Set(seedSet || []);
         let remain = shuffled(pool);
         while (out.length < n && remain.length) {
