@@ -640,7 +640,7 @@ const WILD_ID = 6;
 // 石頭（改版 2026-10-14）：不連線、不打怪、不給分；成對出現，只能靠清除／轉換機制移除；BG 不出
 const STONE_ID = 7;
 const STONE_ELEM = { id: 7, name: 'Stone', color: '#a8a29e', icon: '🪨', type: '石頭' };
-function elemInfo(id) { return id === STONE_ID ? STONE_ELEM : id === WILD_ID ? WILD_ELEM : ELEMENTS[id]; }
+function elemInfo(id) { return id === STONE_ID ? STONE_ELEM : id === WILD_ID ? WILD_ELEM : (ELEMENTS[id] || WILD_ELEM); }
 const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
 const MECH_LEVEL_STYLE = {
     1: { color: '#38bdf8', flash: '#bae6fd', shakeAmp: 3, beamWidth: 4 },
@@ -1966,6 +1966,8 @@ function prepareTargetBeamEffect(effect) {
     const pickStones = n => shuffled(stoneCells).sort((a, b) => adjScore(b) - adjScore(a)).slice(0, Math.min(n, stoneCells.length));
     const extraTypeCells = k => { if (k <= 0) return []; const types = shuffled(presentNonCard).slice(0, k); return allBoardCells((cell, gem) => types.includes(gem.id)); };
     const cnt = effect.stoneCount === undefined ? 99 : effect.stoneCount;
+    const nonCardCells = allBoardCells((cell, gem) => nonCardElems.includes(gem.id));   // 非本局屬性的一般圖示（不含石頭、WILD）
+    const noStone = stoneCells.length === 0;
 
     if (effect.type === 2) {
         // 生成圖示：優先放在石頭格，其次非本局屬性格
@@ -1974,25 +1976,25 @@ function prepareTargetBeamEffect(effect) {
         if (!candidates.length) candidates = shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID));
         targets = candidates.slice(0, count).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 3) {
-        // 轉換（強）：cnt 顆石頭＋extraTypes 種非本局屬性 → 本局卡牌屬性（每格隨機一種）
-        const k = effect.extraTypes === undefined ? (effect.convertCount || 1) : effect.extraTypes;
+        // 轉換（強，Lv3 算「種類」）：全部石頭＋k 種非本局屬性 → 本局卡牌屬性（每格隨機一種）；沒石頭 → 多轉一種
+        const k = (effect.extraTypes === undefined ? (effect.convertCount || 1) : effect.extraTypes) + (noStone ? 1 : 0);
         targets = pickStones(cnt).concat(extraTypeCells(k)).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 8) {
-        // 轉換（弱）：cnt 顆石頭 → 同一種本局卡牌屬性；盤上沒石頭就退回轉 1 種非本局屬性
+        // 轉換（弱，Lv1/Lv2 算「顆數」）：cnt 顆石頭 → 同一種本局卡牌屬性；沒石頭 → 改轉 cnt 顆非本局屬性圖示
         const cardElems = [...cardSet];
         if (effect.toElemId === undefined) effect.toElemId = cardElems.length ? cardElems[Math.floor(Math.random() * cardElems.length)] : randomCardElem();
-        if (stoneCells.length) { effect.fromElemId = STONE_ID; targets = pickStones(cnt); }
-        else {
-            effect.fromElemId = presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
-            targets = effect.fromElemId === null ? [] : allBoardCells((cell, gem) => gem.id === effect.fromElemId);
-        }
+        if (!noStone) { effect.fromElemId = STONE_ID; targets = pickStones(cnt); }
+        else { targets = shuffled(nonCardCells).slice(0, cnt); effect.fromElemId = targets.length ? targets[0].oldId : null; }
         targets = targets.map(cell => ({ ...cell, newId: effect.toElemId }));
     } else if (effect.type === 4) {
-        // 清除：cnt 顆石頭＋extraTypes 種非本局屬性；盤上沒石頭就退回清 1 種
-        const k = effect.extraTypes === undefined ? (effect.clearCount || 1) : effect.extraTypes;
-        targets = pickStones(cnt).concat(extraTypeCells(k));
-        if (!targets.length) targets = extraTypeCells(1);
-        if (!targets.length) targets = shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, 3);
+        // 清除：Lv1/Lv2 算「顆數」（cnt 顆石頭；沒石頭 → cnt 顆非本局屬性圖示）；Lv3 算「種類」（全部石頭＋k 種；沒石頭 → 多清一種）
+        const k0 = effect.extraTypes === undefined ? (effect.clearCount || 1) : effect.extraTypes;
+        if (!noStone) targets = pickStones(cnt).concat(extraTypeCells(k0));
+        else targets = k0 > 0 ? extraTypeCells(k0 + 1) : shuffled(nonCardCells).slice(0, cnt);
+    }
+    // 退回鏈最後一層：什麼都沒得轉、沒得清（盤上全是本局屬性）→ 改送 WILD，顆數依等級（1~2／3~4／5~6）
+    if (!targets.length && (effect.type === 3 || effect.type === 4 || effect.type === 8)) {
+        effect.fallbackToWild = true;
     }
 
     effect.targets = targets.map((target, index) => ({ ...target, index, landed: false }));
@@ -2774,11 +2776,8 @@ function fireAttackRound(round) {
         const cardX = startX + cardIdx * (cardW + gap) + cardW / 2;
         // 節奏分支（改版 2026-10-13）：出手前就知道這一下打不打得死 → fast／kill／heavy
         const roll = rollCardAttack(card);
-        // 目標（2026-10-14，企劃書規則）：同屬性有多隻 → 打「打得死的最高階」；都打不死 → 打最高階那隻
-        const rank = m => m.jackpot > 0 ? 9 : getMonsterLevel(m);
-        const lethalOnes = candidates.filter(m => roll.damage >= m.hp);
-        const pickFrom = lethalOnes.length ? lethalOnes : candidates;
-        let targetMonster = pickFrom.reduce((best, m) => (!best || rank(m) > rank(best)) ? m : best, null);
+        // 目標：同屬性有多隻 → 隨機打一隻（企劃決定保留「不知道打哪隻」的期待，2026-10-14）
+        let targetMonster = candidates[Math.floor(Math.random() * candidates.length)];
         if (!spinHadFire) { spinHadFire = true; stats.fireSpins++; }
         const lethal = roll.damage >= targetMonster.hp
             || (forceKill && (!forceTargetLv4 || getMonsterLevel(targetMonster) === 4));
@@ -4808,7 +4807,17 @@ function update() {
                     killEffectPhase = 'wildSpawn';
                 } else if (isTargetBeamEffect(killEffectCurrent)) {
                     prepareTargetBeamEffect(killEffectCurrent);
-                    killEffectPhase = 'targetPreLight';
+                    if (killEffectCurrent.fallbackToWild) {
+                        // 沒東西可轉可清 → 改送 WILD（顆數依等級），機制名稱同步換
+                        const lv = killEffectCurrent.level || 1;
+                        killEffectCurrent.type = 1;
+                        killEffectCurrent.wildCount = lv >= 3 ? 5 + Math.floor(Math.random() * 2) : lv === 2 ? 3 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 2);
+                        killEffectCurrent._prepared = false;
+                        prepareWildEffect(killEffectCurrent);
+                        killEffectPhase = 'wildSpawn';
+                    } else {
+                        killEffectPhase = 'targetPreLight';
+                    }
                 } else if (isDirectScoreEffect(killEffectCurrent)) {
                     startDirectScoreEffect(killEffectCurrent);
                     killEffectPhase = 'coinBurst';
