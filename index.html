@@ -384,8 +384,9 @@
                 <p>• 盤面 <b>7 × 5</b>，共 6 種元素寶石</p>
                 <p>• 直線或橫線 <b>3 個以上</b>相同元素即可消除</p>
                 <p>• L / T 形合計總顆數，視為一組消除</p>
+                <p>• 🪨 石頭：不連線、不打怪、不給分，會擋住連線；成對出現，只能被「清除／轉換」機制移除（BG 不出現）</p>
                 <p>• 消除後觸發對應屬性卡片攻擊，補入新寶石後繼續判定（連爆）</p>
-                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，屬性可重複（2～3 張同屬性會集中攻擊同一隻怪）※ 「雷霆」與「聖心」不會同時出現</p>
+                <p>• 每次 SPIN 從 30 張牌池隨機抽 <b>3 張</b>，屬性可重複且機率提高（2 張同 60%／3 張同 12%，集中攻擊同一隻怪）※ 「雷霆」與「聖心」不會同時出現</p>
                 <p>• 有消除該屬性 → 觸發卡片；同屬性消除多組時累加後一次打出（每張卡每局出手 1 次）</p>
                 <p>• 卡牌飛到對應屬性的怪物身上撞擊；打死後多出來的傷害不轉移（無溢傷追擊）</p>
 
@@ -403,13 +404,13 @@
                 <h3>▌ 卡牌攻擊力</h3>
                 <table>
                     <tr><th>等級</th><th>邊框色</th><th>基礎攻擊力</th></tr>
-                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>1</td></tr>
-                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>3</td></tr>
-                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>5</td></tr>
-                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>10</td></tr>
-                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>15</td></tr>
+                    <tr><td>★☆☆☆☆ Lv.1</td><td style="color:#64748b">■ 灰</td><td>2</td></tr>
+                    <tr><td>★★☆☆☆ Lv.2</td><td style="color:#b45309">■ 棕</td><td>4</td></tr>
+                    <tr><td>★★★☆☆ Lv.3</td><td style="color:#94a3b8">■ 銀</td><td>7</td></tr>
+                    <tr><td>★★★★☆ Lv.4</td><td style="color:#ca8a04">■ 金</td><td>12</td></tr>
+                    <tr><td>★★★★★ Lv.5</td><td style="color:#c084fc">■ 紫</td><td>17</td></tr>
                 </table>
-                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 傷害＝基礎攻擊力＋本局消除該屬性的總顆數。例：1 星卡消除 5 顆＋3 顆 → 1+5+3＝9</p>
+                <p style="margin-top:4px;color:#64748b;font-size:11px">※ 傷害＝基礎攻擊力＋本局消除該屬性的總顆數。例：1 星卡消除 5 顆＋3 顆 → 2+5+3＝10</p>
 
                 <h3>▌ 爆擊（4·5 星）</h3>
                 <table>
@@ -634,6 +635,10 @@ const ELEMENTS = [
 ];
 
 const WILD_ID = 6;
+// 石頭（改版 2026-10-14）：不連線、不打怪、不給分；成對出現，只能靠清除／轉換機制移除；BG 不出
+const STONE_ID = 7;
+const STONE_ELEM = { id: 7, name: 'Stone', color: '#a8a29e', icon: '🪨', type: '石頭' };
+function elemInfo(id) { return id === STONE_ID ? STONE_ELEM : id === WILD_ID ? WILD_ELEM : ELEMENTS[id]; }
 const WILD_ELEM = { id: 6, name: 'Wild', color: '#ffd700', icon: 'W', type: 'WILD' };
 const MECH_LEVEL_STYLE = {
     1: { color: '#38bdf8', flash: '#bae6fd', shakeAmp: 3, beamWidth: 4 },
@@ -704,6 +709,15 @@ const DEFAULT_TIMING = {
     heavyFlash:       0.35,  // 重擊：全畫面白閃
     heavyDeathHold:   0.80,  // 重擊：死亡狀態額外停留
     refillFastScale:  0.40,  // 本波消除沒對到任何卡牌 → 補盤時間 ×此倍率（非時間值）
+    // 石頭（改版 2026-10-14，非時間值）：初盤組數權重（每組 2 顆相鄰）＋補盤每欄成對掉落機率
+    stoneW0:          35,    // 初盤 0 組權重
+    stoneW1:          40,    // 初盤 1 組權重
+    stoneW2:          20,    // 初盤 2 組權重
+    stoneW3:          5,     // 初盤 3 組權重
+    stoneRefillRate:  0.04,  // 連爆補盤：每欄（空 ≥2 格）掉一對石頭的機率
+    // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
+    cardSame2Rate:    0.60,  // 剛好 2 張同屬性
+    cardSame3Rate:    0.12,  // 3 張同屬性
     // 受擊／擊殺
     hitReact:         0.50,  // 受擊+血量（血條位移）
     hitFlash:         0.45,  // 受擊閃紅（本體疊乘紅色，1 次）
@@ -782,6 +796,11 @@ const TIMING_META = [
         ['heavyAim','重擊:瞄準慢動作'], ['heavyHitStop','重擊:命中停格'], ['heavyShake','重擊:震畫面'],
         ['heavyFlash','重擊:白閃'], ['heavyDeathHold','重擊:死亡停留'],
         ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
+    { group: '石頭／抽卡', items: [
+        ['stoneW0','初盤石頭0組權重', 0, 100, 1], ['stoneW1','初盤石頭1組權重', 0, 100, 1],
+        ['stoneW2','初盤石頭2組權重', 0, 100, 1], ['stoneW3','初盤石頭3組權重', 0, 100, 1],
+        ['stoneRefillRate','補盤每欄掉一對石頭機率', 0, 1, 0.01],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01]] },
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
         ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
@@ -809,7 +828,8 @@ const TIMING_RANGE = {};
 TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !== undefined ? it[2] : 0, it[3] !== undefined ? it[3] : 5]; }));
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
-    'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale']);
+    'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
+    'stoneW0', 'stoneW1', 'stoneW2', 'stoneW3', 'stoneRefillRate', 'cardSame2Rate', 'cardSame3Rate']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1034,7 +1054,7 @@ function normalAttack(elemId, count, level) {
 }
 
 // 改版 2026-10-13：卡牌基礎攻擊力（依星等），卡面顯示＝基礎＋本局消除顆數
-const CARD_BASE_ATK = { 1: 1, 2: 3, 3: 5, 4: 10, 5: 15 };
+const CARD_BASE_ATK = { 1: 2, 2: 4, 3: 7, 4: 12, 5: 17 };   // 改版 2026-10-14：加入石頭後上調（原 1/3/5/10/15）
 function cardBaseAtk(card) { return CARD_BASE_ATK[card.level] || 1; }
 // 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
 const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
@@ -1345,6 +1365,27 @@ function drawDeathOrb(x, y, color, alpha) {
     ctx.restore();
 }
 
+// 石頭投放（改版 2026-10-14）：依權重抽組數，每組 2 顆相鄰（橫或直）；BG 不出
+function placeStonePairs(b) {
+    if (isBG) return;
+    const w = [TIMING.stoneW0, TIMING.stoneW1, TIMING.stoneW2, TIMING.stoneW3].map(x => Math.max(0, x || 0));
+    const tot = w.reduce((a, x) => a + x, 0);
+    if (tot <= 0) return;
+    let r = Math.random() * tot, groups = 0;
+    while (groups < 3 && r >= w[groups]) { r -= w[groups]; groups++; }
+    for (let g = 0; g < groups; g++) {
+        for (let tries = 0; tries < 40; tries++) {
+            const c = Math.floor(Math.random() * COLS), r0 = Math.floor(Math.random() * ROWS);
+            const horiz = Math.random() < 0.5;
+            const c2 = horiz ? c + 1 : c, r2 = horiz ? r0 : r0 + 1;
+            if (c2 >= COLS || r2 >= ROWS) continue;
+            if (b[c][r0].id === STONE_ID || b[c2][r2].id === STONE_ID) continue;
+            b[c][r0].id = STONE_ID; b[c2][r2].id = STONE_ID;
+            break;
+        }
+    }
+}
+
 function generateRandomBoard(initialLight = false) {
     let newBoard = [];
     for (let c = 0; c < COLS; c++) {
@@ -1377,22 +1418,37 @@ function resetBoardVisualState() {
     colBounce = Array(COLS).fill(0);
 }
 
+// 抽卡牌型（改版 2026-10-14）：先決定「3 張同／剛好 2 張同／全不同」，再抽屬性 → 同屬性機率高於純隨機
+// 每個屬性 CARD_BOSS_RATE 機率為雷霆/聖心，雷霆與聖心仍不同時出現
+const CARD_BOSS_RATE = 0.11;
+function drawOneCardElem() {
+    if (Math.random() < CARD_BOSS_RATE) return Math.random() < 0.5 ? 1 : 2;
+    const normal = [0, 3, 4, 5];
+    return normal[Math.floor(Math.random() * normal.length)];
+}
+function drawCardElemPattern() {
+    const ok = (e, used) => !used.includes(e) && !((e === 1 && used.includes(2)) || (e === 2 && used.includes(1)));
+    const pickNew = used => {
+        for (let k = 0; k < 100; k++) { const e = drawOneCardElem(); if (ok(e, used)) return e; }
+        return [0, 3, 4, 5].find(e => !used.includes(e));
+    };
+    const r = Math.random();
+    if (r < TIMING.cardSame3Rate) { const e = drawOneCardElem(); return [e, e, e]; }
+    if (r < TIMING.cardSame3Rate + TIMING.cardSame2Rate) {
+        const a = drawOneCardElem(), b = pickNew([a]);
+        return shuffled([a, a, b]);
+    }
+    const a = drawOneCardElem(), b = pickNew([a]), c = pickNew([a, b]);
+    return [a, b, c];
+}
+
 function generateCards() {
     cards = [];
 
-    // 改版 2026-10-13：3 張各自獨立抽屬性，可重複（可能 2 張或 3 張同屬性 → 集中打同一隻怪）
-    // 每張 CARD_BOSS_RATE 機率為雷霆/聖心（約維持舊版「每局 30% 有 Boss 卡」），雷霆與聖心仍不同時出現
-    const CARD_BOSS_RATE = 0.11;
-    let bossElem = -1;
+    // 改版 2026-10-14：屬性依牌型抽（見 drawCardElemPattern），同屬性卡集中打同一隻怪
+    const patternElems = drawCardElemPattern();
     while (cards.length < 3) {
-        let elemId;
-        if (Math.random() < CARD_BOSS_RATE) {
-            if (bossElem < 0) bossElem = Math.random() < 0.5 ? 1 : 2;
-            elemId = bossElem;
-        } else {
-            const normal = [0, 3, 4, 5];
-            elemId = normal[Math.floor(Math.random() * normal.length)];
-        }
+        let elemId = patternElems[cards.length];
 
         let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
         let def = defs[Math.floor(Math.random() * defs.length)];
@@ -1442,7 +1498,7 @@ function collectLineRuns(groups, start, end, fixed, horizontal) {
     const mkCell = i => horizontal ? { c: i, r: fixed } : { c: fixed, r: i };
     // 本段內出現的所有實色（WILD 不算色，需靠實色帶起連線）
     const colors = new Set();
-    for (let i = start; i < end; i++) { const id = at(i).id; if (id !== WILD_ID) colors.add(id); }
+    for (let i = start; i < end; i++) { const id = at(i).id; if (id !== WILD_ID && id !== STONE_ID) colors.add(id); }   // 石頭不連線、會擋線
     colors.forEach(color => {
         let i = start;
         while (i < end) {
@@ -1514,6 +1570,11 @@ function applyGravity() {
                 scale: 1,
                 isMatched: false
             };
+        }
+        // 補盤成對掉石頭（改版 2026-10-14）：該欄空 ≥2 格時有機率，上下相鄰一對
+        if (!isBG && emptySpaces >= 2 && Math.random() < TIMING.stoneRefillRate) {
+            const i = Math.floor(Math.random() * (emptySpaces - 1));
+            board[c][i].id = STONE_ID; board[c][i + 1].id = STONE_ID;
         }
     }
 }
@@ -1789,6 +1850,9 @@ function prepareTargetBeamEffect(effect) {
     let targets = [];
     const nonCardElems = getNonCardElems();
     const presentNonCard = nonCardElems.filter(id => board.some(col => col.some(gem => gem.id === id)));
+    // 改版 2026-10-14：盤面有石頭 → 清除／轉換優先把石頭當成其中一種
+    const hasStone = board.some(col => col.some(gem => gem.id === STONE_ID));
+    const pickTypes = n => hasStone ? [STONE_ID, ...shuffled(presentNonCard).slice(0, Math.max(0, n - 1))] : shuffled(presentNonCard).slice(0, n);
 
     if (effect.type === 2) {
         const count = effect.gemCount || 5;
@@ -1796,15 +1860,15 @@ function prepareTargetBeamEffect(effect) {
         if (!candidates.length) candidates = allBoardCells((cell, gem) => gem.id !== WILD_ID);
         targets = shuffled(candidates).slice(0, count).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 3) {
-        const types = shuffled(presentNonCard).slice(0, effect.convertCount || presentNonCard.length);
+        const types = pickTypes(effect.convertCount || presentNonCard.length + 1);
         targets = allBoardCells((cell, gem) => types.includes(gem.id)).map(cell => ({ ...cell, newId: randomCardElem() }));
     } else if (effect.type === 8) {
         const cardElems = [...getCardElems()];
-        if (effect.fromElemId === undefined) effect.fromElemId = presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
+        if (effect.fromElemId === undefined) effect.fromElemId = hasStone ? STONE_ID : presentNonCard.length ? presentNonCard[Math.floor(Math.random() * presentNonCard.length)] : null;
         if (effect.toElemId === undefined) effect.toElemId = cardElems.length ? cardElems[Math.floor(Math.random() * cardElems.length)] : randomCardElem();
         targets = effect.fromElemId === null ? [] : allBoardCells((cell, gem) => gem.id === effect.fromElemId).map(cell => ({ ...cell, newId: effect.toElemId }));
     } else if (effect.type === 4) {
-        const types = shuffled(presentNonCard).slice(0, effect.clearCount || presentNonCard.length);
+        const types = pickTypes(effect.clearCount || presentNonCard.length + 1);
         targets = allBoardCells((cell, gem) => types.includes(gem.id));
         if (!targets.length) targets = shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, effect.clearCount || 1);
     }
@@ -2576,8 +2640,8 @@ function drawKillEffect() {
         } else if (eff.type === 4 && eff.clearCount) {
             ctx.fillText(`清除 ${eff.clearCount} 種非屬性`, cx, cy + 68);
         } else if (eff.type === 8 && eff.fromElemId !== null) {
-            let fromIcon = ELEMENTS[eff.fromElemId].icon;
-            let toIcon   = ELEMENTS[eff.toElemId].icon;
+            let fromIcon = elemInfo(eff.fromElemId).icon;
+            let toIcon   = elemInfo(eff.toElemId).icon;
             ctx.fillText(`${fromIcon}  →  ${toIcon}`, cx, cy + 68);
         } else if (eff.type === 9) {
             ctx.fillText('待開獎...', cx, cy + 68);
@@ -2726,6 +2790,7 @@ function startSpin() {
                 scale: 1,
                 isMatched: false
             };
+    placeStonePairs(board);   // 新盤面投放石頭（成對）
     colStates = Array(COLS).fill(2);                    // 2 = 掉落中
     colOffsets = Array(COLS).fill(0);                   // spin 入場改用每顆圖示自己的 yOffset
     colBounce = Array(COLS).fill(0);
@@ -3438,6 +3503,33 @@ function drawAccumulator() {
     ctx.restore();
 }
 
+// 石頭圖示（改版 2026-10-14，程式繪製）：灰色不規則岩塊＋高光＋裂紋，形狀固定
+const STONE_SHAPE = [[0.14,0.38],[0.30,0.14],[0.58,0.10],[0.84,0.24],[0.92,0.52],[0.80,0.84],[0.50,0.92],[0.20,0.82],[0.08,0.60]];
+function drawStoneGem(x, y, s) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+    const g = ctx.createLinearGradient(x, y, x + s, y + s);
+    g.addColorStop(0, '#b8b2ab'); g.addColorStop(0.55, '#78716c'); g.addColorStop(1, '#44403c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    STONE_SHAPE.forEach(([px, py], i) => i ? ctx.lineTo(x + px * s, y + py * s) : ctx.moveTo(x + px * s, y + py * s));
+    ctx.closePath(); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = '#292524'; ctx.lineWidth = Math.max(1.5, s * 0.03); ctx.stroke();
+    // 高光
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(x + 0.30 * s, y + 0.20 * s); ctx.lineTo(x + 0.56 * s, y + 0.16 * s); ctx.lineTo(x + 0.44 * s, y + 0.34 * s); ctx.lineTo(x + 0.22 * s, y + 0.40 * s);
+    ctx.closePath(); ctx.fill();
+    // 裂紋
+    ctx.strokeStyle = 'rgba(28,25,23,0.85)'; ctx.lineWidth = Math.max(1, s * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(x + 0.62 * s, y + 0.30 * s); ctx.lineTo(x + 0.54 * s, y + 0.50 * s); ctx.lineTo(x + 0.64 * s, y + 0.62 * s); ctx.lineTo(x + 0.56 * s, y + 0.80 * s);
+    ctx.moveTo(x + 0.54 * s, y + 0.50 * s); ctx.lineTo(x + 0.36 * s, y + 0.58 * s);
+    ctx.stroke();
+    ctx.restore();
+}
+
 function drawGrid() {
     // 盤面底圖（暗格 7×5）。未載入時退回原本深色框
     if (imgReady(IMG.reelbot)) {
@@ -3511,6 +3603,7 @@ function drawGrid() {
         let drawX = x + pad + (maxS - s) / 2;
         let drawY = y + pad + (maxS - s) / 2;
 
+        if (gem.id === STONE_ID) { drawStoneGem(drawX, drawY, s); return; }   // 石頭（程式繪製）
         let img = gemImg(gem.id);
 
         if (imgReady(img)) {
