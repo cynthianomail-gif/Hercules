@@ -719,6 +719,7 @@ const DEFAULT_TIMING = {
     // 旺局（2026-10-14，非時間值）：模擬伺服器排盤 — 每局有機率是旺局，落下的圖示偏向手上卡牌的屬性
     hotSpinRate:      0.25,  // 旺局機率
     hotBias:          2.5,   // 旺局時卡牌屬性圖示的權重倍率（其他屬性 = 1）
+    hotNoStone:       1,     // 旺局不出石頭（2026-10-14 試）：1 = 旺局整局不投石頭、補盤也不補；0 = 照常
     // 星等權重（2026-10-14，非時間值）：抽卡時 1~5 星的出現權重
     starW1:           15,
     starW2:           20,
@@ -823,7 +824,7 @@ const TIMING_META = [
         ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
-        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1],
+        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1],
         ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
@@ -860,7 +861,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'cardSame2Rate', 'cardSame3Rate',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1440,6 +1441,7 @@ function drawDeathOrb(x, y, color, alpha) {
 // 石頭投放（2026-10-14）：依「石頭占盤面比例」成對灑到目標顆數，每組 2 顆相鄰（橫或直，像奧丁）；BG 不出
 function placeStonePairs(b) {
     if (isBG) return;
+    if (isHotSpin && TIMING.hotNoStone) return;   // 旺局不出石頭（2026-10-14 試）
     const share = Math.max(0, Math.min(0.6, TIMING.stoneShare || 0));
     const pairs = Math.round(share * COLS * ROWS / 2);
     for (let g = 0; g < pairs; g++) {
@@ -1680,7 +1682,8 @@ function applyGravity() {
             };
         }
         // 補盤成對掉石頭（2026-10-14）：機率依 stoneShare × 補幾格，讓連爆後石頭比例大致維持；stoneRefillScale 可調
-        const refillScale = mechPlayedThisSpin ? (TIMING.stoneAfterMech === undefined ? 0 : TIMING.stoneAfterMech) : (TIMING.stoneRefillScale === undefined ? 1 : TIMING.stoneRefillScale);
+        const refillScale = (isHotSpin && TIMING.hotNoStone) ? 0   // 旺局不出石頭：補盤也不補
+            : mechPlayedThisSpin ? (TIMING.stoneAfterMech === undefined ? 0 : TIMING.stoneAfterMech) : (TIMING.stoneRefillScale === undefined ? 1 : TIMING.stoneRefillScale);
         const pStone = Math.min(1, (TIMING.stoneShare || 0) * emptySpaces / 2 * refillScale);
         if (!isBG && !cardOnly && emptySpaces >= 2 && Math.random() < pStone) {
             const i = Math.floor(Math.random() * (emptySpaces - 1));
