@@ -2258,6 +2258,8 @@ function finishKillEffect() {
     // 補怪時機（企劃 2026-10-14）：攻擊途中插播的機制播完「不補怪」，等這輪三張卡都打完再一起補；
     // 攻擊全部結束後才播的機制（FG/BG 等）照舊播完就補
     if (!killReturnToAttack || !TIMING.respawnAfterRound) respawnKillSource(finishedEffect);
+    // 清除類機制播完先補盤（2026-10-14）：不然盤面留著洞，下一張卡的機制在有洞的盤上挑格子，三張打完補盤一落整塊被沖散
+    if (killReturnToAttack && finishedEffect && finishedEffect.type === 4) applyGravity();
     if (killReturnToAttack) {
         // 攻擊途中插播的擊殺機制：播完回到 ATTACKING 接下一張卡；補盤／連爆判定等所有卡打完再一起做
         if (killNowQueue.length > 0) { startKillEffect(killNowQueue.shift()); return; }
