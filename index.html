@@ -728,6 +728,7 @@ const DEFAULT_TIMING = {
     maxAttackRounds:  0,     // 實驗：每局最多幾波攻擊（0 = 不限；2 = 機制生的連線只能再打一波）
     rechargeRate:     1,     // 實驗：第一波攻擊之後，連線幫卡牌充能的倍率（1 = 照常；0.5 = 減半；0 = 不充）
     respawnHpUp:      0,     // 實驗：同一局補上來的怪血量加成（每補一隻多 +N 倍，0 = 不加；1 = 第一隻 2 倍血、第二隻 3 倍）
+    noRespawnInSpin:  0,     // 實驗：1 = 怪死掉這局不補，下一局開始才換新怪（同一隻怪一局最多死一次；玩家看得懂的規則）
     // 星等權重（2026-10-14，非時間值）：抽卡時 1~5 星的出現權重
     starW1:           15,
     starW2:           20,
@@ -837,7 +838,7 @@ const TIMING_META = [
         ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
-        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25],
+        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1],
         ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
@@ -874,7 +875,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'cardSame2Rate', 'cardSame3Rate',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardSame2Rate', 'cardSame3Rate',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -2340,6 +2341,7 @@ function startDirectScoreEffect(effect) {
     });
 }
 function respawnDeadSmallMonsters() {
+    if (TIMING.noRespawnInSpin) return;   // 實驗：怪死掉這局不補（下一局 startSpin 才換新怪）
     [1, 2, 4, 5].forEach(idx => {
         if (monsters[idx].isDead) respawnMonster(idx, false);
     });
@@ -2356,6 +2358,7 @@ function startKillSourceFade(effect) {
     if (monster && monster.isDead) monster.deathT = TF(TIMING.deathSwitch) + (effect.heavy ? TF(TIMING.heavyDeathHold) : 0) + 1;
 }
 function respawnKillSource(effect) {
+    if (TIMING.noRespawnInSpin) return;   // 實驗：怪死掉這局不補
     const idx = effect && effect.monIdx;
     if (Number.isInteger(idx) && isSmallMonsterIndex(idx)) {
         if (monsters[idx] && monsters[idx].isDead) respawnMonster(idx, false);
@@ -3005,6 +3008,7 @@ function startSpin() {
         cards = [];
     } else if (isFG) {
         // FG 模式：血量跨局保留；卡牌與小怪屬性照 NG 規則每局重抽（企劃決定：跟 NG 一樣，玩家不用重學）
+        if (TIMING.noRespawnInSpin) [1, 2, 4, 5].forEach(idx => { if (monsters[idx].isDead) respawnMonster(idx, false); });   // 上一局死掉的怪此時換新
         generateCards();
         assignMonsterElemsFromCards();
     } else {
@@ -3013,6 +3017,7 @@ function startSpin() {
         generateCards();
         [1, 2, 4, 5].forEach(idx => {
             let m = monsters[idx];
+            if (TIMING.noRespawnInSpin && m.isDead) { respawnMonster(idx, false); return; }   // 上一局死掉的怪此時換新
             m.hp = m.maxHp; m.isDead = false; m.shake = 0;
         });
         assignMonsterElemsFromCards();   // 小怪屬性從手上卡抽（企劃書規則，2026-10-14）
