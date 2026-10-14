@@ -730,6 +730,7 @@ const DEFAULT_TIMING = {
     respawnHpUp:      0,     // 實驗：同一局補上來的怪血量加成（每補一隻多 +N 倍，0 = 不加；1 = 第一隻 2 倍血、第二隻 3 倍）
     noRespawnInSpin:  0,     // 實驗：1 = 怪死掉這局不補，下一局開始才換新怪（同一隻怪一局最多死一次；玩家看得懂的規則）
     cardElemBias:     1,     // 實驗：一般局（非旺局）卡牌屬性圖示的落圖權重（1 = 跟其他屬性一樣；0.8 = 少兩成 → 卡牌比較難充能）
+    fgNoStone:        1,     // FG 不出石頭（2026-10-14 晚 ned 定案）：FG 內開盤不投石頭、補盤也不補
     fgFixedMonsters:  0,     // 實驗（FG）：1 = FG 進場時決定四隻小怪的屬性，之後 10 局不再重抽，讓「血量不重置」真的能累積打死
     fgCardsFromMonsters: 0,  // 實驗（FG）：1 = FG 的卡牌只從場上四隻小怪的屬性抽（每張卡一定有目標）
     chargeMinLine:    3,     // 實驗：連線至少幾顆才幫卡牌充能／觸發攻擊（3 = 現況；4 = 三顆只給分、四顆起才打怪）
@@ -846,7 +847,7 @@ const TIMING_META = [
         ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
-        ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
+        ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
         ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
@@ -883,7 +884,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1512,6 +1513,7 @@ function effPlaceSmart() {
 }
 function placeStonePairs(b) {
     if (isBG) return;
+    if (isFG && TIMING.fgNoStone) return;         // FG 不出石頭（2026-10-14 晚定案）
     if (isHotSpin && TIMING.hotNoStone) return;   // 旺局不出石頭（2026-10-14 試）
     const share = effStoneShare();
     const pairs = Math.round(share * COLS * ROWS / 2);
@@ -1757,7 +1759,7 @@ function applyGravity() {
             };
         }
         // 補盤成對掉石頭（2026-10-14）：機率依 stoneShare × 補幾格，讓連爆後石頭比例大致維持；stoneRefillScale 可調
-        const refillScale = (isHotSpin && TIMING.hotNoStone) ? 0   // 旺局不出石頭：補盤也不補
+        const refillScale = ((isFG && TIMING.fgNoStone) || (isHotSpin && TIMING.hotNoStone)) ? 0   // FG／旺局不出石頭：補盤也不補
             : mechPlayedThisSpin ? (TIMING.stoneAfterMech === undefined ? 0 : TIMING.stoneAfterMech) : (TIMING.stoneRefillScale === undefined ? 1 : TIMING.stoneRefillScale);
         const pStone = Math.min(1, effStoneShare() * emptySpaces / 2 * refillScale);
         if (!isBG && !cardOnly && emptySpaces >= 2 && Math.random() < pStone) {
@@ -4593,7 +4595,7 @@ function update() {
                 savedBoard = board.map(col => col.map(cell => ({ ...cell })));
                 matchHistory = [];
                 if (pendingFGBG === 'FG') {
-                    startModeTransition('🎰 FREE GAME', '怪獸血量不重置', '#064e3b', '#10b981');
+                    startModeTransition('🎰 FREE GAME', '怪獸血量不重置・沒有石頭', '#064e3b', '#10b981');
                 } else if (pendingFGBG === 'BG') {
                     startModeTransition('✨ BONUS GAME', '倍率累積不重置 × 10局', '#431407', '#f59e0b');
                 }
