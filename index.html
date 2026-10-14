@@ -1533,7 +1533,11 @@ function generateCards(elemPool = null) {
         let elemId = patternElems[cards.length];
 
         let defs = CARD_DEFINITIONS.filter(d => d.elemId === elemId);
-        const lvl = drawCardLevel();   // 星等依權重抽（2026-10-14）
+        // 星等依權重抽（2026-10-14）；同屬性的卡不能是同一張（星等不重複）
+        const usedLv = cards.filter(c => c.elemId === elemId).map(c => c.level);
+        let lvl = drawCardLevel();
+        for (let k = 0; k < 30 && usedLv.includes(lvl); k++) lvl = drawCardLevel();
+        if (usedLv.includes(lvl)) { const free = [1, 2, 3, 4, 5].filter(l => !usedLv.includes(l)); lvl = free[Math.floor(Math.random() * free.length)]; }
         let def = defs.find(d => d.level === lvl) || defs[Math.floor(Math.random() * defs.length)];
 
         let targetCount = 4;
