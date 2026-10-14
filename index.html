@@ -593,7 +593,9 @@ IMG.monArtHurt = {
 IMG.monArtDeath = {
     frontL: loadImg('assets/0708_野豬倒下.png'),
 };
-['1_1', '1_2', '1_3', '1_4', '1_5', '5_1', '0_2'].forEach(k => IMG.card[k] = loadImg(`assets/card_${k}.png`));
+['5_1', '0_2'].forEach(k => IMG.card[k] = loadImg(`assets/card_${k}.png`));
+// 雷霆五張（2026-10-14 審圖新版）：檔名刻意不沿用 card_1_N，避免瀏覽器把舊的 3 星圖快取回來
+[1, 2, 3, 4, 5].forEach(lv => IMG.card['1_' + lv] = loadImg(`assets/card_thunder_lv${lv}.png`));
 
 // 屬性 id → 檔案編號對照（新版盤面 icon 與舊版 mon_icon 檔序不同，需分開對照）
 // 盤面寶石（新版檔序）：0祕法→2 / 1雷霆→0 / 2聖心→1 / 3烈焰→3 / 4冰霜→4 / 5大地→5 / 6 WILD→6
