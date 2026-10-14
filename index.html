@@ -725,7 +725,8 @@ const DEFAULT_TIMING = {
     starW5:           10,
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
     lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
-    lv3ConvertCount:  12,    // Lv3 轉換固定顆數（石頭優先，不夠拿非本局屬性圖示補），轉成盤上最多的那個本局屬性
+    lv2ConvertCount:  8,     // Lv2 轉換顆數：石頭優先、不夠拿非本局屬性圖示補到此數（同一色）
+    lv3GenCount:      10,    // Lv3 生成顆數：一種本局圖示成塊相鄰（10→12 顆是 10 倍→50 倍的懸崖，伺服器調）
     respawnAfterRound: 0,    // 補怪時機：1 = 三張卡都打完才補；0 = 打死、機制播完馬上補（下一張同屬性卡可以接著打新怪）
     payScale:         1.0,   // 連線賠率整體倍率（石頭壓低得分率後可整體拉高；1 = 企劃書賠率表原值）
     stoneAfterMech:   0.0,   // 怪死、機制播過之後，這局補盤掉石頭的倍率（0 = 不再掉石頭，讓機制炸掉的石頭不會補回來）
@@ -820,7 +821,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv3ConvertCount','Lv3 轉換顆數', 4, 30, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertCount','Lv2 轉換顆數', 2, 20, 1], ['lv3GenCount','Lv3 生成顆數', 3, 16, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -853,7 +854,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv3ConvertCount', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertCount', 'lv3GenCount', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1333,14 +1334,14 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     ];
     let p2 = [
         () => ({ type: 1,  wildCount: rnd(4, 6) }),                        // WILD 4~6 顆
-        () => ({ type: 2,  gemCount: rnd(5, 8), cluster: true }),           // 生成一種本局圖示 5~8 顆（成塊）
+        () => ({ type: 3,  fixedCount: TIMING.lv2ConvertCount === undefined ? 8 : TIMING.lv2ConvertCount }), // 轉換 N 顆：石頭優先、不足補非本局圖示（同一色）
         () => ({ type: 4,  stoneAll: true, minCount: 10 }),                 // 清全部石頭，不足 10 顆補非本局圖示到 10
         () => ({ type: 10, multiplier: rnd(5, 15) }),                       // 直接給分 5~15
     ];
     let p3 = [
         () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆
         () => ({ type: 1,  big: true, bigCount: rnd(1, 2) }),               // 巨型 WILD 1~2 顆，盡量放中間
-        () => ({ type: 3,  stoneAll: true, minCount: 12 }),                 // 轉換全部石頭，不足補非本局圖示到至少 12 顆（同一色）
+        () => ({ type: 2,  gemCount: TIMING.lv3GenCount === undefined ? 10 : TIMING.lv3GenCount, cluster: true }), // 生成一種本局圖示 N 顆（成塊相鄰）
         () => ({ type: 10, multiplier: rnd(15, 75) }),                      // 直接給分 15~75
     ];
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
@@ -1995,10 +1996,16 @@ function prepareTargetBeamEffect(effect) {
         const count = effect.gemCount || 5;
         targets = pickAdjacent(stoneCells.concat(junkCells), count).map(cell => ({ ...cell, newId: toElem }));
     } else if (effect.type === 3) {
-        // 轉換（Lv3）：全部石頭 → 同一色；不足 minCount 顆就補非本局圖示（貼著已轉格子優先）到至少 minCount
-        const minN = effect.minCount || 12;
-        targets = stoneCells.slice();
-        if (targets.length < minN) targets = targets.concat(pickAdjacent(junkCells, minN - targets.length, targets.map(c => c.c + ',' + c.r)));
+        // 轉換：fixedCount = 剛好 N 顆（石頭優先、貼著挑，不足補非本局圖示）；stoneAll = 全部石頭、不足補到 minCount
+        if (effect.fixedCount) {
+            const n = effect.fixedCount;
+            targets = pickAdjacent(stoneCells, Math.min(n, stoneCells.length));
+            if (targets.length < n) targets = targets.concat(pickAdjacent(junkCells, n - targets.length, targets.map(c => c.c + ',' + c.r)));
+        } else {
+            const minN = effect.minCount || 12;
+            targets = stoneCells.slice();
+            if (targets.length < minN) targets = targets.concat(pickAdjacent(junkCells, minN - targets.length, targets.map(c => c.c + ',' + c.r)));
+        }
         targets = targets.map(cell => ({ ...cell, newId: toElem }));
     } else if (effect.type === 4) {
         if (effect.stoneAll) {
