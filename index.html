@@ -720,6 +720,14 @@ const DEFAULT_TIMING = {
     hotSpinRate:      0.25,  // 旺局機率
     hotBias:          2.5,   // 旺局時卡牌屬性圖示的權重倍率（其他屬性 = 1）
     hotNoStone:       1,     // 旺局不出石頭（2026-10-14 試）：1 = 旺局整局不投石頭、補盤也不補；0 = 照常
+    rtpControl:       1,     // RTP 控分（模擬正式版 server，2026-10-14）：1 = 開。累計吐分超過目標就「咬」（不旺局、石頭加量、機制隨機放、機制取最小值、卡牌屬性變少）；低於目標就「補」（必旺局、石頭減量、機制貼著放、機制取最大值）
+    rtpTarget:        98.5,  // RTP 目標（%）
+    rtpBand:          20,    // 容許帶（押注倍數）：差距在 ±此值內不咬不補
+    rtpBiteStone:     0.08,  // 咬的時候石頭比例加多少（補的時候減多少）
+    rtpColdBias:      0.6,   // 咬的時候卡牌屬性圖示的權重（<1 = 變少，卡牌比較充不滿）
+    maxAttackRounds:  0,     // 實驗：每局最多幾波攻擊（0 = 不限；2 = 機制生的連線只能再打一波）
+    rechargeRate:     1,     // 實驗：第一波攻擊之後，連線幫卡牌充能的倍率（1 = 照常；0.5 = 減半；0 = 不充）
+    respawnHpUp:      0,     // 實驗：同一局補上來的怪血量加成（每補一隻多 +N 倍，0 = 不加；1 = 第一隻 2 倍血、第二隻 3 倍）
     // 星等權重（2026-10-14，非時間值）：抽卡時 1~5 星的出現權重
     starW1:           15,
     starW2:           20,
@@ -826,7 +834,7 @@ const TIMING_META = [
         ['refillFastScale','無ATK補盤倍率(×)', 0.1, 1, 0.05]] },
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
-        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1],
+        ['hotSpinRate','旺局機率', 0, 1, 0.01], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25],
         ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
@@ -863,7 +871,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'cardSame2Rate', 'cardSame3Rate',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'cardSame2Rate', 'cardSame3Rate',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'placeSmart', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1232,6 +1240,11 @@ let statToggleRects = [];    // 統計面板內開關按鈕的點擊區域（繪
 let stats = { spins: 0, hits: 0, fireSpins: 0, killSpins: 0, kills: { 1: 0, 2: 0, 3: 0, 4: 0, JP: 0 }, fg: 0, bg: 0, hotSpins: 0 };
 let spinHadFire = false, spinHadKill = false;   // 本局是否有卡出手／有怪死（統計用，2026-10-14）
 let isHotSpin = false;                           // 本局是否為旺局：落下圖示偏向卡牌屬性（2026-10-14）
+let rtpMode = 'off';                             // RTP 控分本局模式：off / neutral / bite（咬）/ feed（補）
+let rtpForceMode = null;                         // 測試用：強制模式（bite / feed / neutral）
+let rtpBetSum = 0;                               // 累計押注（只算 NG 局；FG/BG 不扣錢）
+let attackRoundsThisSpin = 0;                    // 本局已打過幾波攻擊（實驗旋鈕 maxAttackRounds / rechargeRate 用）
+let respawnsThisSpin = 0;                        // 本局補了幾隻怪（實驗旋鈕 respawnHpUp 用）
 let mechPlayedThisSpin = false;                  // 本局已播過擊殺機制 → 之後補盤掉石頭倍率改用 stoneAfterMech（2026-10-14）
 let spinMaxKillLv = 0;                           // 本局打死的最高階小怪（擊殺保底用，2026-10-14）
 let refillCardOnly = false;                      // 清除機制之後的那次補盤只補本局屬性、不掉石頭（2026-10-14）
@@ -1357,10 +1370,10 @@ function getMonsterLevel(m) {
 
 // 各等級對應的擊殺效果池，隨機抽一個
 function pickKillEffect(level, fromX, fromY, canFGBG) {
-    // 機制池（企劃 2026-10-14 定案版）
-    const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+    // 機制池（企劃 2026-10-14 定案版）；RTP 控分：咬 → 範圍取最小、補 → 取最大（模擬 server 挑結果）
+    const rnd = (lo, hi) => rtpMode === 'bite' ? lo : rtpMode === 'feed' ? hi : lo + Math.floor(Math.random() * (hi - lo + 1));
     let p1 = [
-        () => ({ type: 1,  wildCount: rnd(2, 3) }),                        // WILD 2~3 顆，可蓋石頭，放在能連線的位置
+        () => ({ type: 1,  wildCount: rnd(3, 4) }),                        // WILD 3~4 顆（2026-10-14 定案，原 2~3），可蓋石頭，放在能連線的位置
         () => ({ type: 4,  stoneAll: true, topUpIf: 5, minCount: 5 }),      // 清全部石頭；石頭不足 5 顆就多清非本局圖示到 5 顆
         () => ({ type: 10, multiplier: rnd(3, 8) }),                        // 直接給分 3~8
     ];
@@ -1375,7 +1388,7 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
         () => ({ type: 1,  big: true, bigCount: 2 }),                       // 巨型 WILD 2 顆，盡量放中間
         () => { const lo = TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, hi = TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax;
                 return { type: 2, gemCount: rnd(lo, hi), gemCount2: rnd(lo, hi), gemColors: TIMING.lv3GenColors === undefined ? 1 : TIMING.lv3GenColors, cluster: true }; }, // 生成本局圖示 N 顆成塊（可蓋石頭）；lv3GenColors=2 時兩種顏色各自成塊
-        () => ({ type: 10, multiplier: rnd(20, 75) }),                      // 直接給分 20~75
+        () => ({ type: 10, multiplier: rnd(15, 40) }),                      // 直接給分 15~40（2026-10-14 定案，原 20~75）
     ];
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
@@ -1437,11 +1450,14 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     // 補怪屬性從手上卡抽（2026-10-14）
     let newElem = fixedElem >= 0 ? fixedElem : drawMonsterElemFromCards();
     let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
+    // 實驗旋鈕 respawnHpUp：同一局補上來的怪更硬（只加 hp，maxHp 不動，等級判定照舊）
+    let hpNow = blocks;
+    if (!showEscape) { respawnsThisSpin++; if ((TIMING.respawnHpUp || 0) > 0) hpNow = Math.round(blocks * (1 + TIMING.respawnHpUp * respawnsThisSpin)); }
     // 外觀依等級綁定，且不替換成相同外觀（企劃書）
     let md = getRandomMonsterData(levelFromHp(blocks), m.name);
     monsters[idx] = {
         side: m.side, yIndex: m.yIndex,
-        elemId: newElem, hp: blocks, maxHp: blocks,
+        elemId: newElem, hp: hpNow, maxHp: blocks,
         name: md.name, isDead: false, shake: 0,
         jackpot: 0, reward: 0,
         flashT: 0, fadeIn: TF(TIMING.respawnFade)   // 更換怪獸淡入（節奏總表 0.4s）
@@ -1462,10 +1478,19 @@ function drawDeathOrb(x, y, color, alpha) {
 }
 
 // 石頭投放（2026-10-14）：依「石頭占盤面比例」成對灑到目標顆數，每組 2 顆相鄰（橫或直，像奧丁）；BG 不出
+// RTP 控分用的有效值：咬 → 石頭加量、隨機放；補 → 石頭減量、貼著放
+function effStoneShare() {
+    const d = TIMING.rtpBiteStone === undefined ? 0.08 : TIMING.rtpBiteStone;
+    const base = TIMING.stoneShare || 0;
+    return Math.max(0, Math.min(0.6, rtpMode === 'bite' ? base + d : rtpMode === 'feed' ? base - d : base));
+}
+function effPlaceSmart() {
+    return rtpMode === 'bite' ? 0 : rtpMode === 'feed' ? 1 : TIMING.placeSmart;
+}
 function placeStonePairs(b) {
     if (isBG) return;
     if (isHotSpin && TIMING.hotNoStone) return;   // 旺局不出石頭（2026-10-14 試）
-    const share = Math.max(0, Math.min(0.6, TIMING.stoneShare || 0));
+    const share = effStoneShare();
     const pairs = Math.round(share * COLS * ROWS / 2);
     for (let g = 0; g < pairs; g++) {
         for (let tries = 0; tries < 60; tries++) {
@@ -1482,8 +1507,11 @@ function placeStonePairs(b) {
 
 // 盤面落圖（2026-10-14）：旺局時卡牌屬性權重 × hotBias（模擬伺服器排盤），其餘均勻
 function drawBoardElem() {
-    if (!isHotSpin || isBG || !cards.length) return Math.floor(Math.random() * 6);
-    const bias = Math.max(1, TIMING.hotBias || 1);
+    if (isBG || !cards.length) return Math.floor(Math.random() * 6);
+    let bias = 1;
+    if (isHotSpin) bias = Math.max(1, TIMING.hotBias || 1);                                      // 旺局：卡牌屬性變多
+    else if (rtpMode === 'bite') bias = TIMING.rtpColdBias === undefined ? 0.6 : TIMING.rtpColdBias; // 咬：卡牌屬性變少
+    if (bias === 1) return Math.floor(Math.random() * 6);
     const cardSet = new Set(cards.map(c => c.elemId));
     const w = [0, 1, 2, 3, 4, 5].map(e => cardSet.has(e) ? bias : 1);
     const tot = w.reduce((a, x) => a + x, 0);
@@ -1707,7 +1735,7 @@ function applyGravity() {
         // 補盤成對掉石頭（2026-10-14）：機率依 stoneShare × 補幾格，讓連爆後石頭比例大致維持；stoneRefillScale 可調
         const refillScale = (isHotSpin && TIMING.hotNoStone) ? 0   // 旺局不出石頭：補盤也不補
             : mechPlayedThisSpin ? (TIMING.stoneAfterMech === undefined ? 0 : TIMING.stoneAfterMech) : (TIMING.stoneRefillScale === undefined ? 1 : TIMING.stoneRefillScale);
-        const pStone = Math.min(1, (TIMING.stoneShare || 0) * emptySpaces / 2 * refillScale);
+        const pStone = Math.min(1, effStoneShare() * emptySpaces / 2 * refillScale);
         if (!isBG && !cardOnly && emptySpaces >= 2 && Math.random() < pStone) {
             const i = Math.floor(Math.random() * (emptySpaces - 1));
             board[c][i].id = STONE_ID; board[c][i + 1].id = STONE_ID;
@@ -2009,7 +2037,7 @@ function prepareWildEffect(effect) {
             if (aNear && bNear) return (a.dist - b.dist) || (b.lineScore - a.lineScore);
             return b.lineScore - a.lineScore;
         });
-        const order = TIMING.placeSmart === 0 ? shuffled(blocks) : blocks;   // 落點 0 = 隨機放（伺服器壓分用），巨型 WILD 也照這個開關
+        const order = effPlaceSmart() === 0 ? shuffled(blocks) : blocks;   // 落點 0 = 隨機放（伺服器壓分用），巨型 WILD 也照這個開關
         for (const b of order) {
             if (effect.flights.length >= n) break;
             const cells = []; let overlap = false;
@@ -2022,7 +2050,7 @@ function prepareWildEffect(effect) {
         // 小 WILD：逐顆貪婪挑「最能讓本局屬性連線」的格子，可蓋石頭（已選的格子視為 WILD 再評下一顆）
         const wildCount = Math.min(effect.wildCount || 1, COLS * ROWS);
         const chosen = new Set();
-        if (TIMING.placeSmart === 0) {   // 隨機散放
+        if (effPlaceSmart() === 0) {   // 隨機散放
             shuffled(allBoardCells((cell, gem) => gem.id !== WILD_ID)).slice(0, wildCount).forEach((cell, i) => {
                 effect.flights.push({ cells: [{ c: cell.c, r: cell.r }], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 });
             });
@@ -2057,7 +2085,7 @@ function prepareTargetBeamEffect(effect) {
     const toElem = dominantCardElem();   // 轉換／生成的顏色：盤上最多的那個本局屬性（程式內部選法）
     // 挑格子的原則：貼著本局屬性、WILD、或已經挑到的格子優先（轉完、生完、清完比較容易連成線）
     const pickAdjacent = (pool, n, seedSet) => {
-        if (TIMING.placeSmart === 0) return shuffled(pool).slice(0, n);   // 隨機散放（伺服器壓分用）
+        if (effPlaceSmart() === 0) return shuffled(pool).slice(0, n);   // 隨機散放（伺服器壓分用）
         const out = []; const chosen = new Set(seedSet || []);
         let remain = shuffled(pool);
         while (out.length < n && remain.length) {
@@ -2958,6 +2986,8 @@ function startSpin() {
     killNowQueue = []; killReturnToAttack = false; heavyAim = null; refillFast = false; heavyPostWait = 0;
     pendingFGBG = null;
     stats.spins++;
+    if (!isFG && !isBG) rtpBetSum += betAmount;
+    attackRoundsThisSpin = 0; respawnsThisSpin = 0;
     hasHitThisSpin = false;
     coinBursts = [];
     energyParticles = [];
@@ -3003,7 +3033,13 @@ function startSpin() {
     }
 
     // 旺局判定（2026-10-14）：卡牌已抽好，本局落圖是否偏向卡牌屬性
-    isHotSpin = !isBG && Math.random() < (TIMING.hotSpinRate || 0);
+    // RTP 控分（模擬正式版 server，2026-10-14）：bank = 應吐 − 已吐（押注倍數）。欠玩家太多 → 補；吐太多 → 咬
+    if (TIMING.rtpControl && !isBG) {
+        const bankX = (rtpBetSum * ((TIMING.rtpTarget === undefined ? 98.5 : TIMING.rtpTarget) / 100) - totalScore) / Math.max(1, betAmount);
+        const band = TIMING.rtpBand === undefined ? 20 : TIMING.rtpBand;
+        rtpMode = rtpForceMode || (bankX > band ? 'feed' : bankX < -band ? 'bite' : 'neutral');
+    } else rtpMode = 'off';
+    isHotSpin = !isBG && (rtpMode === 'feed' ? true : rtpMode === 'bite' ? false : Math.random() < (TIMING.hotSpinRate || 0));
     if (isHotSpin) stats.hotSpins++;
     spinHadFire = false; spinHadKill = false; mechPlayedThisSpin = false; spinMaxKillLv = 0;
 
@@ -3195,7 +3231,7 @@ function drawStatsPanel() {
     let cx2 = sx + blockW * 1.5;
     ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
     ctx.fillText('TOTAL BET', cx2, textY1);
-    let totalBet = stats.spins * betAmount;
+    let totalBet = rtpBetSum > 0 ? rtpBetSum : stats.spins * betAmount;   // 只算 NG 局押注（FG/BG 免費）
     ctx.fillStyle = '#f1f5f9'; ctx.font = 'bold 20px sans-serif';
     ctx.fillText(totalBet, cx2, textY2);
 
@@ -3227,7 +3263,7 @@ function drawStatsPanel() {
         const pct = n => stats.spins > 0 ? Math.round(n / stats.spins * 100) : 0;
         const k = stats.kills;
         ctx.fillStyle = '#cbd5e1'; ctx.font = '13px sans-serif';
-        ctx.fillText(`出手局 ${pct(stats.fireSpins)}%　擊殺局 ${pct(stats.killSpins)}%　殺 Lv1 ${k[1]}／Lv2 ${k[2]}／Lv3 ${k[3]}／Lv4 ${k[4]}／JP ${k.JP}　FG ${stats.fg}　BG ${stats.bg}　旺局 ${pct(stats.hotSpins)}%　石頭 ${Math.round((TIMING.stoneShare || 0) * 100)}%`, sx + sw / 2, sy + 67);
+        ctx.fillText(`出手局 ${pct(stats.fireSpins)}%　擊殺局 ${pct(stats.killSpins)}%　殺 Lv1 ${k[1]}／Lv2 ${k[2]}／Lv3 ${k[3]}／Lv4 ${k[4]}／JP ${k.JP}　FG ${stats.fg}　BG ${stats.bg}　旺局 ${pct(stats.hotSpins)}%　石頭 ${Math.round((TIMING.stoneShare || 0) * 100)}%　RTP控 ${rtpMode === 'bite' ? '咬' : rtpMode === 'feed' ? '補' : rtpMode === 'neutral' ? '中' : '關'}`, sx + sw / 2, sy + 67);
     }
 
     // === 展示用顯示開關（面板下方一排，可點擊切換）===
@@ -3325,7 +3361,7 @@ function monsterArtCenter(m) {
 
 // === Boss（宙斯／赫拉）血量：數字槽與血條凹槽皆烙印在 jp_num_02 框上，徽章＋數字＋jp_hp 銀條對位畫入 ===
 function drawBossPlate(m, idx, left) {
-    const ratio = Math.max(0, m.hp / m.maxHp);
+    const ratio = Math.min(1, Math.max(0, m.hp / m.maxHp));
     const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
     const o = left ? LAYOUT.bossL : LAYOUT.bossR;
     const dx = (left ? o.x - 126 : o.x - 1084), dy = o.y - 116;   // 調校面板微調量（預設 0）
@@ -3417,7 +3453,7 @@ function drawMonsters() {
         }
 
         // 細血條：hg_bot 底軌 + hg_progress 銀色填充（素材未載入退回程式繪製）
-        const ratio = Math.max(0, m.hp / m.maxHp);
+        const ratio = Math.min(1, Math.max(0, m.hp / m.maxHp));
         const bty = cy - barH / 2;
         if (imgReady(IMG.hgBot)) ctx.drawImage(IMG.hgBot, barX, bty, barW, barH);
         else drawRoundedRect(barX, bty, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
@@ -4254,7 +4290,7 @@ function updatePendingCardUpdates() {
         }
         const card = u.card;
         if (card) {
-            card.atk += u.damage;
+            card.atk += (attackRoundsThisSpin > 0 && TIMING.rechargeRate !== undefined && TIMING.rechargeRate !== 1) ? Math.round(u.damage * TIMING.rechargeRate) : u.damage;   // 實驗旋鈕 rechargeRate
             card.atkPunchT = TF(TIMING.atkUpdate);
             if (u.isCrit) card.atkCrit = true;
             if (u.effectLabel) card.atkLabel = u.effectLabel;
@@ -4667,6 +4703,8 @@ function update() {
                 delete elemGroups[eid];
         });
 
+        // 實驗旋鈕：每局最多幾波攻擊（之後的連線只給分、不再出手）
+        if ((TIMING.maxAttackRounds || 0) > 0 && attackRoundsThisSpin >= TIMING.maxAttackRounds) elemGroups = {};
         pendingRounds = [];
         // 卡牌攻擊順序：由左到右逐張出手（改版 2026-10-13：同屬性重複卡各自出手，集中打同一隻怪）
         cards.forEach((c, i) => {
@@ -4675,6 +4713,7 @@ function update() {
         });
 
         if (pendingRounds.length > 0) {
+            attackRoundsThisSpin++;
             fireAttackRound(pendingRounds.shift());
             currentState = STATE.ATTACKING;
         } else {
