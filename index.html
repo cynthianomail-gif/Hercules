@@ -2174,6 +2174,7 @@ function clearTargetIcons(effect) {
         gem.isMatched = false;
         gem.lit = false;
     });
+    if (effect.cardOnlyRefill) refillCardOnly = true;   // 格子真的清掉了，下一次補盤只補本局屬性、不掉石頭
 }
 function startDirectScoreEffect(effect) {
     if (effect._scoreStarted) return;
@@ -2287,7 +2288,6 @@ function applyKillEffect(effect) {
     } else if (effectType === 4) {
         // 清除（2026-10-14）：清掉 prepareTargetBeamEffect 決定的目標格（含石頭），煙霧消散後移除
         (effect.targets || []).forEach(t => { const g = board[t.c] && board[t.c][t.r]; if (g && g.id !== -1) g.isMatched = true; });
-        if (effect.cardOnlyRefill) refillCardOnly = true;   // 清完的那次補盤只補本局屬性、不掉石頭
 
     } else if (effectType === 5) {
         // FG：收集到左上欄位，等盤面連爆結束後才觸發轉場
