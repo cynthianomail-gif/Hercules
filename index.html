@@ -2361,11 +2361,25 @@ function startDirectScoreEffect(effect) {
         awarded: false
     });
 }
+// 補怪的屬性規則跟開局一樣（2026-10-15 ned）：補完之後每張卡還是各有一隻同屬性的小怪
+// 算法：手上卡牌屬性（可重複）扣掉還活著的小怪已經涵蓋的，剩下的缺口先補，補完還有位子才從手上屬性隨機
+function respawnElemsFor(deadIdxs) {
+    const need = cards.map(c => c.elemId);
+    [1, 2, 4, 5].forEach(i => {
+        if (deadIdxs.includes(i) || monsters[i].isDead) return;
+        const k = need.indexOf(monsters[i].elemId);
+        if (k >= 0) need.splice(k, 1);
+    });
+    const pool = cardAllElems();
+    const order = shuffled(need);
+    return deadIdxs.map((idx, k) => k < order.length ? order[k] : pool[Math.floor(Math.random() * pool.length)]);
+}
 function respawnDeadSmallMonsters() {
     if (TIMING.noRespawnInSpin) return;   // 實驗：怪死掉這局不補（下一局 startSpin 才換新怪）
-    [1, 2, 4, 5].forEach(idx => {
-        if (monsters[idx].isDead) respawnMonster(idx, false);
-    });
+    const dead = [1, 2, 4, 5].filter(idx => monsters[idx].isDead);
+    if (!dead.length) return;
+    const elems = respawnElemsFor(dead);
+    dead.forEach((idx, k) => respawnMonster(idx, false, elems[k]));
 }
 function isSmallMonsterIndex(idx) {
     return idx === 1 || idx === 2 || idx === 4 || idx === 5;
@@ -2382,7 +2396,7 @@ function respawnKillSource(effect) {
     if (TIMING.noRespawnInSpin) return;   // 實驗：怪死掉這局不補
     const idx = effect && effect.monIdx;
     if (Number.isInteger(idx) && isSmallMonsterIndex(idx)) {
-        if (monsters[idx] && monsters[idx].isDead) respawnMonster(idx, false);
+        if (monsters[idx] && monsters[idx].isDead) respawnMonster(idx, false, respawnElemsFor([idx])[0]);   // 補的屬性跟開局同規則
     } else if (pendingKillEffects.length === 0) {
         respawnDeadSmallMonsters();
     }
