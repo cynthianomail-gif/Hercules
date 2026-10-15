@@ -744,8 +744,11 @@ const DEFAULT_TIMING = {
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
     lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
     lv2ConvertMin:    10,    // Lv2 轉換：全部石頭，不足此數就多轉非本局圖示到此數（同一色）
-    lv3GenMin:        7,     // Lv3 生成顆數下限（2026-10-14 定案 7~10，原 10~15）
-    lv3GenMax:        10,    // Lv3 生成顆數上限
+    lv3GenMin:        7,     // Lv3 生成（兩種）每種顆數下限（2026-10-15 企劃書：2 種各 7~9 個）
+    lv3GenMax:        9,     // Lv3 生成（兩種）每種顆數上限
+    lv3Gen1Count:     11,    // Lv3 生成（一種）顆數（2026-10-15 企劃書新增：1 種 11 個，跟兩種的生成並列在機制池）
+    lv1ClearMin:      10,    // Lv1 清除：石頭不足此數就多清非本局圖示補到此數（2026-10-15 企劃書：至少 10 個）
+    genSmartRate:     0.3,   // 生成落點（2026-10-15 企劃書）：這個比例相鄰成塊，其餘亂撒；咬一律亂撒、補一律成塊
     lv3GenColors:     2,     // Lv3 生成幾種顏色（2026-10-14 定案 2）：1 = 一種成一塊；2 = 兩種本局屬性各自成一塊、各 lv3GenMin~Max 顆
     payCurve:         5,     // 賠率曲線（2026-10-14 晚 ned 定案：5 = 自訂表 C）：0 = 企劃書原表；1 = 區間放大（10~13 顆都算 10 倍、14 顆起 50 倍）；2 = 加過渡（11 顆 15、12 顆 25、13 顆 35、14 顆起 50）；3 = 懸崖移到 16 顆（10~15 顆都 10 倍）；4 = 階梯（10~11 顆 10，12~13／14~15／16 顆起 的倍數由下面三個旋鈕決定）
     pay12:            20,    // 階梯：12~13 顆的倍數（雷聖加倍）
@@ -852,7 +855,7 @@ const TIMING_META = [
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['wildSmartRate','WILD 貼著放的比例', 0, 1, 0.05], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3Gen1Count','Lv3 生成(一種)顆數', 3, 20, 1], ['lv1ClearMin','Lv1 清除至少顆數', 0, 20, 1], ['genSmartRate','生成成塊的比例', 0, 1, 0.05], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['wildSmartRate','WILD 貼著放的比例', 0, 1, 0.05], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
@@ -885,7 +888,7 @@ let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
     'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate',
-    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
+    'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
     return Object.prototype.hasOwnProperty.call(DEFAULT_TIMING, key) && !NON_GANTT_TIMING.has(key);
@@ -1393,28 +1396,29 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     const rnd = (lo, hi) => rtpMode === 'bite' ? lo : rtpMode === 'feed' ? hi : lo + Math.floor(Math.random() * (hi - lo + 1));
     let p1 = [
         () => ({ type: 1,  wildCount: rnd(3, 4) }),                        // WILD 3~4 顆（2026-10-14 定案，原 2~3），可蓋石頭，放在能連線的位置
-        () => ({ type: 4,  stoneAll: true, topUpIf: 5, minCount: 5 }),      // 清全部石頭；石頭不足 5 顆就多清非本局圖示到 5 顆
-        () => ({ type: 10, multiplier: rnd(3, 8) }),                        // 直接給分 3~8
+        () => { const m = TIMING.lv1ClearMin === undefined ? 10 : TIMING.lv1ClearMin; return { type: 4, stoneAll: true, topUpIf: m, minCount: m }; }, // 清全部石頭；不足 lv1ClearMin 顆就多清非本局圖示補到該數（2026-10-15：至少 10）
+        () => ({ type: 10, multiplier: rnd(3, 7) }),                        // 直接給分 3~7（2026-10-15）
     ];
     let p2 = [
-        () => ({ type: 1,  wildCount: rnd(4, 6) }),                        // WILD 4~6 顆
+        () => ({ type: 1,  wildCount: rnd(5, 6) }),                        // WILD 5~6 顆（2026-10-15，原 4~6）
         () => ({ type: 1,  big: true, bigCount: 1 }),                       // 巨型 WILD 1 顆（2026-10-14 新增）
         () => ({ type: 3,  stoneAll: true, minCount: TIMING.lv2ConvertMin === undefined ? 10 : TIMING.lv2ConvertMin }), // 轉全部石頭，不足就多轉非本局圖示到至少 N（同一色）
-        () => ({ type: 10, multiplier: rnd(8, 20) }),                       // 直接給分 8~20
+        () => ({ type: 10, multiplier: rnd(8, 15) }),                       // 直接給分 8~15（2026-10-15）
     ];
     let p3 = [
-        () => ({ type: 1,  wildCount: rnd(5, 7) }),                        // WILD 5~7 顆（2026-10-14 定案，原 7~10：原賠率表下 12 顆起 50 倍，顆數少才不會每次都爆）
+        () => ({ type: 1,  wildCount: rnd(7, 10) }),                       // WILD 7~10 顆（2026-10-15 企劃書，原 5~7）
         () => ({ type: 1,  big: true, bigCount: 2 }),                       // 巨型 WILD 2 顆，盡量放中間
         () => { const lo = TIMING.lv3GenMin === undefined ? 10 : TIMING.lv3GenMin, hi = TIMING.lv3GenMax === undefined ? 15 : TIMING.lv3GenMax;
                 return { type: 2, gemCount: rnd(lo, hi), gemCount2: rnd(lo, hi), gemColors: TIMING.lv3GenColors === undefined ? 1 : TIMING.lv3GenColors, cluster: true }; }, // 生成本局圖示 N 顆成塊（可蓋石頭）；lv3GenColors=2 時兩種顏色各自成塊
-        () => ({ type: 10, multiplier: rnd(15, 40) }),                      // 直接給分 15~40（2026-10-14 定案，原 20~75）
+        () => { const n = TIMING.lv3Gen1Count === undefined ? 11 : TIMING.lv3Gen1Count; return { type: 2, gemCount: n, gemColors: 1, cluster: true }; }, // 生成 1 種本局圖示 11 顆（2026-10-15 新增選項）
+        () => ({ type: 10, multiplier: rnd(16, 30) }),                      // 直接給分 16~30（2026-10-15）
     ];
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
     const thr = TIMING.lv4DirectAbove === undefined ? 15 : TIMING.lv4DirectAbove;
     let p4 = (canFGBG && baseX < thr)
         ? [() => ({ type: 5 }), () => ({ type: 6 })]
-        : [() => ({ type: 10, multiplier: rnd(25, 75) })];
+        : [() => ({ type: 10, multiplier: rnd(31, 75) })];   // 直接給分 31~75（2026-10-15）
     const pools = { 1: p1, 2: p2, 3: p3, 4: p4 };
     let pool = pools[level] || p1;
     let eff = pool[Math.floor(Math.random() * pool.length)]();
@@ -2134,9 +2138,12 @@ function prepareTargetBeamEffect(effect) {
         const order = [toElem].concat(Object.keys(cnt).map(Number).filter(e => e !== toElem).sort((a, b) => cnt[b] - cnt[a]));
         let pool = stoneCells.concat(junkCells);
         targets = [];
+        // 落點（2026-10-15 企劃書）：genSmartRate 的機率相鄰成塊，其餘亂撒；咬一律亂撒、補一律成塊
+        const genSmart = effPlaceSmart() !== 0 && (rtpMode === 'feed' || Math.random() < (TIMING.genSmartRate === undefined ? 0.3 : TIMING.genSmartRate));
+        effect.genSmart = genSmart;
         for (let k = 0; k < Math.min(colors, order.length); k++) {
             const n = k === 0 ? count : (effect.gemCount2 || count);
-            const picked = pickAdjacent(pool, n);
+            const picked = genSmart ? pickAdjacent(pool, n) : shuffled(pool).slice(0, n);
             const taken = new Set(picked.map(c => c.c + ',' + c.r));
             pool = pool.filter(c => !taken.has(c.c + ',' + c.r));
             targets = targets.concat(picked.map(cell => ({ ...cell, newId: order[k] })));
