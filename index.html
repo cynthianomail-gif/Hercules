@@ -1221,6 +1221,7 @@ const FORCE_MENU_ITEMS = [
     { label: '生成巨型WILD', type: 1, big: true, color: '#fbbf24' },
     { label: '生成圖示',    type: 2,           color: '#38bdf8' },
     { label: '轉換圖示',    type: 3,           color: '#a78bfa' },
+    { label: '石頭轉WILD',  type: 3, toWild: true, color: '#facc15' },
     { label: '清除圖示',    type: 4,           color: '#f87171' },
     { label: '獲得JP',      type: 'jp',        color: '#fb7185' },
     { label: 'JP噴錢結算',  type: 'jpMilestone', color: '#eab308' },
@@ -1346,6 +1347,7 @@ let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊（保留供未來測試）
 let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣（保留供未來測試）
 let forceBigWild = false;       // 強開：指定生成巨型 WILD
+let forceStoneWild = false;     // 強開：石頭轉 WILD（2026-10-15，錄影用）
 let forceCardLevel = 0;         // 強開：本局必出指定星等卡（4 / 5）
 let forceCardElem = -1;         // 強開：本局必出指定屬性卡（-1=隨機特殊屬性）
 let forceGuaranteeMatch = false; // 強開：本局保證該卡屬性形成連線（觸發攻擊）
@@ -4959,7 +4961,8 @@ function update() {
                             let effect;
                             const lvl = getMonsterLevel(p.targetMonster);
                             if (forcedEffectType > 0) {
-                                const fd = { 1:{wildCount:3}, 2:{gemCount:7}, 3:{convertCount:3}, 4:{clearCount:3}, 10:{multiplier:10} };
+                                // 強開參數對齊 2026-10-15 機制表：轉換／清除＝全部石頭（不足補到 10）、生成＝2 種各 7~9
+                                const fd = { 1:{wildCount:5}, 2:{gemCount:8, gemCount2:8, gemColors:2, cluster:true}, 3:{stoneAll:true, minCount:10}, 4:{stoneAll:true, topUpIf:10, minCount:10}, 10:{multiplier:10} };
                                 // FG/BG 強制但打死的不是 Lv.4：改用等級效果，保留 forcedEffectType 等 Lv.4 死亡
                                 if ((forcedEffectType === 5 || forcedEffectType === 6) && lvl !== 4) {
                                     const canFGBG2 = !isFG && !forceNoFGBG
@@ -4971,6 +4974,7 @@ function update() {
                                 } else {
                                     effect = { type: forcedEffectType, fromX: mx, fromY: my, level: lvl, ...(fd[forcedEffectType] || {}) };
                                     if (forcedEffectType === 1 && forceBigWild) { effect.big = true; forceBigWild = false; }
+                                    if (forcedEffectType === 3 && forceStoneWild) { effect.toWild = true; forceStoneWild = false; }
                                     forcedEffectType = 0;
                                     forceNoFGBG = false;
                                 }
@@ -5543,6 +5547,7 @@ function handleInput(clientX, clientY, isClick) {
                             forceKill = true;
                             forcedEffectType = item.type;
                             forceBigWild = !!item.big;
+                            forceStoneWild = !!item.toWild;
                             if (currentState === STATE.IDLE) startSpin();
                         }
                     }
