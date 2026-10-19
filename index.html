@@ -772,17 +772,18 @@ const DEFAULT_TIMING = {
     // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
     cardSame2Rate:    0.60,  // 剛好 2 張同屬性
     cardSame3Rate:    0.12,  // 3 張同屬性
-    hpLv1:            6,     // 移除卡牌模式的血量（2026-10-19 聚集消除＋升級鏈、不控分 6 萬局）：Lv.1 烈焰 → 每萬局打死約 286 隻（35 局一隻）
-    hpLv2:            7,     // Lv.2 大地 → 約 188 隻（53 局一隻）
-    hpLv3:            11,    // Lv.3 冰霜 → 約 54 隻（185 局一隻）
-    hpLv4:            14,    // Lv.4 祕法（打死開 FG／BG）→ 約 26 隻（385 局一隻）；主要靠升級鏈推上來，血量本身影響小
+    hpLv1:            6,     // 移除卡牌模式的血量（2026-10-19 聚集消除＋升級鏈 30% 成塊、不控分 4 萬局）：Lv.1 烈焰 → 每萬局打死約 306 隻（33 局一隻）
+    hpLv2:            7,     // Lv.2 大地 → 約 186 隻（54 局一隻）
+    hpLv3:            11,    // Lv.3 冰霜 → 約 59 隻（170 局一隻）
+    hpLv4:            14,    // Lv.4 祕法（打死開 FG／BG）→ 約 32 隻（317 局一隻）；主要靠升級鏈推上來，血量本身影響小
     hpBoss:           70,    // 宙斯／赫拉（JP）→ 約 0.5 隻（2 萬局一隻）；階段獎勵照比例：扣到 25%／50%／75%
-    upGen1Min:        3,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（大地）成塊，最少幾顆；3~4 顆時約 61% 接著打死 Lv.2
-    upGen1Max:        4,     // 打死 Lv.1 最多幾顆
-    upGen2Min:        4,     // 打死 Lv.2 → 生成 Lv.3 顏色（冰霜）；4~5 顆時約 46% 接著打死 Lv.3
-    upGen2Max:        5,     // 
-    upGen3Min:        5,     // 打死 Lv.3 → 生成 Lv.4 顏色（祕法）；5~6 顆時約 52% 接著打死 Lv.4
-    upGen3Max:        6,     // 
+    upGen1Min:        5,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（大地），最少幾顆；30% 成塊時約 53% 接著打死 Lv.2
+    upGen1Max:        6,     // 打死 Lv.1 最多幾顆
+    upGen2Min:        6,     // 打死 Lv.2 → 生成 Lv.3 顏色（冰霜）；約 44% 接著打死 Lv.3
+    upGen2Max:        8,     // 打死 Lv.2 最多幾顆
+    upGen3Min:        8,     // 打死 Lv.3 → 生成 Lv.4 顏色（祕法）；約 63% 接著打死 Lv.4
+    upGen3Max:        10,    // 打死 Lv.3 最多幾顆
+    upGenSmartRate:   0.3,   // 升級生成成塊比例（2026-10-19 ned：要亂撒一點）：此機率貼著同色成塊，其餘亂撒     // 
     anyCountMin:      0,     // 顆數消除（實驗）：同色＋WILD 在盤面任何位置湊到 N 顆以上就消，不用相連；0 = 關（優先於聚集消除），2026-10-19
     noCards:          1,     // 移除卡牌（2026-10-19 老闆）：消除幾顆 → 直接扣同屬性怪物幾格血；怪物屬性固定在位置上；0 = 回到卡牌版
     clusterMin:       5,     // 聚集消除：同色＋WILD 上下左右相連 5 顆以上就消，不用直線（2026-10-19 ned 定案改用聚集消除；0 = 回到直線規則）
@@ -869,7 +870,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -905,7 +906,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1663,7 +1664,8 @@ function generateCards(elemPool = null) {
     cards = [];
     if (noCardsMode()) {
         // 移除卡牌：六種屬性各一個看不見的攻擊來源（不畫、沒有基礎攻擊力、不爆擊），消除的顆數直接打同屬性怪物
-        cards = [0, 1, 2, 3, 4, 5].map(e => ({ elemId: e, level: 1, name: '', targetCount: 0, atk: 0, virtual: true,
+        // 攻擊順序＝等級由低到高（Lv.1 → Lv.4 → 宙斯 → 赫拉），同一波打死多隻時機制也由低到高觸發（2026-10-19 ned）
+        cards = [elemOfLevel(1), elemOfLevel(2), elemOfLevel(3), elemOfLevel(4), 1, 2].map(e => ({ elemId: e, level: 1, name: '', targetCount: 0, atk: 0, virtual: true,
             activated: false, isCharging: false, chargeTimer: 0, scale: 1, shake: 0, yOffset: 0, enterDelay: 0, yTarget: 0 }));
         forceCardLevel = 0; forceCardElem = -1; forceThunder135 = false;
         return;
@@ -2232,11 +2234,13 @@ function prepareTargetBeamEffect(effect) {
         const X = effect.upColor;
         const pool = allBoardCells((cell, gem) => gem.id !== X && gem.id !== WILD_ID && gem.id !== STONE_ID && gem.id >= 0 && gem.id < 6);
         const n = Math.min(effect.gemCount || 5, pool.length);
+        const smartUp = Math.random() < (TIMING.upGenSmartRate === undefined ? 0.3 : TIMING.upGenSmartRate);
         const chosen = new Set(); const out = []; let remain = shuffled(pool);
+        if (!smartUp) { out.push(...remain.slice(0, n)); remain = []; }   // 亂撒：直接隨機挑 n 格
         const score = cell => [[1, 0], [-1, 0], [0, 1], [0, -1]].reduce((sum, [dc, dr]) => { const c = cell.c + dc, r = cell.r + dr; const g = board[c] && board[c][r]; return sum + ((g && (g.id === X || g.id === WILD_ID)) || chosen.has(c + ',' + r) ? 1 : 0); }, 0);
         while (out.length < n && remain.length) { remain.sort((a, b) => score(b) - score(a)); const pick = remain.shift(); out.push(pick); chosen.add(pick.c + ',' + pick.r); }
         targets = out.map(cell => ({ ...cell, newId: X }));
-        effect.genSmart = true;
+        effect.genSmart = smartUp;
     } else if (effect.type === 2) {
         // 生成：本局圖示 N 顆成塊相鄰，長在石頭或非本局屬性格上；gemColors=2 時第二種顏色（盤上第二多的本局屬性）另外成一塊
         const count = effect.gemCount || 5;
