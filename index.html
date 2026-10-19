@@ -2049,9 +2049,10 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     const cardX = cm.startX + atkCardIdx * (cm.cardW + cm.gap);
     let cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
     let cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
-    if (_c.virtual) {   // 移除卡牌：能量直接飛到同屬性的怪物身上
-        const mt = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || monsters.find(mm => mm.elemId === g.elemId);
-        if (mt) { const a = monsterAnchor(mt); cardCX = a.x; cardTY = a.y; }
+    let vTarget = null;
+    if (_c.virtual) {   // 移除卡牌：能量直接飛到同屬性的怪物身上（怪物本體中心，2026-10-19 ned）
+        vTarget = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || monsters.find(mm => mm.elemId === g.elemId);
+        if (vTarget) { const a = monsterArtCenter(vTarget); cardCX = a.x; cardTY = a.y; }
     }
     const elemColor = ELEMENTS[g.elemId].color;
     const energyLife = TF(TIMING.energyFly) + 20;
@@ -2063,7 +2064,8 @@ function collectGroupAttackToCard(g, atkCardIdx) {
         type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
         tx: cardCX, ty: cardTY,
         color: elemColor,
-        life: energyLife, delay: energyDelay
+        life: energyLife, delay: energyDelay,
+        previewTarget: vTarget, previewAmt: vTarget ? g.count : 0   // 抵達時血條先扣這麼多
     });
     // WILD 保留：本組內尚未輪到「最後一組」的 WILD，原地各射 1 顆該組色能量（本體不消）
     g.emitWildCells.forEach(cell => {
@@ -3172,6 +3174,7 @@ function startSpin() {
     stats.spins++;
     if (!isFG && !isBG) rtpBetSum += betAmount;
     attackRoundsThisSpin = 0; respawnsThisSpin = 0; lastTargetByElem = {};
+    monsters.forEach(m => { m.previewDmg = 0; });
     hasHitThisSpin = false;
     coinBursts = [];
     energyParticles = [];
@@ -3545,6 +3548,8 @@ function monsterAnchor(m) {
 
 // === 大怪插畫中心（死亡機制／WILD／光球的原點＝「原本怪獸的位置」）===
 const MON_ART_KEY = { 1: 'bigRearL', 2: 'bigFrontL', 4: 'bigRearR', 5: 'bigFrontR' };
+// 血條顯示用：光球抵達就先扣（預扣傷害 previewDmg），實際扣血／打死仍在連爆結束後結算（2026-10-19）
+function shownHp(m) { return Math.max(0, m.hp - (m.previewDmg || 0)); }
 function monsterArtCenter(m) {
     const key = MON_ART_KEY[monsters.indexOf(m)];
     const o = key && LAYOUT[key];
@@ -3553,7 +3558,7 @@ function monsterArtCenter(m) {
 
 // === Boss（宙斯／赫拉）血量：數字槽與血條凹槽皆烙印在 jp_num_02 框上，徽章＋數字＋jp_hp 銀條對位畫入 ===
 function drawBossPlate(m, idx, left) {
-    const ratio = Math.min(1, Math.max(0, m.hp / m.maxHp));
+    const ratio = Math.min(1, Math.max(0, shownHp(m) / m.maxHp));
     const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
     const o = left ? LAYOUT.bossL : LAYOUT.bossR;
     const dx = (left ? o.x - 126 : o.x - 1084), dy = o.y - 116;   // 調校面板微調量（預設 0）
@@ -3572,9 +3577,9 @@ function drawBossPlate(m, idx, left) {
     ctx.font = `bold ${Math.round(20 * bs)}px sans-serif`;
     ctx.textAlign = textAlign; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3 * bs; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000';
-    ctx.strokeText(`${m.hp}/${m.maxHp}`, textX, ty);
-    ctx.fillStyle = m.hp <= 0 ? '#ef4444' : '#ffffff';
-    ctx.fillText(`${m.hp}/${m.maxHp}`, textX, ty);
+    ctx.strokeText(`${shownHp(m)}/${m.maxHp}`, textX, ty);
+    ctx.fillStyle = shownHp(m) <= 0 ? '#ef4444' : '#ffffff';
+    ctx.fillText(`${shownHp(m)}/${m.maxHp}`, textX, ty);
     ctx.restore();
     // 血條：jp_hp 銀條依血量比例畫入框上凹槽（框圖 左27~145／右976~1094，y240~247；縮放以槽中心為準）
     const sw = 116 * bs, sh = 8 * bs;
@@ -3645,7 +3650,7 @@ function drawMonsters() {
         }
 
         // 細血條：hg_bot 底軌 + hg_progress 銀色填充（素材未載入退回程式繪製）
-        const ratio = Math.min(1, Math.max(0, m.hp / m.maxHp));
+        const ratio = Math.min(1, Math.max(0, shownHp(m) / m.maxHp));
         const bty = cy - barH / 2;
         if (imgReady(IMG.hgBot)) ctx.drawImage(IMG.hgBot, barX, bty, barW, barH);
         else drawRoundedRect(barX, bty, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
@@ -3659,11 +3664,11 @@ function drawMonsters() {
         }
 
         // 數字 hp/maxHp
-        ctx.fillStyle = m.hp <= 0 ? '#ef4444' : '#f8fafc';
+        ctx.fillStyle = shownHp(m) <= 0 ? '#ef4444' : '#f8fafc';
         ctx.font = numFont;
         ctx.textAlign = numAlign; ctx.textBaseline = 'middle';
         ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
-        ctx.fillText(`${m.hp}/${m.maxHp}`, numX, cy);
+        ctx.fillText(`${shownHp(m)}/${m.maxHp}`, numX, cy);
         ctx.shadowBlur = 0;
         ctx.textBaseline = 'alphabetic';
         ctx.restore();
@@ -4517,6 +4522,7 @@ function updateFlyingScores() {
             fs.y = fs.sy + (fs.ty - fs.sy) * e - Math.sin(Math.PI * fs.prog) * 80;
             // 抵達爆開：到點瞬間爆出放射粒子、本體移除（取代原地停留淡出）；ATK 更新由 pendingCardUpdates 計時，不受影響
             if (fs.prog >= 1) {
+                if (fs.previewTarget && fs.previewAmt) { fs.previewTarget.previewDmg = (fs.previewTarget.previewDmg || 0) + fs.previewAmt; fs.previewTarget.shake = Math.max(fs.previewTarget.shake || 0, 8); }
                 spawnEnergyBurst(fs.tx, fs.ty, fs.color, ENERGY_FX.burstCount, ENERGY_FX.burstSpeed, ENERGY_FX.burstLife);
                 fs.life = 0;
             }
@@ -5047,6 +5053,7 @@ function update() {
                         forceTargetLv4 = false;
                     }
                     let prevHp = p.targetMonster.hp;
+                    p.targetMonster.previewDmg = 0;   // 實際扣血，清掉預扣
                     p.targetMonster.hp = Math.max(0, p.targetMonster.hp - p.damage);
                     p.targetMonster.shake = TF(TIMING.hitReact);
                     p.targetMonster.flashT = TF(TIMING.hitFlash);   // 受擊閃紅（細節表）
