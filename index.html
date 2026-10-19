@@ -1465,9 +1465,11 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     // 升級鏈（移除卡牌模式，2026-10-19 ned 定）：拿掉石頭類與清除類；打死 Lv.N → 生成 Lv.N+1 怪的顏色成塊，幫玩家打下一級
     if (noCardsMode()) {
         const up = (lv) => { const lo = TIMING['upGen' + lv + 'Min'], hi = Math.max(lo, TIMING['upGen' + lv + 'Max']); return { type: 2, upColor: elemOfLevel(lv + 1), gemCount: rnd(lo, hi), gemColors: 1, cluster: true, isUpgrade: true }; };
-        p1 = [() => ({ type: 1, wildCount: rnd(3, 4) }), () => up(1), () => ({ type: 10, multiplier: rnd(3, 7) })];
-        p2 = [() => ({ type: 1, wildCount: rnd(5, 6) }), () => ({ type: 1, big: true, bigCount: 1 }), () => up(2), () => ({ type: 10, multiplier: rnd(8, 15) })];
-        p3 = [() => ({ type: 1, wildCount: rnd(7, 10) }), () => ({ type: 1, big: true, bigCount: 2 }), () => up(3), () => ({ type: 10, multiplier: rnd(16, 30) })];
+        // 轉換升級（2026-10-19 ned）：把盤面上剩下的「被打死那一級的顏色」全部轉成下一級的顏色
+        const conv = (lv) => ({ type: 3, upFrom: elemOfLevel(lv), upColor: elemOfLevel(lv + 1), isUpgrade: true, isConvertUp: true });
+        p1 = [() => ({ type: 1, wildCount: rnd(3, 4) }), () => up(1), () => conv(1), () => ({ type: 10, multiplier: rnd(3, 7) })];
+        p2 = [() => ({ type: 1, wildCount: rnd(5, 6) }), () => ({ type: 1, big: true, bigCount: 1 }), () => up(2), () => conv(2), () => ({ type: 10, multiplier: rnd(8, 15) })];
+        p3 = [() => ({ type: 1, wildCount: rnd(7, 10) }), () => ({ type: 1, big: true, bigCount: 2 }), () => up(3), () => conv(3), () => ({ type: 10, multiplier: rnd(16, 30) })];
     }
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
@@ -1853,7 +1855,9 @@ function applyGravity() {
 // 聚集消除（旋鈕 clusterMin > 0）：同色＋WILD 上下左右相連、總數達門檻就成一組；WILD 可同時屬於多色（2026-10-19 實驗）
 function buildClusterGroups(minSize) {
     const groups = [];
-    for (let e = 0; e < 6; e++) {
+    // 移除卡牌模式：低分圖示先消（烈焰→大地→冰霜→祕法→雷霆→聖心，2026-10-19 ned），同一波的結算與打怪也照這個順序
+    const colorOrder = noCardsMode() ? [elemOfLevel(1), elemOfLevel(2), elemOfLevel(3), elemOfLevel(4), 1, 2] : [0, 1, 2, 3, 4, 5];
+    for (const e of colorOrder) {
         const seen = new Set();
         for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
             if (board[c][r].id !== e || seen.has(c + ',' + r)) continue;
@@ -2277,6 +2281,9 @@ function prepareTargetBeamEffect(effect) {
             pool = pool.filter(c => !taken.has(c.c + ',' + c.r));
             targets = targets.concat(picked.map(cell => ({ ...cell, newId: order[k] })));
         }
+    } else if (effect.type === 3 && effect.upFrom !== undefined) {
+        // 轉換升級：盤面上剩下的 upFrom 顏色全部轉成 upColor
+        targets = allBoardCells((cell, gem) => gem.id === effect.upFrom).map(cell => ({ ...cell, newId: effect.upColor }));
     } else if (effect.type === 3) {
         // 轉換：fixedCount = 剛好 N 顆（石頭優先、貼著挑，不足補非本局圖示）；stoneAll = 全部石頭、不足補到 minCount
         if (effect.fixedCount) {
@@ -3045,7 +3052,7 @@ function drawKillEffect() {
         ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 25;
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 42px sans-serif';
-        ctx.fillText(killEffectCurrent.toWild ? '🌟 石頭轉WILD！' : killEffectCurrent.isUpgrade ? ('⬆ 升級：生成' + (ELEMENTS[killEffectCurrent.upColor] ? ELEMENTS[killEffectCurrent.upColor].type : '') + '！') : EFFECT_NAMES[killEffectCurrent.type], cx, cy + 20);
+        ctx.fillText(killEffectCurrent.toWild ? '🌟 石頭轉WILD！' : killEffectCurrent.isConvertUp ? ('⬆ 升級：' + ELEMENTS[killEffectCurrent.upFrom].type + '全部變' + ELEMENTS[killEffectCurrent.upColor].type + '！') : killEffectCurrent.isUpgrade ? ('⬆ 升級：生成' + (ELEMENTS[killEffectCurrent.upColor] ? ELEMENTS[killEffectCurrent.upColor].type : '') + '！') : EFFECT_NAMES[killEffectCurrent.type], cx, cy + 20);
         // 副標題
         ctx.shadowBlur = 0;
         ctx.font = 'bold 28px sans-serif';
