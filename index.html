@@ -728,7 +728,7 @@ const DEFAULT_TIMING = {
     maxAttackRounds:  0,     // 實驗：每局最多幾波攻擊（0 = 不限；2 = 機制生的連線只能再打一波）
     rechargeRate:     1,     // 實驗：第一波攻擊之後，連線幫卡牌充能的倍率（1 = 照常；0.5 = 減半；0 = 不充）
     respawnHpUp:      0,     // 實驗：同一局補上來的怪血量加成（每補一隻多 +N 倍，0 = 不加；1 = 第一隻 2 倍血、第二隻 3 倍）
-    noRespawnInSpin:  0,     // 實驗：1 = 怪死掉這局不補，下一局開始才換新怪（同一隻怪一局最多死一次；玩家看得懂的規則）
+    noRespawnInSpin:  1,     // 1 = 怪死掉這局不補，下一局開始才換新怪（同一隻怪一局最多死一次）；2026-10-19 ned 定改成不補：Lv1→2→3→4 的階梯看得清楚、一局有上限
     cardElemBias:     1,     // 實驗：一般局（非旺局）卡牌屬性圖示的落圖權重（1 = 跟其他屬性一樣；0.8 = 少兩成 → 卡牌比較難充能）
     fgNoStone:        1,     // FG 不出石頭（2026-10-14 晚 ned 定案）：FG 內開盤不投石頭、補盤也不補
     fgFixedMonsters:  0,     // 實驗（FG）：1 = FG 進場時決定四隻小怪的屬性，之後 10 局不再重抽，讓「血量不重置」真的能累積打死
@@ -742,7 +742,7 @@ const DEFAULT_TIMING = {
     starW4:           25,
     starW5:           10,
     // 機制（2026-10-14，非時間值）：石頭機制分檔顆數、Lv4 改直接給分的門檻
-    lv4DirectAbove:   15,    // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 25~75 倍，不開 FG/BG
+    lv4DirectAbove:   0,     // Lv4 被打死時，本局已累積 ≥ 此倍數 → 改給直接給分 31~75 倍，不開 FG/BG；0 = 沒有門檻，打死 Lv4 一律開 FG／BG（2026-10-19 ned：本來就不會有這個門檻）
     lv2ConvertMin:    10,    // Lv2 轉換：全部石頭，不足此數就多轉非本局圖示到此數（同一色）
     lv3GenMin:        7,     // Lv3 生成（兩種）每種顆數下限（2026-10-15 企劃書：2 種各 7~9 個）
     lv3GenMax:        9,     // Lv3 生成（兩種）每種顆數上限
@@ -794,7 +794,14 @@ const DEFAULT_TIMING = {
     bigWild3:         1,     // 打死 Lv.3（原 2 顆）
     perWaveHit:       2,     // 扣血時機（2026-10-19，移除卡牌後）：2 = 光球飛到怪物身上當下扣血、打死當場死（致命那顆光球放大＋命中停格）；1 = 這一波消完才扣血；0 = 整串連爆結束才一起結算（卡牌版的做法）。機制都在補盤後播
     killHitStop:      0.12,  // 光球到就扣血：打死那一下的命中停格（Lv.4／JP 用 heavyHitStop）
-    heroFinisher:     1,     // 海克力士終結演出（2026-10-19 ned）：打死 Lv.4、宙斯、赫拉的最後一擊前，播海克力士全版演出（沿用爆擊組圖）；0 = 關
+    heroFinisher:     1,     // 海克力士終結演出（2026-10-19 ned）：最後一擊前播海克力士全版演出（沿用爆擊組圖）；0 = 關。登場條件見 heroMinLv／heroOnJP
+    heroMinLv:        3,     // 海克力士登場的最低小怪等級：建議 3（Lv.3、Lv.4 的最後一擊，約每 140 局一次）；1 = 每次打死都登場（約每 30 局，Lv.1 只拿 3 倍也演全版，太頻繁）
+    heroOnJP:         0,     // 打死宙斯／赫拉也播海克力士：0 = 用 JP 自己的報獎（三階報獎已經有海克力士；也沒有雷霆、聖心的招式圖）
+    heroText:         0,     // 必殺字卡：demo 只有冰霜「凜風衝擊」一張，預設關；正式版四屬性各兩張（烈焰 煉獄重擊／鳳凰業火、大地 獅盾反擊／金獅怒嘯、冰霜 破甲重斬／北風馳斬、祕法 毒矢狙殺／天鷹絕獄）
+    heroTint:         1,     // 特效底圖染成被打死怪物的屬性色（demo 只有冰霜底圖，用染色代替四屬性版本）
+    nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
+    nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
+    hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
     symWArcane:       1,     // 圖示出現權重（無卡牌模式，2026-10-19）：祕法（Lv.4）
     symWThunder:      0.7,   // 雷霆（宙斯，高分）：2026-10-19 ned 定 0.7（高分圖示出現少一點）
     symWHeart:        0.7,   // 聖心（赫拉，高分）：0.7
@@ -896,18 +903,18 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['heroFinisher','海克力士終結演出(1=開)', 0, 1, 1], ['perWaveHit','扣血時機(2光球到/1消完/0連爆完)', 0, 2, 1], ['wild1Min','WILD Lv1 最少', 0, 20, 1], ['wild1Max','WILD Lv1 最多', 0, 20, 1], ['wild2Min','WILD Lv2 最少', 0, 20, 1], ['wild2Max','WILD Lv2 最多', 0, 20, 1], ['wild3Min','WILD Lv3 最少', 0, 20, 1], ['wild3Max','WILD Lv3 最多', 0, 20, 1], ['bigWild2','巨型WILD Lv2 顆數', 0, 3, 1], ['bigWild3','巨型WILD Lv3 顆數', 0, 3, 1], ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05], ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['heroFinisher','海克力士終結演出(1=開)', 0, 1, 1], ['heroMinLv','海克力士:最低等級(1~4)', 1, 4, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1], ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['perWaveHit','扣血時機(2光球到/1消完/0連爆完)', 0, 2, 1], ['wild1Min','WILD Lv1 最少', 0, 20, 1], ['wild1Max','WILD Lv1 最多', 0, 20, 1], ['wild2Min','WILD Lv2 最少', 0, 20, 1], ['wild2Max','WILD Lv2 最多', 0, 20, 1], ['wild3Min','WILD Lv3 最少', 0, 20, 1], ['wild3Max','WILD Lv3 最多', 0, 20, 1], ['bigWild2','巨型WILD Lv2 顆數', 0, 3, 1], ['bigWild3','巨型WILD Lv3 顆數', 0, 3, 1], ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05], ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
-        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3Gen1Count','Lv3 生成(一種)顆數', 3, 20, 1], ['lv1ClearMin','Lv1 清除至少顆數', 0, 20, 1], ['lv3StoneWildMin','Lv3 石頭轉WILD至少顆數', 0, 20, 1], ['lv3StoneWildWeight','Lv3 石頭轉WILD權重', 0, 1, 0.05], ['genSmartRate','生成成塊的比例', 0, 1, 0.05], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['wildSmartRate','WILD 貼著放的比例', 0, 1, 0.05], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
+        ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1], ['lv2ConvertMin','Lv2 轉換至少顆數', 2, 20, 1], ['lv3GenMin','Lv3 生成顆數下限', 3, 16, 1], ['lv3GenMax','Lv3 生成顆數上限', 3, 20, 1], ['lv3Gen1Count','Lv3 生成(一種)顆數', 3, 20, 1], ['lv1ClearMin','Lv1 清除至少顆數', 0, 20, 1], ['lv3StoneWildMin','Lv3 石頭轉WILD至少顆數', 0, 20, 1], ['lv3StoneWildWeight','Lv3 石頭轉WILD權重', 0, 1, 0.05], ['genSmartRate','生成成塊的比例', 0, 1, 0.05], ['lv3GenColors','Lv3 生成幾種顏色', 1, 2, 1], ['payCurve','賠率曲線(0原表 1放大 2過渡 3懸崖16 4階梯 5自訂)', 0, 5, 1], ['pay12','階梯:12~13顆倍數', 10, 100, 1], ['pay14','階梯:14~15顆倍數', 10, 200, 1], ['pay16','階梯:16顆起倍數', 10, 500, 5], ['pt3','自訂表:3顆', 0.05, 5, 0.05], ['pt4','自訂表:4顆', 0.05, 5, 0.05], ['pt5','自訂表:5顆', 0.05, 10, 0.05], ['pt6','自訂表:6~7顆', 0.1, 20, 0.1], ['pt8','自訂表:8~9顆', 0.1, 50, 0.1], ['pt10','自訂表:10~11顆', 0.5, 100, 0.5], ['pt12','自訂表:12~13顆', 0.5, 200, 0.5], ['pt14','自訂表:14~15顆', 1, 300, 1], ['pt16','自訂表:16顆起', 1, 500, 1], ['placeSmart','落點(1=貼著放 0=隨機放)', 0, 1, 1], ['wildSmartRate','WILD 貼著放的比例', 0, 1, 0.05], ['cardTilt','卡牌外傾角度(度)', 0, 25, 1], ['cardFanGap','卡牌間距(px)', -40, 40, 1], ['cardFanDrop','兩側卡下沉(px)', 0, 40, 1],
         ['respawnAfterRound','補怪時機(0=馬上補 1=打完才補)', 0, 1, 1],
         ['payScale','連線賠率整體倍率', 0.5, 5, 0.1], ['stoneAfterMech','機制後補盤掉石頭倍率', 0, 1, 0.1],
         ['killFloorLv1','擊殺保底 Lv1(倍,0=關)', 0, 20, 1], ['killFloorLv2','擊殺保底 Lv2(倍,0=關)', 0, 30, 1], ['killFloorLv3','擊殺保底 Lv3(倍,0=關)', 0, 50, 1]] },
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
         ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
-        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入']] },
+        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入'], ['hpRefill','局首血量回滿']] },
     { group: 'WILD／機制', items: [
         ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
         ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
@@ -932,7 +939,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'heroFinisher', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'heroFinisher', 'heroMinLv', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1514,8 +1521,8 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     }
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
-    const thr = TIMING.lv4DirectAbove === undefined ? 15 : TIMING.lv4DirectAbove;
-    let p4 = (canFGBG && baseX < thr)
+    const thr = TIMING.lv4DirectAbove === undefined ? 0 : TIMING.lv4DirectAbove;
+    let p4 = (canFGBG && !(thr > 0 && baseX >= thr))
         ? [() => ({ type: 5 }), () => ({ type: 6 })]
         : [() => ({ type: 10, multiplier: rnd(31, 75) })];   // 直接給分 31~75（2026-10-15）
     const pools = { 1: p1, 2: p2, 3: p3, 4: p4 };
@@ -2102,8 +2109,9 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     let cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
     let vTarget = null;
     if (_c.virtual) {   // 移除卡牌：能量直接飛到同屬性的怪物身上（怪物本體中心，2026-10-19 ned）
-        vTarget = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || monsters.find(mm => mm.elemId === g.elemId);
-        if (vTarget) { const a = monsterArtCenter(vTarget); cardCX = a.x; cardTY = a.y; }
+        vTarget = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || null;
+        if (!vTarget) return;   // 這一色的怪這局已經死了（不補怪）：只給分、不飛光球
+        { const a = monsterArtCenter(vTarget); cardCX = a.x; cardTY = a.y; }
     }
     const elemColor = ELEMENTS[g.elemId].color;
     const energyLife = TF(TIMING.energyFly) + 20;
@@ -2691,8 +2699,9 @@ function orbArriveHit(fs) {
     let amt = fs.previewAmt || 0;
     if (fs.forced) { amt = Math.max(amt, m.hp); forceKill = false; forceKillLv = 0; forceTargetLv4 = false; }
     const lethal = amt >= m.hp;
-    const tier = !lethal ? 'fast' : (m.jackpot > 0 || getMonsterLevel(m) === 4) ? 'heavy' : 'kill';
-    if (tier === 'heavy' && TIMING.heroFinisher !== 0) {
+    let tier = !lethal ? 'fast' : (m.jackpot > 0 || getMonsterLevel(m) === 4) ? 'heavy' : 'kill';
+    if (lethal && heroWants(m)) {   // 海克力士登場的最後一擊：演出播完才扣血，命中照重擊規格
+        tier = 'heavy';
         heroHold = { frames: TF(TIMING.critFlash) + TF(TIMING.critImage), m, amt, tier, color: fs.color };
         return;
     }
@@ -3391,12 +3400,13 @@ function startSpin() {
         if (!TIMING.fgFixedMonsters) assignMonsterElemsFromCards();   // 實驗 fgFixedMonsters=1：FG 內小怪屬性固定，不重抽
     } else {
         // 一般模式
-        [0, 3].forEach(idx => { let m = monsters[idx]; if (noCardsMode()) m.maxHp = bossHp(); m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
+        [0, 3].forEach(idx => { let m = monsters[idx]; if (noCardsMode()) m.maxHp = bossHp(); startHpRefill(m); m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
         generateCards();
         [1, 2, 4, 5].forEach(idx => {
             let m = monsters[idx];
             if (TIMING.noRespawnInSpin && m.isDead) { respawnMonster(idx, false); return; }   // 上一局死掉的怪此時換新
             if (noCardsMode()) { m.maxHp = smallHpFor(idx); m.lv = POS_LEVEL[idx]; }
+            startHpRefill(m);   // 局首血量回滿動畫（視覺引導 5）
             m.hp = m.maxHp; m.isDead = false; m.shake = 0;
         });
         assignMonsterElemsFromCards();   // 小怪屬性從手上卡抽（企劃書規則，2026-10-14）
@@ -3701,6 +3711,7 @@ function drawBigArt(key, o, m) {
     if (!imgReady(img)) return;
     let dx = 0;
     if (m && m.shake > 0) dx = (Math.random() - 0.5) * 2 * TIMING.hitShakeAmp;
+    else if (m && isNearDeath(m)) dx = (Math.random() - 0.5) * 3;   // 快死了：怪物微微發抖
     ctx.save();
     let alpha = 1;
     if (m && m.fadeIn > 0) alpha = 1 - m.fadeIn / TF(TIMING.respawnFade);   // 換怪淡入
@@ -3746,6 +3757,45 @@ function monsterAnchor(m) {
 const MON_ART_KEY = { 1: 'bigRearL', 2: 'bigFrontL', 4: 'bigRearR', 5: 'bigFrontR' };
 // 血條顯示用：光球抵達就先扣（預扣傷害 previewDmg），實際扣血／打死仍在連爆結束後結算（2026-10-19）
 function shownHp(m) { return Math.max(0, m.hp - (m.previewDmg || 0)); }
+// 顯示用血量：局首回滿動畫期間從上局剩的量漲回滿（hpAnim），其餘同 shownHp
+function displayHp(m) {
+    const a = m.hpAnim;
+    if (a && a.t > 0) { const q = 1 - a.t / a.dur; const e = 1 - Math.pow(1 - q, 2); return Math.round(a.from + (m.maxHp - a.from) * e); }
+    return shownHp(m);
+}
+function startHpRefill(m) {
+    const from = shownHp(m), dur = TF(TIMING.hpRefill || 0);
+    if (dur > 0 && from < m.maxHp) m.hpAnim = { from, t: dur, dur }; else m.hpAnim = null;
+}
+// 快死了（視覺引導 3）：還活著、血量剩 ≤ nearDeathHp（一塊聚集就打得死）
+function isNearDeath(m) {
+    const thr = TIMING.nearDeathHp === undefined ? 5 : TIMING.nearDeathHp;
+    return !!m && thr > 0 && !isBG && !m.isDead && m.hp > 0 && shownHp(m) > 0 && shownHp(m) <= thr && !(m.hpAnim && m.hpAnim.t > 0);
+}
+function nearDeathPulse() { return 0.5 + 0.5 * Math.sin(tickCounter * 0.35); }
+let nearDeathElems = new Set();   // 每幀由 drawGrid 更新：快死了的怪的屬性 → 盤面同色圖示發光
+// 海克力士要不要登場（最後一擊前全版演出）
+function heroWants(m) {
+    if (!m || TIMING.heroFinisher === 0) return false;
+    if (m.jackpot > 0) return !!TIMING.heroOnJP;
+    return getMonsterLevel(m) >= (TIMING.heroMinLv === undefined ? 3 : TIMING.heroMinLv);
+}
+// 海克力士特效底圖染成屬性色（demo 只有冰霜底圖）：hue 混合保留明暗，再用底圖 alpha 裁回
+const HERO_FX_CACHE = {};
+function heroFxImg(elemId) {
+    if (!imgReady(IMG.critFx)) return null;
+    if (!TIMING.heroTint || elemId === 4 || !ELEMENTS[elemId]) return IMG.critFx;
+    if (HERO_FX_CACHE[elemId]) return HERO_FX_CACHE[elemId];
+    const w = IMG.critFx.naturalWidth, h = IMG.critFx.naturalHeight;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.drawImage(IMG.critFx, 0, 0);
+    g.globalCompositeOperation = 'hue'; g.fillStyle = ELEMENTS[elemId].color; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(IMG.critFx, 0, 0);
+    c.naturalWidth = w; c.naturalHeight = h; c.complete = true;   // 讓 imgReady／drawImgFit 當成圖用
+    HERO_FX_CACHE[elemId] = c;
+    return c;
+}
 function monsterArtCenter(m) {
     const key = MON_ART_KEY[monsters.indexOf(m)];
     const o = key && LAYOUT[key];
@@ -3754,7 +3804,7 @@ function monsterArtCenter(m) {
 
 // === Boss（宙斯／赫拉）血量：數字槽與血條凹槽皆烙印在 jp_num_02 框上，徽章＋數字＋jp_hp 銀條對位畫入 ===
 function drawBossPlate(m, idx, left) {
-    const ratio = Math.min(1, Math.max(0, shownHp(m) / m.maxHp));
+    const ratio = Math.min(1, Math.max(0, displayHp(m) / m.maxHp));
     const emb = IMG.bossIcon[idx === 0 ? 0 : 1];
     const o = left ? LAYOUT.bossL : LAYOUT.bossR;
     const dx = (left ? o.x - 126 : o.x - 1084), dy = o.y - 116;   // 調校面板微調量（預設 0）
@@ -3773,9 +3823,9 @@ function drawBossPlate(m, idx, left) {
     ctx.font = `bold ${Math.round(20 * bs)}px sans-serif`;
     ctx.textAlign = textAlign; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3 * bs; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000';
-    ctx.strokeText(`${shownHp(m)}/${m.maxHp}`, textX, ty);
-    ctx.fillStyle = shownHp(m) <= 0 ? '#ef4444' : '#ffffff';
-    ctx.fillText(`${shownHp(m)}/${m.maxHp}`, textX, ty);
+    ctx.strokeText(`${displayHp(m)}/${m.maxHp}`, textX, ty);
+    ctx.fillStyle = (displayHp(m) <= 0 || isNearDeath(m)) ? '#ef4444' : '#ffffff';
+    ctx.fillText(`${displayHp(m)}/${m.maxHp}`, textX, ty);
     ctx.restore();
     // 血條：jp_hp 銀條依血量比例畫入框上凹槽（框圖 左27~145／右976~1094，y240~247；縮放以槽中心為準）
     const sw = 116 * bs, sh = 8 * bs;
@@ -3787,6 +3837,8 @@ function drawBossPlate(m, idx, left) {
         if (imgReady(fill)) ctx.drawImage(fill, sx, sy, sw, sh);
         else { ctx.fillStyle = ratio > 0.3 ? '#cbd5e1' : '#ef4444'; ctx.fillRect(sx, sy, sw, sh); }
         if (ratio <= 0.3) { ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillRect(sx, sy, sw, sh); }  // 低血量警示
+        if (isNearDeath(m)) { ctx.fillStyle = `rgba(255,40,40,${0.35 + 0.45 * nearDeathPulse()})`; ctx.fillRect(sx, sy, sw * ratio, sh); }   // 快死了：閃紅
+        if (m.hpAnim && m.hpAnim.t > 0) { ctx.fillStyle = `rgba(255,255,255,${0.6 * m.hpAnim.t / m.hpAnim.dur})`; ctx.fillRect(sx, sy, sw * ratio, sh); }   // 回滿：白光
         ctx.restore();
     }
     ctx.textBaseline = 'alphabetic';
@@ -3820,6 +3872,7 @@ function drawMonsters() {
             numAlign = 'right';
         }
         if (m.shake > 0) { cy += (Math.random() - 0.5) * 2 * TIMING.hitShakeAmp; m.shake--; }
+        else if (isNearDeath(m)) cy += (Math.random() - 0.5) * 2;   // 快死了：血條微微發抖
         const accent = lvl === 0 ? '#fbbf24' : elem.color;
 
         // 圓形頭像（Boss 用宙斯/赫拉大頭像，小怪用屬性頭像）
@@ -3846,7 +3899,7 @@ function drawMonsters() {
         }
 
         // 細血條：hg_bot 底軌 + hg_progress 銀色填充（素材未載入退回程式繪製）
-        const ratio = Math.min(1, Math.max(0, shownHp(m) / m.maxHp));
+        const ratio = Math.min(1, Math.max(0, displayHp(m) / m.maxHp));
         const bty = cy - barH / 2;
         if (imgReady(IMG.hgBot)) ctx.drawImage(IMG.hgBot, barX, bty, barW, barH);
         else drawRoundedRect(barX, bty, barW, barH, barH / 2, 'rgba(6,10,18,0.85)', 'rgba(0,0,0,0.6)', 1);
@@ -3856,15 +3909,27 @@ function drawMonsters() {
             if (imgReady(IMG.hgProgress)) ctx.drawImage(IMG.hgProgress, barX + 1, bty + 1, barW - 2, barH - 2);
             else { ctx.fillStyle = ratio > 0.3 ? '#22c55e' : '#ef4444'; ctx.fillRect(barX, bty, barW, barH); }
             if (ratio <= 0.3) { ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillRect(barX + 1, bty + 1, (barW - 2) * ratio, barH - 2); }  // 低血量警示
+            if (isNearDeath(m)) { ctx.fillStyle = `rgba(255,40,40,${0.35 + 0.45 * nearDeathPulse()})`; ctx.fillRect(barX + 1, bty + 1, (barW - 2) * ratio, barH - 2); }   // 快死了：閃紅
+            if (m.hpAnim && m.hpAnim.t > 0) { ctx.fillStyle = `rgba(255,255,255,${0.6 * m.hpAnim.t / m.hpAnim.dur})`; ctx.fillRect(barX + 1, bty + 1, (barW - 2) * ratio, barH - 2); }   // 回滿：白光
+            ctx.restore();
+        }
+        if (isNearDeath(m)) {   // 快死了：徽章外圈屬性色呼吸光＋血條外框紅光
+            ctx.save();
+            const pz = nearDeathPulse();
+            ctx.globalAlpha = 0.35 + 0.55 * pz;
+            ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.shadowColor = accent; ctx.shadowBlur = 14 + 10 * pz;
+            ctx.beginPath(); ctx.arc(iconCX, cy, r + 4, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 2; ctx.shadowColor = '#ff3b3b'; ctx.shadowBlur = 10 + 8 * pz;
+            ctx.beginPath(); ctx.roundRect(barX - 1, bty - 1, barW + 2, barH + 2, (barH + 2) / 2); ctx.stroke();
             ctx.restore();
         }
 
         // 數字 hp/maxHp
-        ctx.fillStyle = shownHp(m) <= 0 ? '#ef4444' : '#f8fafc';
+        ctx.fillStyle = (displayHp(m) <= 0 || isNearDeath(m)) ? '#ef4444' : '#f8fafc';
         ctx.font = numFont;
         ctx.textAlign = numAlign; ctx.textBaseline = 'middle';
         ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
-        ctx.fillText(`${shownHp(m)}/${m.maxHp}`, numX, cy);
+        ctx.fillText(`${displayHp(m)}/${m.maxHp}`, numX, cy);
         ctx.shadowBlur = 0;
         ctx.textBaseline = 'alphabetic';
         ctx.restore();
@@ -4224,6 +4289,7 @@ function drawGrid() {
     }
 
     drawMechanismTargetHighlights();
+    nearDeathElems = new Set(TIMING.nearDeathGlow ? monsters.filter(isNearDeath).map(m => m.elemId) : []);   // 快死了：盤面同色圖示發光
 
     // 巨型 WILD 區塊仍完整（4 格皆為 WILD、同錨點、未消除）時回傳錨點座標,否則清旗標
     function bigWildIntact(gem) {
@@ -4287,6 +4353,7 @@ function drawGrid() {
             // 亮起（白光）/ WILD（金光）發光
             if (lit)      { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 18; }
             else if (gem.id === WILD_ID) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 16; }
+            else if (!gem.isMatched && nearDeathElems.has(gem.id)) { ctx.shadowColor = ELEMENTS[gem.id].color; ctx.shadowBlur = 12 + 14 * nearDeathPulse(); }   // 快死了：這個顏色再消一塊就打死
             // 落定回彈：輕微 squash 約5%（細節表，可調 0 關閉）
             let sh = s;
             if (colBounce[c] > 0 && !gem.isMatched) {
@@ -4803,7 +4870,7 @@ function update() {
         if (cellFlashes[i].life <= 0) cellFlashes.splice(i, 1);
     }
     bgMultAnimT++;                                                                     // BG 倍數動畫
-    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; if (m.hpAnim && m.hpAnim.t > 0) m.hpAnim.t--; }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
@@ -5218,7 +5285,7 @@ function update() {
                                      rays: Array.from({ length: 10 }, (_, k) => ({ a: k * Math.PI / 5 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
                 }
                 // 海克力士終結演出：打死 Lv.4／宙斯／赫拉（重擊）時，命中前先播海克力士全版演出（2026-10-19）
-                if (p.virtualHit && p.tier === 'heavy' && TIMING.heroFinisher !== 0) {
+                if (p.virtualHit && heroWants(p.targetMonster)) {
                     if (p.heroFrames === undefined) p.heroFrames = TF(TIMING.critFlash) + TF(TIMING.critImage);
                     if (p.heroFrames > 0) { p.heroFrames--; attacksDone = false; continue; }
                 }
@@ -5635,7 +5702,7 @@ function drawCritOverlay() {
             critP = p; break;
         }
     }
-    if (!critP && heroHold) critP = { heroFrames: heroHold.frames };   // 光球到就扣血的海克力士終結演出
+    if (!critP && heroHold) critP = { heroFrames: heroHold.frames, targetMonster: heroHold.m };   // 光球到就扣血的海克力士終結演出
     if (!critP) return;
 
     const frames = critP.heroFrames > 0 ? critP.heroFrames : critP.critImageFrames; // 由 (閃白+全版圖) 總幀數倒數至 1（海克力士終結演出共用）
@@ -5668,7 +5735,7 @@ function drawCritOverlay() {
         ctx.globalAlpha = imageAlpha;
 
         // 1. 全版特效底圖（冰霜斬擊）cover 填滿盤面
-        drawImgFit(IMG.critFx, GRID_X, GRID_Y, GRID_W, GRID_H, 'cover');
+        drawImgFit(heroFxImg(critP.targetMonster ? critP.targetMonster.elemId : 4), GRID_X, GRID_Y, GRID_W, GRID_H, 'cover');   // 底圖染成怪物屬性色
 
         // 2. 海克力士角色：直接 snap 出現，開頭帶輕微縮放回彈（砰的衝擊感）
         const elapsed = imgF - frames;                       // 全版圖已播幀數
@@ -5681,7 +5748,7 @@ function drawCritOverlay() {
             poseW, poseH);
 
         // 3. 必殺技字卡：上方置中，snap 後帶縮放回彈
-        if (imgReady(IMG.critText)) {
+        if (TIMING.heroText && imgReady(IMG.critText)) {
             const textPunch = elapsed < 6 ? 1 + 0.35 * (1 - elapsed / 6) : 1;
             const tw = GRID_W * 0.52 * textPunch;
             const th = tw * (IMG.critText.naturalHeight / IMG.critText.naturalWidth);
