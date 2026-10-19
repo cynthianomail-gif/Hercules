@@ -775,7 +775,7 @@ const DEFAULT_TIMING = {
     hpLv1:            7,     // 移除卡牌模式的血量（2026-10-19 雷聖出現權重 0.7 後重抓，不控分 7 萬局）：Lv.1 烈焰 → 每萬局打死約 199 隻（50 局一隻）
     hpLv2:            8,     // Lv.2 大地 → 約 144 隻（69 局一隻）
     hpLv3:            11,    // Lv.3 冰霜 → 約 55 隻（180 局一隻）
-    hpLv4:            14,    // Lv.4 祕法（打死開 FG／BG）→ 約 28 隻（360 局一隻）；主要靠升級鏈推上來
+    hpLv4:            12,    // Lv.4 祕法（打死開 FG／BG）：2026-10-19 WILD 改弱後 Lv.4 掉到 744 局一隻，14→12 拉回約 370 局一隻；主要靠升級鏈推上來
     hpBoss:           35,    // 宙斯／赫拉（JP）：2026-10-19 ned 覺得 70 跟小怪差太多 → 35（約 Lv.4 的 2.5 倍）；JP 打死約 6700 局一次；階段照比例 25%／50%／75%
     upGen1Min:        5,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（大地），最少幾顆；30% 成塊時約 53% 接著打死 Lv.2
     upGen1Max:        6,     // 打死 Lv.1 最多幾顆
@@ -784,6 +784,15 @@ const DEFAULT_TIMING = {
     upGen3Min:        8,     // 打死 Lv.3 → 生成 Lv.4 顏色（祕法）；約 63% 接著打死 Lv.4
     upGen3Max:        10,    // 打死 Lv.3 最多幾顆
     upGenSmartRate:   0.3,
+    wild1Min:         2,     // WILD 顆數（2026-10-19 ned：WILD 全部改弱；原 Lv1 3~4／Lv2 5~6／Lv3 7~10）
+    wild1Max:         3,
+    wild2Min:         3,
+    wild2Max:         4,
+    wild3Min:         4,
+    wild3Max:         5,
+    bigWild2:         1,     // 巨型 WILD（2×2）顆數：打死 Lv.2；0 = 這級不出巨型 WILD
+    bigWild3:         1,     // 打死 Lv.3（原 2 顆）
+    perWaveHit:       1,     // 每波當下扣血（2026-10-19，移除卡牌後）：每一波消完當下就扣血，打死當場死，機制在補盤後播；0 = 整串連爆結束才一起結算（卡牌版的做法）
     heroFinisher:     1,     // 海克力士終結演出（2026-10-19 ned）：打死 Lv.4、宙斯、赫拉的最後一擊前，播海克力士全版演出（沿用爆擊組圖）；0 = 關
     symWArcane:       1,     // 圖示出現權重（無卡牌模式，2026-10-19）：祕法（Lv.4）
     symWThunder:      0.7,   // 雷霆（宙斯，高分）：2026-10-19 ned 定 0.7（高分圖示出現少一點）
@@ -886,7 +895,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['heroFinisher','海克力士終結演出(1=開)', 0, 1, 1], ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05], ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['heroFinisher','海克力士終結演出(1=開)', 0, 1, 1], ['perWaveHit','每波當下扣血(1=開)', 0, 1, 1], ['wild1Min','WILD Lv1 最少', 0, 20, 1], ['wild1Max','WILD Lv1 最多', 0, 20, 1], ['wild2Min','WILD Lv2 最少', 0, 20, 1], ['wild2Max','WILD Lv2 最多', 0, 20, 1], ['wild3Min','WILD Lv3 最少', 0, 20, 1], ['wild3Max','WILD Lv3 最多', 0, 20, 1], ['bigWild2','巨型WILD Lv2 顆數', 0, 3, 1], ['bigWild3','巨型WILD Lv3 顆數', 0, 3, 1], ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05], ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -922,7 +931,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'heroFinisher', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'heroFinisher', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1192,6 +1201,8 @@ const CARD_BASE_ATK = { 1: 1, 2: 3, 3: 5, 4: 10, 5: 15 };   // 2026-10-14 晚 ne
 function cardBaseAtk(card) { return card.virtual ? 0 : (CARD_BASE_ATK[card.level] || 1); }   // 移除卡牌模式：沒有基礎攻擊力，傷害＝消除顆數
 // 移除卡牌模式（2026-10-19）：怪物屬性固定在位置上 — 宙斯雷霆、赫拉聖心、Lv.4 祕法、Lv.1 烈焰、Lv.3 冰霜、Lv.2 大地
 function noCardsMode() { return !!TIMING.noCards; }
+// 每波當下扣血（2026-10-19）：移除卡牌後沒有「卡牌存攻擊力」這一層，消一波就打一波，打死當場死
+function perWaveMode() { return noCardsMode() && !isBG && TIMING.perWaveHit !== 0; }
 const FIXED_MONSTER_ELEM = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 4, 5: 5 };
 // 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
 const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
@@ -1273,7 +1284,6 @@ const FORCE_MENU_ITEMS = [
     { label: '打死Lv3',   type: 'killLv', lv: 3, color: '#3b82f6' },
     { label: '打死Lv4',   type: 'killLv', lv: 4, color: '#a855f7' },
     { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
-    { label: '轉換升級',   type: 'mech', mech: 'convUp', lv: 1, color: '#a78bfa' },
     { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
     { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 2, color: '#fbbf24' },
     { label: '直接給分',   type: 'mech', mech: 'direct', lv: 1, color: '#facc15' },
@@ -1454,8 +1464,8 @@ function buildForcedMech(kind, lv, fromX, fromY) {
     let e;
     if (kind === 'upGen') { const lo = TIMING['upGen' + L + 'Min'], hi = Math.max(lo, TIMING['upGen' + L + 'Max']); e = { type: 2, upColor: elemOfLevel(L + 1), gemCount: r(lo, hi), gemColors: 1, cluster: true, isUpgrade: true }; }
     else if (kind === 'convUp') e = { type: 3, upFrom: elemOfLevel(L), upColor: elemOfLevel(L + 1), isUpgrade: true, isConvertUp: true };
-    else if (kind === 'wild') { const w = [[3, 4], [5, 6], [7, 10]][L - 1]; e = { type: 1, wildCount: r(w[0], w[1]) }; }
-    else if (kind === 'big') e = { type: 1, big: true, bigCount: L >= 3 ? 2 : 1 };
+    else if (kind === 'wild') { const lo = TIMING['wild' + L + 'Min']; e = { type: 1, wildCount: r(lo, Math.max(lo, TIMING['wild' + L + 'Max'])) }; }
+    else if (kind === 'big') e = { type: 1, big: true, bigCount: Math.max(1, TIMING['bigWild' + Math.max(2, L)] || 1) };
     else { const d = [[3, 7], [8, 15], [16, 30]][L - 1]; e = { type: 10, multiplier: r(d[0], d[1]) }; }
     return { ...e, fromX, fromY, level: lv };
 }
@@ -1492,11 +1502,12 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
     // 升級鏈（移除卡牌模式，2026-10-19 ned 定）：拿掉石頭類與清除類；打死 Lv.N → 生成 Lv.N+1 怪的顏色成塊，幫玩家打下一級
     if (noCardsMode()) {
         const up = (lv) => { const lo = TIMING['upGen' + lv + 'Min'], hi = Math.max(lo, TIMING['upGen' + lv + 'Max']); return { type: 2, upColor: elemOfLevel(lv + 1), gemCount: rnd(lo, hi), gemColors: 1, cluster: true, isUpgrade: true }; };
-        // 轉換升級（2026-10-19 ned）：把盤面上剩下的「被打死那一級的顏色」全部轉成下一級的顏色
-        const conv = (lv) => ({ type: 3, upFrom: elemOfLevel(lv), upColor: elemOfLevel(lv + 1), isUpgrade: true, isConvertUp: true });
-        p1 = [() => ({ type: 1, wildCount: rnd(3, 4) }), () => up(1), () => conv(1), () => ({ type: 10, multiplier: rnd(3, 7) })];
-        p2 = [() => ({ type: 1, wildCount: rnd(5, 6) }), () => ({ type: 1, big: true, bigCount: 1 }), () => up(2), () => conv(2), () => ({ type: 10, multiplier: rnd(8, 15) })];
-        p3 = [() => ({ type: 1, wildCount: rnd(7, 10) }), () => ({ type: 1, big: true, bigCount: 2 }), () => up(3), () => conv(3), () => ({ type: 10, multiplier: rnd(16, 30) })];
+        // 2026-10-19 ned：轉換升級拿掉（量到一半以上白演），升級只留「生成」；WILD 全部改弱、顆數走旋鈕 wild*／bigWild*
+        const wild = (lv) => ({ type: 1, wildCount: rnd(TIMING['wild' + lv + 'Min'], Math.max(TIMING['wild' + lv + 'Min'], TIMING['wild' + lv + 'Max'])) });
+        const big = (lv) => TIMING['bigWild' + lv] > 0 ? [() => ({ type: 1, big: true, bigCount: TIMING['bigWild' + lv] })] : [];
+        p1 = [() => wild(1), () => up(1), () => ({ type: 10, multiplier: rnd(3, 7) })];
+        p2 = [() => wild(2), ...big(2), () => up(2), () => ({ type: 10, multiplier: rnd(8, 15) })];
+        p3 = [() => wild(3), ...big(3), () => up(3), () => ({ type: 10, multiplier: rnd(16, 30) })];
     }
     // Lv4：本局已累積 lv4DirectAbove 倍以上 → 直接給分 25~75；低分局才開 FG 或 BG
     const baseX = winScore / Math.max(1, betAmount);
@@ -4641,7 +4652,7 @@ function update() {
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
-        const dimTarget = (currentState === STATE.ATTACKING && cards.some(cd => cd.isCharging || cd.activated)) ? 1 : 0;
+        const dimTarget = (currentState === STATE.ATTACKING && !perWaveMode() && cards.some(cd => cd.isCharging || cd.activated)) ? 1 : 0;
         const dimStep = 1 / TF(TIMING.attackDim);
         attackDimAlpha = Math.max(0, Math.min(1, attackDimAlpha + (dimTarget > attackDimAlpha ? dimStep : -dimStep)));
     }
@@ -4897,7 +4908,7 @@ function update() {
 
         // 全部組亮起→消散完畢＋卡牌數字更新排空 → 進入攻擊（A）或補盤（B/BG）
         if (allDone && pendingCardUpdates.length === 0) {
-            if (isBG || flowMode === 'B') {
+            if (isBG || (flowMode === 'B' && !perWaveMode())) {
                 // 改版 2026-10-13：本波消除沒有任何一組對到卡牌（沒累積 ATK）→ 補盤加快（BG 無卡牌，不適用）
                 refillFast = !isBG && !currentMatches.some(g => cards.some(c => c.elemId === g.elemId));
                 applyGravity(); currentState = STATE.GRAVITY;
@@ -5201,7 +5212,8 @@ function update() {
                             effect.monIdx = monsters.indexOf(p.targetMonster);
                             // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
                             effect.heavy = p.tier === 'heavy';
-                            killNowQueue.push(effect);
+                            if (perWaveMode()) deferredKillEffects.push(effect);   // 每波扣血：打死當場死，機制等補盤後再播
+                            else killNowQueue.push(effect);
                         }
 
                         if (p.targetMonster.jackpot > 0) {
@@ -5245,7 +5257,7 @@ function update() {
                 // FG/BG 效果排到最後，確保一般效果先觸發
                 // FG/BG 排到最後，其餘依死亡順序
                 pendingKillEffects.sort((a, b) => ((a.type === 5 || a.type === 6) ? 1 : 0) - ((b.type === 5 || b.type === 6) ? 1 : 0));
-                respawnDeadSmallMonsters();   // 三張卡都打完才補怪（企劃 2026-10-14）：途中打死的怪此時一起換新
+                if (!perWaveMode()) respawnDeadSmallMonsters();   // 三張卡都打完才補怪（企劃 2026-10-14）：途中打死的怪此時一起換新；每波扣血模式改成各自的機制播完才補
                 applyGravity();
                 currentState = STATE.GRAVITY;
             }
