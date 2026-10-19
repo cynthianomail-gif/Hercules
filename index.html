@@ -1259,21 +1259,21 @@ const BOSS_MILESTONES = [
 ];
 
 // 強開選單（企劃書 NG 出牌規則）
+// 強開選單（2026-10-19 重新設計：拿掉卡牌、石頭類，只留新規則用得到的）
 const FORCE_MENU_ITEMS = [
-    { label: '生成WILD',    type: 1,           color: '#ffd700' },
-    { label: '生成巨型WILD', type: 1, big: true, color: '#fbbf24' },
-    { label: '生成圖示',    type: 2,           color: '#38bdf8' },
-    { label: '轉換圖示',    type: 3,           color: '#a78bfa' },
-    { label: '石頭轉WILD',  type: 3, toWild: true, color: '#facc15' },
-    { label: '清除圖示',    type: 4,           color: '#f87171' },
-    { label: '獲得JP',      type: 'jp',        color: '#fb7185' },
-    { label: 'JP噴錢結算',  type: 'jpMilestone', color: '#eab308' },
-    { label: '必出4星卡',   type: 'card4',     color: '#ca8a04' },
-    { label: '必出5星卡',   type: 'card5',     color: '#c084fc' },
-    { label: '雷霆1/3/5星', type: 'thunder135', color: '#facc15' },
-    { label: '強開爆擊',    type: 'crit',      color: '#f97316' },
-    { label: '強開FG',      type: 'forceFG',   color: '#10b981' },
-    { label: '強開BG',      type: 'forceBG',   color: '#f59e0b' },
+    { label: '打死Lv1',   type: 'killLv', lv: 1, color: '#ef4444' },
+    { label: '打死Lv2',   type: 'killLv', lv: 2, color: '#22c55e' },
+    { label: '打死Lv3',   type: 'killLv', lv: 3, color: '#3b82f6' },
+    { label: '打死Lv4',   type: 'killLv', lv: 4, color: '#a855f7' },
+    { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
+    { label: '轉換升級',   type: 'mech', mech: 'convUp', lv: 1, color: '#a78bfa' },
+    { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
+    { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 2, color: '#fbbf24' },
+    { label: '直接給分',   type: 'mech', mech: 'direct', lv: 1, color: '#facc15' },
+    { label: '強開FG',    type: 'forceFG', color: '#10b981' },
+    { label: '強開BG',    type: 'forceBG', color: '#f59e0b' },
+    { label: 'JP噴錢',    type: 'jpMilestone', color: '#eab308' },
+    { label: '獲得JP',    type: 'jp', color: '#fb7185' },
 ];
 
 let currentState = STATE.IDLE;
@@ -1390,6 +1390,8 @@ let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
 let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊（保留供未來測試）
 let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣（保留供未來測試）
+let forceKillLv = 0;         // 強開（2026-10-19）：指定打死第幾級（0 = 不限）
+let forcedMech = null;       // 強開：打死後指定的機制（upGen／convUp／wild／big／direct）
 let forceBigWild = false;       // 強開：指定生成巨型 WILD
 let forceStoneWild = false;     // 強開：石頭轉 WILD（2026-10-15，錄影用）
 let forceCardLevel = 0;         // 強開：本局必出指定星等卡（4 / 5）
@@ -1438,6 +1440,18 @@ const POS_LEVEL = { 2: 1, 5: 2, 4: 3, 1: 4 };   // 位置 → 等級：Lv.1 烈�
 function smallHpFor(idx) { return noCardsMode() ? (TIMING['hpLv' + POS_LEVEL[idx]] || MONSTER_FIXED_HP[idx]) : MONSTER_FIXED_HP[idx]; }
 function elemOfLevel(lv) { const idx = Object.keys(POS_LEVEL).find(i => POS_LEVEL[i] === lv); return idx === undefined ? -1 : FIXED_MONSTER_ELEM[idx]; }
 function bossHp() { return noCardsMode() ? (TIMING.hpBoss || 40) : 40; }
+// 強開指定機制（2026-10-19）：數值照該級機制池
+function buildForcedMech(kind, lv, fromX, fromY) {
+    const r = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+    const L = Math.min(3, Math.max(1, lv || 1));
+    let e;
+    if (kind === 'upGen') { const lo = TIMING['upGen' + L + 'Min'], hi = Math.max(lo, TIMING['upGen' + L + 'Max']); e = { type: 2, upColor: elemOfLevel(L + 1), gemCount: r(lo, hi), gemColors: 1, cluster: true, isUpgrade: true }; }
+    else if (kind === 'convUp') e = { type: 3, upFrom: elemOfLevel(L), upColor: elemOfLevel(L + 1), isUpgrade: true, isConvertUp: true };
+    else if (kind === 'wild') { const w = [[3, 4], [5, 6], [7, 10]][L - 1]; e = { type: 1, wildCount: r(w[0], w[1]) }; }
+    else if (kind === 'big') e = { type: 1, big: true, bigCount: L >= 3 ? 2 : 1 };
+    else { const d = [[3, 7], [8, 15], [16, 30]][L - 1]; e = { type: 10, multiplier: r(d[0], d[1]) }; }
+    return { ...e, fromX, fromY, level: lv };
+}
 function getMonsterLevel(m) {
     if (m.jackpot > 0) return 0;
     if (noCardsMode() && m.lv) return m.lv;   // JP Boss（宙斯/赫拉 40 格；改版後 Boss 血量與小怪重疊，改以 jackpot 判斷）
@@ -3132,7 +3146,7 @@ function fireAttackRound(round) {
         lastTargetByElem[elemId] = targetMonster;
         if (!spinHadFire) { spinHadFire = true; stats.fireSpins++; }
         const lethal = roll.damage >= targetMonster.hp
-            || (forceKill && (!forceTargetLv4 || getMonsterLevel(targetMonster) === 4));
+            || (forceKill && (!forceTargetLv4 || getMonsterLevel(targetMonster) === 4) && (!forceKillLv || getMonsterLevel(targetMonster) === forceKillLv));
         const tier = !lethal ? 'fast'
             : (targetMonster.jackpot > 0 || getMonsterLevel(targetMonster) === 4) ? 'heavy' : 'kill';
         // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
@@ -3153,6 +3167,13 @@ function fireAttackRound(round) {
 }
 
 function injectGuaranteedMatches() {
+    if (noCardsMode()) {   // 聚集規則：塞一排 5 顆指定顏色（強開打死某級＝該級顏色；JP 噴錢＝雷霆）
+        const color = forceKillLv ? elemOfLevel(forceKillLv) : forceCoinBurst ? 1 : -1;
+        if (color < 0) return;
+        const row = Math.floor(Math.random() * ROWS), c0 = Math.floor(Math.random() * (COLS - 4));
+        for (let dc = 0; dc < 5; dc++) board[c0 + dc][row] = { id: color, yOffset: 0, scale: 1, isMatched: false };
+        return;
+    }
     // 為每張卡的屬性在盤面上放一排3個連線，確保觸發
     let rows = [0, 1, 2, 3, 4];
     for (let i = rows.length - 1; i > 0; i--) {
@@ -3219,7 +3240,10 @@ function startSpin() {
     }
 
     // 強開噴金幣：確保宙斯血量剛好在最高里程碑臨界點，並注入光屬性卡
-    if (forceCoinBurst && !isBG) {
+    if (forceCoinBurst && !isBG && noCardsMode()) {
+        // 無卡牌：宙斯血量設在 75% 門檻上方 4 格，塞進來的 5 顆雷霆一打就跨過 75% 階段
+        const m0 = monsters[0]; m0.hp = m0.maxHp - Math.round(m0.maxHp * 0.75) + 4; m0.isDead = false;
+    } else if (forceCoinBurst && !isBG) {
         // 若牌組沒有光屬性卡，強制替換第一張
         if (!cards.some(c => c.elemId === 1)) {
             const defs = CARD_DEFINITIONS.filter(d => d.elemId === 1);
@@ -4785,6 +4809,7 @@ function update() {
             } else {
                 applyKillFloor();
                 forcedEffectType = 0;    // 局末清除殘留強制效果
+                forcedMech = null; forceKillLv = 0;
                 // BG 倍數遞增（改版 2026-10-13）：本局有消除 → 局末倍數 ×2（最高 ×1024）；沒消除不變
                 if (isBG && hasHitThisSpin && getBGMultiplier() < 1024) {
                     bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0;
@@ -5056,10 +5081,11 @@ function update() {
                         particles.splice(i, 1); continue;
                     }
                     // 強殺：forceTargetLv4 時只對 Lv.4 怪生效，其餘照常傷害
-                    if (forceKill && (!forceTargetLv4 || getMonsterLevel(p.targetMonster) === 4)) {
+                    if (forceKill && (!forceTargetLv4 || getMonsterLevel(p.targetMonster) === 4) && (!forceKillLv || getMonsterLevel(p.targetMonster) === forceKillLv)) {
                         p.targetMonster.hp = p.damage;
                         forceKill = false;
                         forceTargetLv4 = false;
+                        forceKillLv = 0;
                     }
                     let prevHp = p.targetMonster.hp;
                     p.targetMonster.previewDmg = 0;   // 實際扣血，清掉預扣
@@ -5120,7 +5146,11 @@ function update() {
                         if (!p.targetMonster.jackpot) {
                             let effect;
                             const lvl = getMonsterLevel(p.targetMonster);
-                            if (forcedEffectType > 0) {
+                            if (forcedMech && noCardsMode()) {
+                                effect = buildForcedMech(forcedMech, lvl, mx, my);
+                                forcedMech = null;
+                                forceNoFGBG = false;
+                            } else if (forcedEffectType > 0) {
                                 // 強開參數對齊 2026-10-15 機制表：轉換／清除＝全部石頭（不足補到 10）、生成＝2 種各 7~9
                                 const fd = { 1:{wildCount:5}, 2:{gemCount:8, gemCount2:8, gemColors:2, cluster:true}, 3:{stoneAll:true, minCount:10}, 4:{stoneAll:true, topUpIf:10, minCount:10}, 10:{multiplier:10} };
                                 // FG/BG 強制但打死的不是 Lv.4：改用等級效果，保留 forcedEffectType 等 Lv.4 死亡
@@ -5674,6 +5704,10 @@ function handleInput(clientX, clientY, isClick) {
                                 startModeTransition('✨ BONUS GAME', '10 局獎勵遊戲開始！', '#1c0f00', '#f59e0b');
                                 currentState = STATE.IDLE;
                             }
+                        } else if (item.type === 'killLv' || item.type === 'mech') {
+                            // 強開打死指定等級（＋指定機制）：塞一組 5 顆該級顏色的聚集，打死該級怪
+                            forceKill = true; forceKillLv = item.lv; forcedMech = item.type === 'mech' ? item.mech : null;
+                            if (currentState === STATE.IDLE) startSpin();
                         } else if (item.type === 'jp') {
                             // 獲得JP：走正式結算流程（石像發光→全畫面報獎→噴錢），IDLE 時立即演出
                             queueBossJackpot(monsters[0]);
