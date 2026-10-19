@@ -6022,7 +6022,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 11;  // v11（2026-10-19）：移除卡牌、石頭預設 0，舊存檔（含石頭 0.37）作廢。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
+const TUNE_VERSION = 12;  // v12（2026-10-19 晚）：規則大改（不補怪、無門檻、光球到就扣血、海克力士四屬性、血量 12），舊存檔作廢，避免蓋掉新預設。v11：移除卡牌、石頭預設 0。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
