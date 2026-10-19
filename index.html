@@ -772,6 +772,11 @@ const DEFAULT_TIMING = {
     // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
     cardSame2Rate:    0.60,  // 剛好 2 張同屬性
     cardSame3Rate:    0.12,  // 3 張同屬性
+    hpLv1:            6,     // 移除卡牌模式的血量（2026-10-19 聚集消除、不控分 12 萬局抓的）：Lv.1 烈焰 → 每萬局打死約 290 隻（34 局一隻）
+    hpLv2:            7,     // Lv.2 大地 → 約 148 隻（68 局一隻）
+    hpLv3:            10,    // Lv.3 冰霜 → 約 60 隻（170 局一隻）
+    hpLv4:            13,    // Lv.4 祕法（打死開 FG／BG）→ 約 33 隻（300 局一隻）
+    hpBoss:           70,    // 宙斯／赫拉（JP）→ 約 0.5 隻（2 萬局一隻）；階段獎勵照比例：扣到 25%／50%／75%
     anyCountMin:      0,     // 顆數消除（實驗）：同色＋WILD 在盤面任何位置湊到 N 顆以上就消，不用相連；0 = 關（優先於聚集消除），2026-10-19
     noCards:          1,     // 移除卡牌（2026-10-19 老闆）：消除幾顆 → 直接扣同屬性怪物幾格血；怪物屬性固定在位置上；0 = 回到卡牌版
     clusterMin:       5,     // 聚集消除：同色＋WILD 上下左右相連 5 顆以上就消，不用直線（2026-10-19 ned 定案改用聚集消除；0 = 回到直線規則）
@@ -858,7 +863,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -894,7 +899,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1218,9 +1223,9 @@ const EFFECT_ICONS = ['', '🌟', '💎', '🔄', '💥', '🎰', '✨', '', '�
 
 // 宙斯 / 赫拉 受傷里程碑：每格代表 1 HP，maxHp=40（改版 2026-10-13：扣血 10/20/30 = 25%/50%/75%）
 const BOSS_MILESTONES = [
-    { hpLost: 10, minMult:  5, maxMult:  10 },   // ≈25%
-    { hpLost: 20, minMult: 20, maxMult:  25 },   // ≈50%
-    { hpLost: 30, minMult: 90, maxMult: 100 },   // ≈75%
+    { hpLost: 10, frac: 0.25, minMult:  5, maxMult:  10 },   // ≈25%
+    { hpLost: 20, frac: 0.50, minMult: 20, maxMult:  25 },   // ≈50%
+    { hpLost: 30, frac: 0.75, minMult: 90, maxMult: 100 },   // ≈75%
 ];
 
 // 強開選單（企劃書 NG 出牌規則）
@@ -1398,8 +1403,13 @@ let transitionAccentColor = '#ffffff';
 const MONSTER_FIXED_HP = { 1: 30, 2: 10, 4: 20, 5: 15 };   // 改版 2026-10-13：Lv4=30／Lv1=10／Lv3=20／Lv2=15
 
 // 根據 maxHp 判斷怪獸等級（JP Boss 回傳 0）
+// 移除卡牌模式：等級跟著位置走（記在怪物身上 m.lv），血量用旋鈕 hpLv1~4／hpBoss（2026-10-19）
+const POS_LEVEL = { 2: 1, 5: 2, 4: 3, 1: 4 };   // 位置 → 等級：Lv.1 烈焰、Lv.2 大地、Lv.3 冰霜、Lv.4 祕法
+function smallHpFor(idx) { return noCardsMode() ? (TIMING['hpLv' + POS_LEVEL[idx]] || MONSTER_FIXED_HP[idx]) : MONSTER_FIXED_HP[idx]; }
+function bossHp() { return noCardsMode() ? (TIMING.hpBoss || 40) : 40; }
 function getMonsterLevel(m) {
-    if (m.jackpot > 0) return 0;   // JP Boss（宙斯/赫拉 40 格；改版後 Boss 血量與小怪重疊，改以 jackpot 判斷）
+    if (m.jackpot > 0) return 0;
+    if (noCardsMode() && m.lv) return m.lv;   // JP Boss（宙斯/赫拉 40 格；改版後 Boss 血量與小怪重疊，改以 jackpot 判斷）
     return levelFromHp(m.maxHp);
 }
 
@@ -1448,19 +1458,19 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
 function initMonsters() {
     // 宙斯固定雷霆屬性(1)，赫拉固定聖心屬性(2)，皆 40 格（改版 2026-10-13）
     monsters = [
-        { elemId: 1, side: 'left',  yIndex: 0, hp: 40, maxHp: 40, shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
+        { elemId: 1, side: 'left',  yIndex: 0, hp: bossHp(), maxHp: bossHp(), shake: 0, name: '宙斯', jackpot: 15000, isDead: false },
         { elemId: 0, side: 'left',  yIndex: 1, hp: 30, maxHp: 30, shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 3, side: 'left',  yIndex: 2, hp: 10, maxHp: 10, shake: 0, name: '',     jackpot: 0,     isDead: false },
-        { elemId: 2, side: 'right', yIndex: 0, hp: 40, maxHp: 40, shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
+        { elemId: 2, side: 'right', yIndex: 0, hp: bossHp(), maxHp: bossHp(), shake: 0, name: '赫拉', jackpot: 10000, isDead: false },
         { elemId: 4, side: 'right', yIndex: 1, hp: 20, maxHp: 20, shake: 0, name: '',     jackpot: 0,     isDead: false },
         { elemId: 5, side: 'right', yIndex: 2, hp: 15, maxHp: 15, shake: 0, name: '',     jackpot: 0,     isDead: false }
     ];
 
     // 小怪屬性依等級固定（改版 2026-10-13）；外觀依等級綁定
     [1, 2, 4, 5].forEach(idx => {
-        let hp = MONSTER_FIXED_HP[idx];
-        let md = getRandomMonsterData(levelFromHp(hp));
-        monsters[idx] = { ...monsters[idx], elemId: noCardsMode() ? FIXED_MONSTER_ELEM[idx] : [0, 3, 4, 5][Math.floor(Math.random() * 4)], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: 0 };
+        let hp = smallHpFor(idx);
+        let md = getRandomMonsterData(noCardsMode() ? POS_LEVEL[idx] : levelFromHp(hp));
+        monsters[idx] = { ...monsters[idx], elemId: noCardsMode() ? FIXED_MONSTER_ELEM[idx] : [0, 3, 4, 5][Math.floor(Math.random() * 4)], hp, maxHp: hp, lv: noCardsMode() ? POS_LEVEL[idx] : undefined, name: md.name, isDead: false, shake: 0, reward: 0 };
     });
 }
 
@@ -1497,15 +1507,15 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
     }
     // 補怪屬性從手上卡抽（2026-10-14）
     let newElem = fixedElem >= 0 ? fixedElem : noCardsMode() ? FIXED_MONSTER_ELEM[idx] : drawMonsterElemFromCards();
-    let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
+    let blocks = MONSTER_FIXED_HP[idx] !== undefined ? smallHpFor(idx) : (5 + Math.floor(Math.random() * 6));
     // 實驗旋鈕 respawnHpUp：同一局補上來的怪更硬（只加 hp，maxHp 不動，等級判定照舊）
     let hpNow = blocks;
     if (!showEscape) { respawnsThisSpin++; if ((TIMING.respawnHpUp || 0) > 0) hpNow = Math.round(blocks * (1 + TIMING.respawnHpUp * respawnsThisSpin)); }
     // 外觀依等級綁定，且不替換成相同外觀（企劃書）
-    let md = getRandomMonsterData(levelFromHp(blocks), m.name);
+    let md = getRandomMonsterData(noCardsMode() && POS_LEVEL[idx] ? POS_LEVEL[idx] : levelFromHp(blocks), m.name);
     monsters[idx] = {
         side: m.side, yIndex: m.yIndex,
-        elemId: newElem, hp: hpNow, maxHp: blocks,
+        elemId: newElem, hp: hpNow, maxHp: blocks, lv: noCardsMode() ? POS_LEVEL[idx] : undefined,
         name: md.name, isDead: false, shake: 0,
         jackpot: 0, reward: 0,
         flashT: 0, fadeIn: TF(TIMING.respawnFade)   // 更換怪獸淡入（節奏總表 0.4s）
@@ -2702,7 +2712,8 @@ function checkBossMilestones(monIdx, prevHp, newHp) {
     if (!bossHitMilestones[monIdx]) bossHitMilestones[monIdx] = new Set();
     let triggered = bossHitMilestones[monIdx];
     BOSS_MILESTONES.forEach(ms => {
-        let threshold = m.maxHp - ms.hpLost;
+        const lost = noCardsMode() ? Math.round(m.maxHp * ms.frac) : ms.hpLost;   // 移除卡牌模式：階段照比例（25%／50%／75%）
+        let threshold = m.maxHp - lost;
         if (prevHp > threshold && newHp <= threshold && !triggered.has(ms.hpLost)) {
             triggered.add(ms.hpLost);
             let mult = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
@@ -3132,11 +3143,12 @@ function startSpin() {
         if (!TIMING.fgFixedMonsters) assignMonsterElemsFromCards();   // 實驗 fgFixedMonsters=1：FG 內小怪屬性固定，不重抽
     } else {
         // 一般模式
-        [0, 3].forEach(idx => { let m = monsters[idx]; m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
+        [0, 3].forEach(idx => { let m = monsters[idx]; if (noCardsMode()) m.maxHp = bossHp(); m.hp = m.maxHp; m.isDead = false; m.shake = 0; });
         generateCards();
         [1, 2, 4, 5].forEach(idx => {
             let m = monsters[idx];
             if (TIMING.noRespawnInSpin && m.isDead) { respawnMonster(idx, false); return; }   // 上一局死掉的怪此時換新
+            if (noCardsMode()) { m.maxHp = smallHpFor(idx); m.lv = POS_LEVEL[idx]; }
             m.hp = m.maxHp; m.isDead = false; m.shake = 0;
         });
         assignMonsterElemsFromCards();   // 小怪屬性從手上卡抽（企劃書規則，2026-10-14）
