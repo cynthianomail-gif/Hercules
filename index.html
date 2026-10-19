@@ -714,7 +714,7 @@ const DEFAULT_TIMING = {
     heavyDeathHold:   0.80,  // 重擊：死亡狀態額外停留
     refillFastScale:  0.40,  // 本波消除沒對到任何卡牌 → 補盤時間 ×此倍率（非時間值）
     // 石頭（改版 2026-10-14，非時間值）：初盤組數權重（每組 2 顆相鄰）＋補盤每欄成對掉落機率
-    stoneShare:       0.37,  // 石頭占盤面比例（初盤成對灑到此比例；補盤依比例掉石頭）。成對出現擋線效果比散落弱，0.37 約等於得分率三成
+    stoneShare:       0,     // 2026-10-19 ned：不要石頭了（原 0.37）。 石頭占盤面比例（初盤成對灑到此比例；補盤依比例掉石頭）。成對出現擋線效果比散落弱，0.37 約等於得分率三成
     stoneRefillScale: 1.0,   // 補盤掉石頭的倍率（1 = 跟 stoneShare 同比例；0 = 補盤不掉石頭）
     // 旺局（2026-10-14，非時間值）：模擬伺服器排盤 — 每局有機率是旺局，落下的圖示偏向手上卡牌的屬性
     hotSpinRate:      0.01,  // 旺局機率（2026-10-14 ned：旺局太強，改 1%）
@@ -723,7 +723,7 @@ const DEFAULT_TIMING = {
     rtpControl:       1,     // RTP 控分（模擬正式版 server，2026-10-14）：1 = 開。累計吐分超過目標就「咬」（不旺局、石頭加量、機制隨機放、機制取最小值、卡牌屬性變少）；低於目標就「補」（必旺局、石頭減量、機制貼著放、機制取最大值）
     rtpTarget:        98.5,  // RTP 目標（%）
     rtpBand:          20,    // 容許帶（押注倍數）：差距在 ±此值內不咬不補
-    rtpBiteStone:     0.08,  // 咬的時候石頭比例加多少（補的時候減多少）
+    rtpBiteStone:     0,     // 2026-10-19 不要石頭：控分不再靠加石頭（原 0.08）。 咬的時候石頭比例加多少（補的時候減多少）
     rtpColdBias:      0.6,   // 咬的時候卡牌屬性圖示的權重（<1 = 變少，卡牌比較充不滿）
     maxAttackRounds:  0,     // 實驗：每局最多幾波攻擊（0 = 不限；2 = 機制生的連線只能再打一波）
     rechargeRate:     1,     // 實驗：第一波攻擊之後，連線幫卡牌充能的倍率（1 = 照常；0.5 = 減半；0 = 不充）
@@ -772,6 +772,7 @@ const DEFAULT_TIMING = {
     // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
     cardSame2Rate:    0.60,  // 剛好 2 張同屬性
     cardSame3Rate:    0.12,  // 3 張同屬性
+    noCards:          1,     // 移除卡牌（2026-10-19 老闆）：消除幾顆 → 直接扣同屬性怪物幾格血；怪物屬性固定在位置上；0 = 回到卡牌版
     clusterMin:       0,     // 聚在一起幾顆就消（0 = 直線規則；5 = 同色上下左右相連 5 顆以上就消，不用直線，2026-10-19 競品式消除實驗）
     minMatch:         3,     // 幾顆才連線消除（3 = 現行；4 = 4 消實驗，2026-10-19 老闆提議「改 4 消就好」）
     sameTargetRate:   0.60,  // 同屬性卡打同一隻（2026-10-19 ned 先用 60%）：第二張起的同屬性卡有此機率接著打前一張打的那隻（還活著才算），其餘照隨機挑（隨機也可能打到同一隻）
@@ -856,7 +857,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -892,7 +893,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1145,7 +1146,10 @@ function normalAttack(elemId, count, level) {
 
 // 改版 2026-10-13：卡牌基礎攻擊力（依星等），卡面顯示＝基礎＋本局消除顆數
 const CARD_BASE_ATK = { 1: 1, 2: 3, 3: 5, 4: 10, 5: 15 };   // 2026-10-14 晚 ned 定案：回原本 1/3/5/10/15（配賠率表 C、石頭 12 顆、旺局 1%）
-function cardBaseAtk(card) { return CARD_BASE_ATK[card.level] || 1; }
+function cardBaseAtk(card) { return card.virtual ? 0 : (CARD_BASE_ATK[card.level] || 1); }   // 移除卡牌模式：沒有基礎攻擊力，傷害＝消除顆數
+// 移除卡牌模式（2026-10-19）：怪物屬性固定在位置上 — 宙斯雷霆、赫拉聖心、Lv.4 祕法、Lv.1 烈焰、Lv.3 冰霜、Lv.2 大地
+function noCardsMode() { return !!TIMING.noCards; }
+const FIXED_MONSTER_ELEM = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 4, 5: 5 };
 // 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
 const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
 function rollCardAttack(card) {
@@ -1455,7 +1459,7 @@ function initMonsters() {
     [1, 2, 4, 5].forEach(idx => {
         let hp = MONSTER_FIXED_HP[idx];
         let md = getRandomMonsterData(levelFromHp(hp));
-        monsters[idx] = { ...monsters[idx], elemId: [0, 3, 4, 5][Math.floor(Math.random() * 4)], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: 0 };
+        monsters[idx] = { ...monsters[idx], elemId: noCardsMode() ? FIXED_MONSTER_ELEM[idx] : [0, 3, 4, 5][Math.floor(Math.random() * 4)], hp, maxHp: hp, name: md.name, isDead: false, shake: 0, reward: 0 };
     });
 }
 
@@ -1475,6 +1479,7 @@ function drawMonsterElemFromCards() {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 function assignMonsterElemsFromCards() {
+    if (noCardsMode()) { [1, 2, 4, 5].forEach(idx => { monsters[idx].elemId = FIXED_MONSTER_ELEM[idx]; }); return; }   // 移除卡牌：屬性固定在位置上
     // 每張卡各自保證一隻同屬性的小怪（AAB → 至少兩隻 A、一隻 B；AAA → 三隻 A），剩下的位子從手上屬性隨機（可重複）— 2026-10-14 晚 ned 定案
     const pool = cardAllElems();
     const need = shuffled(cards.map(c => c.elemId));
@@ -1490,7 +1495,7 @@ function respawnMonster(idx, showEscape = true, fixedElem = -1) {
         scoreTexts.push({ x: ex, y: ey, text: `${m.name} 逃跑了！`, color: '#fbbf24', life: 90, fontSize: 26 });
     }
     // 補怪屬性從手上卡抽（2026-10-14）
-    let newElem = fixedElem >= 0 ? fixedElem : drawMonsterElemFromCards();
+    let newElem = fixedElem >= 0 ? fixedElem : noCardsMode() ? FIXED_MONSTER_ELEM[idx] : drawMonsterElemFromCards();
     let blocks = MONSTER_FIXED_HP[idx] !== undefined ? MONSTER_FIXED_HP[idx] : (5 + Math.floor(Math.random() * 6));
     // 實驗旋鈕 respawnHpUp：同一局補上來的怪更硬（只加 hp，maxHp 不動，等級判定照舊）
     let hpNow = blocks;
@@ -1631,6 +1636,13 @@ function drawCardLevel() {
 
 function generateCards(elemPool = null) {
     cards = [];
+    if (noCardsMode()) {
+        // 移除卡牌：六種屬性各一個看不見的攻擊來源（不畫、沒有基礎攻擊力、不爆擊），消除的顆數直接打同屬性怪物
+        cards = [0, 1, 2, 3, 4, 5].map(e => ({ elemId: e, level: 1, name: '', targetCount: 0, atk: 0, virtual: true,
+            activated: false, isCharging: false, chargeTimer: 0, scale: 1, shake: 0, yOffset: 0, enterDelay: 0, yTarget: 0 }));
+        forceCardLevel = 0; forceCardElem = -1; forceThunder135 = false;
+        return;
+    }
 
     // 改版 2026-10-14：屬性依牌型抽（見 drawCardElemPattern），同屬性卡集中打同一隻怪；elemPool = FG 卡配怪抽時的屬性池
     const patternElems = drawCardElemPattern(elemPool && elemPool.length ? elemPool : NORMAL_ELEMS);
@@ -1973,8 +1985,12 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     // 能量落點＝攻擊力數字實際位置（與 drawCardAtk 同一算式，含佈局面板 atkNum 偏移）
     const AL = LAYOUT.atkNum || { x: 0, y: 0 };
     const cardX = cm.startX + atkCardIdx * (cm.cardW + cm.gap);
-    const cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
-    const cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
+    let cardCX = (cm.isFGMode ? cardX + cm.cardW / 2 : cardX + cm.cardW * 0.855) + AL.x;
+    let cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
+    if (_c.virtual) {   // 移除卡牌：能量直接飛到同屬性的怪物身上
+        const mt = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || monsters.find(mm => mm.elemId === g.elemId);
+        if (mt) { const a = monsterAnchor(mt); cardCX = a.x; cardTY = a.y; }
+    }
     const elemColor = ELEMENTS[g.elemId].color;
     const energyLife = TF(TIMING.energyFly) + 20;
     const energyDelay = 0;                 // 亮起當下立即飛出（不再等消散）
@@ -2153,11 +2169,12 @@ function prepareTargetBeamEffect(effect) {
     effect.level = effect.level || 1;
     effect.style = mechStyle(effect.level);
     let targets = [];
-    const nonCardElems = getNonCardElems();
+    const toElem = dominantCardElem();
+    // 移除卡牌模式：六種屬性都有怪可打，沒有「非本局屬性」→ 補位改用「不是目標顏色」的一般圖示
+    const nonCardElems = noCardsMode() ? [0, 1, 2, 3, 4, 5].filter(e => e !== toElem) : getNonCardElems();
     const stoneCells = allBoardCells((cell, gem) => gem.id === STONE_ID);
     const junkCells = allBoardCells((cell, gem) => nonCardElems.includes(gem.id));   // 非本局屬性的一般圖示（不含石頭、WILD）
-    const cardSet = getCardElems();
-    const toElem = dominantCardElem();   // 轉換／生成的顏色：盤上最多的那個本局屬性（程式內部選法）
+    const cardSet = getCardElems();   // 轉換／生成的顏色：盤上最多的那個本局屬性（程式內部選法）
     // 挑格子的原則：貼著本局屬性、WILD、或已經挑到的格子優先（轉完、生完、清完比較容易連成線）
     const pickAdjacent = (pool, n, seedSet) => {
         if (effPlaceSmart() === 0) return shuffled(pool).slice(0, n);   // 隨機散放（伺服器壓分用）
@@ -2413,6 +2430,7 @@ function startDirectScoreEffect(effect) {
 // 補怪的屬性規則跟開局一樣（2026-10-15 ned）：補完之後每張卡還是各有一隻同屬性的小怪
 // 算法：手上卡牌屬性（可重複）扣掉還活著的小怪已經涵蓋的，剩下的缺口先補，補完還有位子才從手上屬性隨機
 function respawnElemsFor(deadIdxs) {
+    if (noCardsMode()) return deadIdxs.map(idx => FIXED_MONSTER_ELEM[idx]);   // 移除卡牌：補怪屬性跟位置走
     const need = cards.map(c => c.elemId);
     [1, 2, 4, 5].forEach(i => {
         if (deadIdxs.includes(i) || monsters[i].isDead) return;
@@ -3029,10 +3047,11 @@ function fireAttackRound(round) {
         const tier = !lethal ? 'fast'
             : (targetMonster.jackpot > 0 || getMonsterLevel(targetMonster) === 4) ? 'heavy' : 'kill';
         // 傷害＝本局該卡累積攻擊力（含已疊加的特效），一次打出
+        const vAnchor = card.virtual ? monsterAnchor(targetMonster) : null;   // 移除卡牌：直接在怪物身上命中
         particles.push({
-            stage: 1,
+            stage: card.virtual ? 2 : 1, virtualHit: !!card.virtual,
             startX: 640, startY: GRID_Y + GRID_H,
-            tx: cardX, ty: baseY + 20,
+            tx: vAnchor ? vAnchor.x : cardX, ty: vAnchor ? vAnchor.y : baseY + 20,
             progress: 0,
             color: ELEMENTS[elemId].color,
             cardRef: card,
@@ -3653,6 +3672,7 @@ function drawInactiveCardDim(card, x, drawY, cardW, cardH) {
 }
 
 function drawCards() {
+    if (cards.length && cards.every(c => c.virtual)) return;   // 移除卡牌模式：不畫卡
     if (isBG) return; // BG 模式無卡牌
 
     const { isFGMode, cardW, cardH, gap, count, totalW, startX, baseY } = getCardDrawMetrics(cards.length);
@@ -4889,6 +4909,14 @@ function update() {
                                      t: 0, life: TF(TIMING.hitBurst), big: !!p.isCrit || p.tier === 'heavy',
                                      rays: Array.from({ length: 10 }, (_, k) => ({ a: k * Math.PI / 5 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
                 }
+                if (p.virtualHit && !p.burstDone) {   // 移除卡牌：沒有卡牌撞擊，直接在怪物身上播打擊光效
+                    p.burstDone = true;
+                    lastAttackTier = p.tier;
+                    if (p.tier === 'heavy') { heavyAim = null; hitStopT = TF(TIMING.heavyHitStop); screenShakeT = TF(TIMING.heavyShake); screenFlashT = TF(TIMING.heavyFlash); }
+                    const hc = monsterArtCenter(p.targetMonster);
+                    hitBursts.push({ x: hc.x, y: hc.y, color: ELEMENTS[p.cardRef.elemId].color, t: 0, life: TF(TIMING.hitBurst), big: p.tier === 'heavy',
+                                     rays: Array.from({ length: 10 }, (_, k) => ({ a: k * Math.PI / 5 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
+                }
                 p.progress = 1.0;
                 if (p.progress >= 1.0) {
                     if (p.isOverflow) {
@@ -5641,7 +5669,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 10;  // v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。舊存檔自動作廢。
+const TUNE_VERSION = 11;  // v11（2026-10-19）：移除卡牌、石頭預設 0，舊存檔（含石頭 0.37）作廢。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
