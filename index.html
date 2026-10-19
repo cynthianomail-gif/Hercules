@@ -776,7 +776,7 @@ const DEFAULT_TIMING = {
     hpLv2:            7,     // Lv.2 大地 → 約 186 隻（54 局一隻）
     hpLv3:            11,    // Lv.3 冰霜 → 約 59 隻（170 局一隻）
     hpLv4:            14,    // Lv.4 祕法（打死開 FG／BG）→ 約 32 隻（317 局一隻）；主要靠升級鏈推上來，血量本身影響小
-    hpBoss:           70,    // 宙斯／赫拉（JP）→ 約 0.5 隻（2 萬局一隻）；階段獎勵照比例：扣到 25%／50%／75%
+    hpBoss:           35,    // 宙斯／赫拉（JP）：2026-10-19 ned 覺得 70 跟小怪差太多 → 35（約 Lv.4 的 2.5 倍）；JP 打死約 6700 局一次；階段照比例 25%／50%／75%
     upGen1Min:        5,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（大地），最少幾顆；30% 成塊時約 53% 接著打死 Lv.2
     upGen1Max:        6,     // 打死 Lv.1 最多幾顆
     upGen2Min:        6,     // 打死 Lv.2 → 生成 Lv.3 顏色（冰霜）；約 44% 接著打死 Lv.3
@@ -784,6 +784,12 @@ const DEFAULT_TIMING = {
     upGen3Min:        8,     // 打死 Lv.3 → 生成 Lv.4 顏色（祕法）；約 63% 接著打死 Lv.4
     upGen3Max:        10,    // 打死 Lv.3 最多幾顆
     upGenSmartRate:   0.3,
+    jpStage1Min:      1,     // 宙斯／赫拉階段獎勵（無卡牌模式，2026-10-19 血量降到 35 後調弱）：扣到 25% 給幾倍（原 5~10）
+    jpStage1Max:      2,
+    jpStage2Min:      5,     //   扣到 50%（原 20~25）
+    jpStage2Max:      8,
+    jpStage3Min:      15,    //   扣到 75%（原 90~100）
+    jpStage3Max:      25,
     cpLowScale:       1,     // 聚集消除賠率表（2026-10-19，參考競品聚集 5 連線表）整體倍率：低級＝烈焰、大地（Lv.1、Lv.2）
     cpMidScale:       1,     //   中級＝冰霜、祕法（Lv.3、Lv.4）
     cpHighScale:      1,     //   高級＝雷霆、聖心（宙斯、赫拉）   // 升級生成成塊比例（2026-10-19 ned：要亂撒一點）：此機率貼著同色成塊，其餘亂撒     // 
@@ -873,7 +879,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['noCards','移除卡牌(1=是)', 0, 1, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1], ['hpLv1','無卡牌血量 Lv1', 1, 60, 1], ['hpLv2','無卡牌血量 Lv2', 1, 60, 1], ['hpLv3','無卡牌血量 Lv3', 1, 60, 1], ['hpLv4','無卡牌血量 Lv4', 1, 80, 1], ['hpBoss','無卡牌血量 宙斯赫拉', 5, 300, 1], ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05], ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -909,7 +915,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -2770,7 +2776,10 @@ function checkBossMilestones(monIdx, prevHp, newHp) {
         let threshold = m.maxHp - lost;
         if (prevHp > threshold && newHp <= threshold && !triggered.has(ms.hpLost)) {
             triggered.add(ms.hpLost);
-            let mult = ms.minMult + Math.floor(Math.random() * (ms.maxMult - ms.minMult + 1));
+            const tierNo = ms.hpLost / 10;   // 1／2／3 → 25%／50%／75%
+            const lo = noCardsMode() ? TIMING['jpStage' + tierNo + 'Min'] : ms.minMult;
+            const hi = noCardsMode() ? Math.max(lo, TIMING['jpStage' + tierNo + 'Max']) : ms.maxMult;
+            let mult = lo + Math.floor(Math.random() * (hi - lo + 1));
             const which = m.elemId === 1 ? 'zeus' : 'hera';
             jpSettleQueue.push({
                 kind: 'milestone',
