@@ -772,6 +772,7 @@ const DEFAULT_TIMING = {
     // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
     cardSame2Rate:    0.60,  // 剛好 2 張同屬性
     cardSame3Rate:    0.12,  // 3 張同屬性
+    minMatch:         3,     // 幾顆才連線消除（3 = 現行；4 = 4 消實驗，2026-10-19 老闆提議「改 4 消就好」）
     sameTargetRate:   0.60,  // 同屬性卡打同一隻（2026-10-19 ned 先用 60%）：第二張起的同屬性卡有此機率接著打前一張打的那隻（還活著才算），其餘照隨機挑（隨機也可能打到同一隻）
     // 受擊／擊殺
     hitReact:         0.50,  // 受擊+血量（血條位移）
@@ -854,7 +855,7 @@ const TIMING_META = [
     { group: '石頭／抽卡', items: [
         ['stoneShare','石頭占盤面比例', 0, 0.6, 0.01], ['stoneRefillScale','補盤掉石頭倍率', 0, 2, 0.1],
         ['hotSpinRate','旺局機率', 0, 1, 0.005], ['hotBias','旺局:卡牌屬性權重倍率', 1, 6, 0.1], ['hotNoStone','旺局不出石頭(1=是)', 0, 1, 1], ['rtpControl','RTP控分(1=開)', 0, 1, 1], ['rtpTarget','RTP目標(%)', 80, 120, 0.5], ['rtpBand','RTP容許帶(押注倍)', 0, 200, 5], ['rtpBiteStone','咬:石頭加量', 0, 0.3, 0.01], ['rtpColdBias','咬:卡牌屬性權重', 0.1, 1, 0.05], ['maxAttackRounds','每局最多攻擊波數(0不限)', 0, 5, 1], ['rechargeRate','第二波起充能倍率', 0, 1, 0.1], ['respawnHpUp','補怪血量加成/隻', 0, 3, 0.25], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['cardElemBias','一般局卡牌屬性落圖權重', 0.3, 1.5, 0.05], ['fgNoStone','FG不出石頭(1=是)', 0, 1, 1], ['fgFixedMonsters','FG小怪屬性固定(1=是)', 0, 1, 1], ['fgCardsFromMonsters','FG卡牌只抽小怪屬性(1=是)', 0, 1, 1], ['chargeMinLine','幾顆起才充能/出手', 3, 6, 1], ['fireNeedsTarget','出手要達卡上顆數(1=是)', 0, 1, 1],
-        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05],
+        ['cardSame2Rate','抽卡:2張同屬性機率', 0, 1, 0.01], ['cardSame3Rate','抽卡:3張同屬性機率', 0, 1, 0.01], ['sameTargetRate','同屬性卡打同一隻機率', 0, 1, 0.05], ['minMatch','幾顆才連線消除(3/4)', 3, 5, 1],
         ['starW1','抽卡:1星權重', 0, 100, 1], ['starW2','抽卡:2星權重', 0, 100, 1], ['starW3','抽卡:3星權重', 0, 100, 1],
         ['starW4','抽卡:4星權重', 0, 100, 1], ['starW5','抽卡:5星權重', 0, 100, 1]] },
     { group: '機制', items: [
@@ -890,7 +891,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1694,6 +1695,9 @@ function generateCardsForFG() {
 // === 核心邏輯 ===
 // 在一段連續非空格上，為每個實色找出「該色或WILD、且含≥1實色、長度≥3」的極大連續 run。
 // 關鍵：WILD 可同時併入左右（上下）不同顏色的連線 → 巨型WILD 四邊皆能各自成線。
+// 幾顆才算連線（旋鈕 minMatch，預設 3；4 消實驗用，2026-10-19）
+function minMatchLen() { return TIMING.minMatch === undefined ? 3 : TIMING.minMatch; }
+
 function collectLineRuns(groups, start, end, fixed, horizontal) {
     const at = i => horizontal ? board[i][fixed] : board[fixed][i];
     const mkCell = i => horizontal ? { c: i, r: fixed } : { c: fixed, r: i };
@@ -1712,7 +1716,7 @@ function collectLineRuns(groups, start, end, fixed, horizontal) {
                 else if (g === WILD_ID) { i++; }
                 else break;
             }
-            if (hasColor && i - runStart >= 3) {
+            if (hasColor && i - runStart >= minMatchLen()) {
                 const cells = [];
                 for (let k = runStart; k < i; k++) cells.push(mkCell(k));
                 groups.push({ elemId: color, cells, count: i - runStart });
@@ -1790,7 +1794,7 @@ function applyGravity() {
 // 未成線的散顆即使貼著連線也不計入。
 // WILD 跨不同屬性成線時不合併 → 該 WILD 分屬多組（規格 03/04）。
 function buildWaveGroups() {
-    const runs = findMatches().filter(run => run.cells.length >= 3);
+    const runs = findMatches().filter(run => run.cells.length >= minMatchLen());
     const groups = [];
     // 判斷一組格子是否與既有組共用格子或上下左右相鄰
     const touches = (keyset, cells) => cells.some(({ c, r }) =>
