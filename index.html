@@ -4043,7 +4043,7 @@ function drawComboLabel(m) {
     const pop = cb.pop > 0 ? 1 + 0.25 * (cb.pop / 8) : 1;
     const boss = m.jackpot > 0;
     const a = boss ? monsterAnchor(m) : monsterArtCenter(m);
-    const x = Math.max(60, Math.min(1220, a.x)), y = boss ? a.y + 46 : a.y - 86;
+    const x = Math.max(60, Math.min(1220, a.x)), y = boss ? a.y + 46 : a.y - 132;   // 拉高到打擊光外面，不然會被爆光蓋住
     const color = (ELEMENTS[m.elemId] || WILD_ELEM).color;
     ctx.save();
     ctx.globalAlpha = alpha;
