@@ -2157,7 +2157,8 @@ function collectGroupAttackToCard(g, atkCardIdx) {
         if (TIMING.orbPerSymbol !== 0 && !forced) {
             // 每顆圖示一顆光球（2026-10-20 ned）：各格留一顆光球、逐顆起飛，一顆扣 1 格；只飛「還打得到」的量（多的不飛，免得打屍體）；最後一顆剛好打死的畫成致命光球
             const need = Math.max(0, vTarget.hp - before);
-            const n = Math.min(g.count, need);
+            let n = Math.min(g.count, need);
+            if (forceCrit && need > 1) n = Math.min(n, need - 1);   // 強開爆擊補刀：這一批故意不打死，留 1 格給爆擊
             if (n <= 0) { g.hitTier = 'none'; return; }
             vTarget.pendingDmg = before + n;
             vTarget.volleyDmg = (before > 0 ? (vTarget.volleyDmg || 0) : 0) + n;   // 這一批（同時在飛的）總共打幾格 → 最後一顆到時決定受擊幾階
