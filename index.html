@@ -794,6 +794,9 @@ const DEFAULT_TIMING = {
     bigWild3:         1,     // 打死 Lv.3（原 2 顆）
     perWaveHit:       2,     // 扣血時機（2026-10-19，移除卡牌後）：2 = 光球飛到怪物身上當下扣血、打死當場死（致命那顆光球放大＋命中停格）；1 = 這一波消完才扣血；0 = 整串連爆結束才一起結算（卡牌版的做法）。機制都在補盤後播
     killHitStop:      0.12,  // 光球到就扣血：打死那一下的命中停格（Lv.4／JP 用 heavyHitStop）
+    orbPerSymbol:     1,     // 每顆圖示一顆光球（2026-10-20 ned）：消 5 顆就 5 顆光球，從各自的格子逐顆起飛（間隔 orbStagger）飛到怪物上，一顆扣 1 格、怪物上方累計總傷害（連擊感）；只飛「還打得到」的量；0 = 一組一顆光球
+    orbStagger:       0.08,  // 同一組光球逐顆起飛的間隔（秒）
+    comboHold:        0.60,  // 怪物上方的累計總傷害，最後一顆命中後停留幾秒再淡出
     critWindow:       2,     // 爆擊補刀（2026-10-19 ned 定）：光球打完怪還剩 ≤ 這麼多格 → 有 critRate 機率跳爆擊：海克力士登場，從爆擊中心再飛一顆光球把牠打死（玩家看得出是多送的一擊）；0 = 關
     critRate:         0.10,  // 爆擊率（server 桿子：控分咬 0、補 ×2）
     heroFinisher:     1,     // 海克力士：0 = 爆擊只閃白＋「爆擊！」字、不出人；1 = 只在爆擊時登場（2026-10-19 ned 定）；2 = 一般打死的最後一擊也登場（登場條件見 heroMinLv／heroShortBelow／heroOnJP）
@@ -810,9 +813,9 @@ const DEFAULT_TIMING = {
     symWArcane:       1,     // 圖示出現權重（無卡牌模式，2026-10-19）：祕法（Lv.4）
     symWThunder:      0.7,   // 雷霆（宙斯，高分）：2026-10-19 ned 定 0.7（高分圖示出現少一點）
     symWHeart:        0.7,   // 聖心（赫拉，高分）：0.7
-    symWFlame:        1,     //   烈焰（Lv.1）
-    symWFrost:        1,     //   冰霜（Lv.3）
-    symWEarth:        1,     //   大地（Lv.2）
+    symWFlame:        1,     //   烈焰（Lv.3，2026-10-20 重排）
+    symWFrost:        1,     //   冰霜（Lv.2）
+    symWEarth:        1,     //   大地（Lv.1）
     jpStage1Min:      1,     // 宙斯／赫拉階段獎勵（無卡牌模式，2026-10-19 血量降到 35 後調弱）：扣到 25% 給幾倍（原 5~10）
     jpStage1Max:      2,
     jpStage2Min:      5,     //   扣到 50%（原 20~25）
@@ -888,11 +891,12 @@ const TIMING_META = [
     { group: '★ 新規則（無卡牌版，2026-10-19）', items: [
         ['noCards','移除卡牌(1=是)', 0, 1, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['minMatch','直線規則:幾顆才消(3/4)', 3, 5, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1],
         ['perWaveHit','扣血時機(2光球到/1消完/0連爆完)', 0, 2, 1], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1],
-        ['hpLv1','血量 Lv1 烈焰', 1, 60, 1], ['hpLv2','血量 Lv2 大地', 1, 60, 1], ['hpLv3','血量 Lv3 冰霜', 1, 60, 1], ['hpLv4','血量 Lv4 祕法', 1, 80, 1], ['hpBoss','血量 宙斯赫拉', 5, 300, 1],
+        ['hpLv1','血量 Lv1 大地', 1, 60, 1], ['hpLv2','血量 Lv2 冰霜', 1, 60, 1], ['hpLv3','血量 Lv3 烈焰', 1, 60, 1], ['hpLv4','血量 Lv4 祕法', 1, 80, 1], ['hpBoss','血量 宙斯赫拉', 5, 300, 1],
         ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05],
         ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05],
         ['wild1Min','WILD Lv1 最少', 0, 20, 1], ['wild1Max','WILD Lv1 最多', 0, 20, 1], ['wild2Min','WILD Lv2 最少', 0, 20, 1], ['wild2Max','WILD Lv2 最多', 0, 20, 1], ['wild3Min','WILD Lv3 最少', 0, 20, 1], ['wild3Max','WILD Lv3 最多', 0, 20, 1], ['bigWild2','巨型WILD Lv2 顆數', 0, 3, 1], ['bigWild3','巨型WILD Lv3 顆數', 0, 3, 1],
         ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
+        ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05],
         ['critWindow','爆擊:剩幾格以內可跳(0=關)', 0, 10, 1], ['critRate','爆擊率', 0, 1, 0.01],
         ['heroFinisher','海克力士(0不出人/1只爆擊/2也含一般打死)', 0, 2, 1], ['heroMinLv','海克力士:一般打死最低等級(1~4)', 1, 4, 1], ['heroShortBelow','海克力士:幾級以下用短版', 1, 5, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1],
         ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1]] },
@@ -954,7 +958,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'critWindow', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'critWindow', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1143,8 +1147,8 @@ function getBGMultiplier() {
 
 // 聚集消除賠率表（2026-10-19）：級距 5／6／7／8~9／10~11／12+；依怪物等級分三級（屬性固定後圖示有明確強弱）
 const CLUSTER_PAY = {
-    Low:  [0.1, 0.2, 0.3, 0.5, 2, 10],    // 烈焰、大地（參考表最低級）
-    Mid:  [0.3, 0.5, 0.7, 1, 5, 25],      // 冰霜、祕法（參考表第二級）
+    Low:  [0.1, 0.2, 0.3, 0.5, 2, 10],    // Lv1、Lv2 的顏色（2026-10-20 起 大地、冰霜）（參考表最低級）
+    Mid:  [0.3, 0.5, 0.7, 1, 5, 25],      // Lv3、Lv4 的顏色（烈焰、祕法）（參考表第二級）
     High: [0.5, 1, 1.5, 2.5, 10, 50],     // 雷霆、聖心（參考表第三級）
 };
 function clusterPayTier(elemId) { return (elemId === 1 || elemId === 2) ? 'High' : (elemId === elemOfLevel(3) || elemId === elemOfLevel(4)) ? 'Mid' : 'Low'; }
@@ -1228,7 +1232,7 @@ function noCardsMode() { return !!TIMING.noCards; }
 function perWaveMode() { return noCardsMode() && !isBG && TIMING.perWaveHit > 0; }
 // 光球到就扣血（perWaveHit=2）：扣血、打死都在光球抵達的那一幀，不等這一波消散完
 function orbHitMode() { return perWaveMode() && TIMING.perWaveHit >= 2; }
-const FIXED_MONSTER_ELEM = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 4, 5: 5 };
+const FIXED_MONSTER_ELEM = { 0: 1, 1: 0, 2: 5, 3: 2, 4: 3, 5: 4 };   // 2026-10-20 ned：Lv1(位置2) 大地、Lv2(位置5) 冰霜、Lv3(位置4) 烈焰、Lv4(位置1) 祕法；0 宙斯雷霆、3 赫拉聖心
 // 爆擊：烈焰/祕法/大地/冰霜 的 4、5 星卡，出手前判定（Lv4 20%／Lv5 30%），傷害 ×1.5 無條件進位
 const CARD_CRIT_RATE = { 4: 0.20, 5: 0.30 };
 function rollCardAttack(card) {
@@ -1480,7 +1484,7 @@ const MONSTER_FIXED_HP = { 1: 30, 2: 10, 4: 20, 5: 15 };   // 改版 2026-10-13�
 
 // 根據 maxHp 判斷怪獸等級（JP Boss 回傳 0）
 // 移除卡牌模式：等級跟著位置走（記在怪物身上 m.lv），血量用旋鈕 hpLv1~4／hpBoss（2026-10-19）
-const POS_LEVEL = { 2: 1, 5: 2, 4: 3, 1: 4 };   // 位置 → 等級：Lv.1 烈焰、Lv.2 大地、Lv.3 冰霜、Lv.4 祕法
+const POS_LEVEL = { 2: 1, 5: 2, 4: 3, 1: 4 };   // 位置 → 等級：Lv.1 大地、Lv.2 冰霜、Lv.3 烈焰、Lv.4 祕法（2026-10-20 重排）
 function smallHpFor(idx) { return noCardsMode() ? (TIMING['hpLv' + POS_LEVEL[idx]] || MONSTER_FIXED_HP[idx]) : MONSTER_FIXED_HP[idx]; }
 function elemOfLevel(lv) { const idx = Object.keys(POS_LEVEL).find(i => POS_LEVEL[i] === lv); return idx === undefined ? -1 : FIXED_MONSTER_ELEM[idx]; }
 function bossHp() { return noCardsMode() ? (TIMING.hpBoss || 40) : 40; }
@@ -2143,17 +2147,38 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     const startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
     const startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
     // 光球到就扣血：出發時就知道這顆會不會打死（同一隻怪這一波已經飛出去的量＋這顆 ≥ 血量）→ 致命光球畫大一號
-    let orbHit = false, lethal = false, forced = false;
+    let orbHit = false, lethal = false, forced = false, pushed = false;
     if (vTarget && orbHitMode()) {
         orbHit = true;
         const before = vTarget.pendingDmg || 0;
-        vTarget.pendingDmg = before + g.count;
         const forceThis = forceKill && !vTarget._forceMarked && (!forceTargetLv4 || getMonsterLevel(vTarget) === 4) && (!forceKillLv || getMonsterLevel(vTarget) === forceKillLv);
         if (forceThis) { vTarget._forceMarked = true; forced = true; }
-        lethal = !vTarget.isDead && before < vTarget.hp && (forced || before + g.count >= vTarget.hp) && !forceCrit;
+        if (TIMING.orbPerSymbol !== 0 && !forced) {
+            // 每顆圖示一顆光球（2026-10-20 ned）：各格留一顆光球、逐顆起飛，一顆扣 1 格；只飛「還打得到」的量（多的不飛，免得打屍體）；最後一顆剛好打死的畫成致命光球
+            const need = Math.max(0, vTarget.hp - before);
+            const n = Math.min(g.count, need);
+            if (n <= 0) { g.hitTier = 'none'; return; }
+            vTarget.pendingDmg = before + n;
+            lethal = before + n >= vTarget.hp && !forceCrit;
+            const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
+            const stag = TF(TIMING.orbStagger || 0);
+            for (let k = 0; k < n; k++) {
+                const cell = cells[k % cells.length];
+                const sx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2, sy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
+                flyingScores.push({
+                    type: 'collect', x: sx, y: sy, sx, sy, prog: 0, tx: cardCX, ty: cardTY, color: elemColor,
+                    life: energyLife + k * stag, delay: k * stag,
+                    previewTarget: vTarget, previewAmt: 1, orbHit: true, lethal: lethal && k === n - 1, forced: false
+                });
+            }
+            pushed = true;
+        } else {
+            vTarget.pendingDmg = before + g.count;
+            lethal = !vTarget.isDead && before < vTarget.hp && (forced || before + g.count >= vTarget.hp) && !forceCrit;
+        }
     }
     g.hitTier = vTarget ? (lethal ? 'kill' : 'hit') : 'none';   // 消除特效分階：沒打到／打到／打死
-    flyingScores.push({
+    if (!pushed) flyingScores.push({
         type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
         tx: cardCX, ty: cardTY,
         color: elemColor,
@@ -2738,8 +2763,8 @@ function orbArriveHit(fs) {
     if (!lethal && !fs.isCrit && m.hp > 0 && !m.isDead) {
         const rem = m.hp, win = TIMING.critWindow || 0;
         const rate = rtpMode === 'bite' ? 0 : rtpMode === 'feed' ? Math.min(1, (TIMING.critRate || 0) * 2) : (TIMING.critRate || 0);
-        const inWindow = win > 0 && rem <= win && (m.pendingDmg || 0) < rem;
-        if ((forceCrit && (m.pendingDmg || 0) < rem) || (inWindow && Math.random() < rate)) {
+        const inWindow = win > 0 && rem <= win && (m.pendingDmg || 0) === 0;   // 這隻還有光球在飛（逐顆）就先不擲，等整批打完
+        if ((forceCrit && (m.pendingDmg || 0) === 0) || (inWindow && Math.random() < rate)) {
             forceCrit = false;
             stats.crits = (stats.crits || 0) + 1;
             const lv = getMonsterLevel(m);
@@ -2785,9 +2810,12 @@ function applyOrbDamage(m, amt, tier, color, label = '') {
     const killed = m.hp === 0;
     hitBursts.push({ x: hc.x, y: hc.y, color, t: 0, life: TF(TIMING.hitBurst), big: killed,
                      rays: Array.from({ length: 10 }, (_, k) => ({ a: k * Math.PI / 5 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
-    // 傷害數字：跳在血條上方（屬性色、往上飄），讓「這顆光球＝扣這條血」連起來；打死那一下放大
-    const ba = monsterAnchor(m);
-    scoreTexts.push({ x: ba.x + (Math.random() - 0.5) * 16, y: ba.y - 26, text: label + '-' + amt, color, life: killed ? 70 : 45, fontSize: killed ? 40 : 30 });
+    // 傷害數字：跳在怪物身上（屬性色、往上飄）；打死那一下放大。累計總傷害（連擊感）另畫在怪物上方：drawComboLabel
+    const ba = m.jackpot > 0 ? monsterAnchor(m) : monsterArtCenter(m);
+    scoreTexts.push({ x: ba.x + (Math.random() - 0.5) * 44, y: ba.y - 10 + (Math.random() - 0.5) * 24, text: label + '-' + amt, color, life: killed ? 70 : 40, fontSize: killed ? 40 : 28 });
+    const holdF = TF(TIMING.comboHold === undefined ? 0.6 : TIMING.comboHold);
+    if (!m.combo || m.combo.life <= 0) m.combo = { hits: 0, total: 0, life: 0, pop: 0 };
+    m.combo.hits++; m.combo.total += amt; m.combo.life = holdF; m.combo.pop = 8;
     if (m.jackpot > 0) checkBossMilestones(monsters.indexOf(m), prevHp, m.hp);
     if (killed && !m.isDead) {
         if (tier === 'heavy') { heavyAim = null; hitStopT = TF(TIMING.heavyHitStop); screenShakeT = TF(TIMING.heavyShake); screenFlashT = TF(TIMING.heavyFlash); }
@@ -3445,7 +3473,7 @@ function startSpin() {
     stats.spins++;
     if (!isFG && !isBG) rtpBetSum += betAmount;
     attackRoundsThisSpin = 0; respawnsThisSpin = 0; lastTargetByElem = {};
-    monsters.forEach(m => { m.previewDmg = 0; m.pendingDmg = 0; m._forceMarked = false; });
+    monsters.forEach(m => { m.previewDmg = 0; m.pendingDmg = 0; m._forceMarked = false; m.combo = null; });
     heroHold = null;
     hasHitThisSpin = false;
     coinBursts = [];
@@ -4004,6 +4032,32 @@ function drawMonsters() {
         ctx.textBaseline = 'alphabetic';
         ctx.restore();
     });
+    monsters.forEach(drawComboLabel);
+}
+// 怪物上方的累計總傷害（2026-10-20 ned：-1 -1 -1 之外上面有個總和，像連擊）：每命中一顆就 pop 一下，最後一顆後停 comboHold 秒淡出
+function drawComboLabel(m) {
+    const cb = m.combo;
+    if (!cb || cb.life <= 0 || cb.hits <= 0) return;
+    const holdF = Math.max(1, TF(TIMING.comboHold === undefined ? 0.6 : TIMING.comboHold));
+    const alpha = Math.min(1, cb.life / Math.min(12, holdF));
+    const pop = cb.pop > 0 ? 1 + 0.25 * (cb.pop / 8) : 1;
+    const boss = m.jackpot > 0;
+    const a = boss ? monsterAnchor(m) : monsterArtCenter(m);
+    const x = Math.max(60, Math.min(1220, a.x)), y = boss ? a.y + 46 : a.y - 86;
+    const color = (ELEMENTS[m.elemId] || WILD_ELEM).color;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    if (cb.hits > 1) {   // 連擊數（小字）
+        ctx.font = 'bold 18px sans-serif';
+        ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText(cb.hits + ' HIT', x, y - 30);
+        ctx.fillStyle = '#ffffff'; ctx.fillText(cb.hits + ' HIT', x, y - 30);
+    }
+    ctx.translate(x, y); ctx.scale(pop, pop);
+    ctx.font = 'bold 44px sans-serif';
+    ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText('-' + cb.total, 0, 0);
+    ctx.shadowColor = color; ctx.shadowBlur = 16; ctx.fillStyle = color; ctx.fillText('-' + cb.total, 0, 0);
+    ctx.restore();
 }
 
 // === Zeus / Hera JP 彩金數字：畫進神殿框左右橫幅（黑補丁蓋掉素材烙印占位數字）===
@@ -4751,7 +4805,7 @@ function drawEffects() {
                 ph: Math.random() * Math.PI * 2                 // 閃爍相位
             }));
             const baseA = Math.min(1, fs.life / 20);
-            const big = fs.lethal ? 2 : 1;   // 致命光球（這顆會打死）：光核兩倍大＋外圈光環＋拖尾
+            const big = (fs.lethal ? 2 : 1) * (fs.delay > 0 ? 0.75 : 1);   // 致命光球（這顆會打死）：光核兩倍大＋外圈光環＋拖尾；還在格子上等起飛的畫小一點
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             if (fs.lethal) {
@@ -4945,7 +4999,7 @@ function update() {
         if (cellFlashes[i].life <= 0) cellFlashes.splice(i, 1);
     }
     bgMultAnimT++;                                                                     // BG 倍數動畫
-    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; if (m.hpAnim && m.hpAnim.t > 0) m.hpAnim.t--; }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; if (m.hpAnim && m.hpAnim.t > 0) m.hpAnim.t--; if (m.combo) { if (m.combo.life > 0) m.combo.life--; if (m.combo.pop > 0) m.combo.pop--; } }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出／連擊總計
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
