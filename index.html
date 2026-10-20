@@ -797,7 +797,7 @@ const DEFAULT_TIMING = {
     orbPerSymbol:     1,     // 每顆圖示一顆光球（2026-10-20 ned）：消 5 顆就 5 顆光球，從各自的格子逐顆起飛（間隔 orbStagger）飛到怪物上，一顆扣 1 格、怪物上方累計總傷害（連擊感）；只飛「還打得到」的量；0 = 一組一顆光球
     orbStagger:       0.08,  // 同一組光球逐顆起飛的間隔（秒）
     comboHold:        0.60,  // 怪物上方的累計總傷害，最後一顆命中後停留幾秒再淡出
-    hitTier2At:       3,     // 受擊特效三階（對應美術「怪物受擊效果三階」）：連擊第 1 下起一階、第 N 下起二階、打死那一下三階；一組一顆光球時改用傷害量（≥N 格二階）
+    hitTier2At:       7,     // 受擊特效三階（對應美術「怪物受擊效果三階」，每個約 0.25 秒、一次一記）：一批光球只播一次，最後一顆到時依這一批總共打幾格分級——5~6 格一階、≥N 格二階、打死三階；中間的每顆只做小火花＋-1。一組一顆光球時同樣看傷害量
     critWindow:       2,     // 爆擊補刀（2026-10-19 ned 定）：光球打完怪還剩 ≤ 這麼多格 → 有 critRate 機率跳爆擊：海克力士登場，從爆擊中心再飛一顆光球把牠打死（玩家看得出是多送的一擊）；0 = 關
     critRate:         0.10,  // 爆擊率（server 桿子：控分咬 0、補 ×2）
     heroFinisher:     1,     // 海克力士：0 = 爆擊只閃白＋「爆擊！」字、不出人；1 = 只在爆擊時登場（2026-10-19 ned 定）；2 = 一般打死的最後一擊也登場（登場條件見 heroMinLv／heroShortBelow／heroOnJP）
@@ -897,7 +897,7 @@ const TIMING_META = [
         ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05],
         ['wild1Min','WILD Lv1 最少', 0, 20, 1], ['wild1Max','WILD Lv1 最多', 0, 20, 1], ['wild2Min','WILD Lv2 最少', 0, 20, 1], ['wild2Max','WILD Lv2 最多', 0, 20, 1], ['wild3Min','WILD Lv3 最少', 0, 20, 1], ['wild3Max','WILD Lv3 最多', 0, 20, 1], ['bigWild2','巨型WILD Lv2 顆數', 0, 3, 1], ['bigWild3','巨型WILD Lv3 顆數', 0, 3, 1],
         ['jpStage1Min','JP階段25% 最少倍', 0, 100, 1], ['jpStage1Max','JP階段25% 最多倍', 0, 100, 1], ['jpStage2Min','JP階段50% 最少倍', 0, 200, 1], ['jpStage2Max','JP階段50% 最多倍', 0, 200, 1], ['jpStage3Min','JP階段75% 最少倍', 0, 500, 1], ['jpStage3Max','JP階段75% 最多倍', 0, 500, 1], ['cpLowScale','聚集賠率 低級倍率', 0, 5, 0.05], ['cpMidScale','聚集賠率 中級倍率', 0, 5, 0.05], ['cpHighScale','聚集賠率 高級倍率', 0, 5, 0.05],
-        ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05], ['hitTier2At','受擊二階:連擊第幾下起', 2, 10, 1],
+        ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05], ['hitTier2At','受擊二階:一批打幾格以上', 2, 15, 1],
         ['critWindow','爆擊:剩幾格以內可跳(0=關)', 0, 10, 1], ['critRate','爆擊率', 0, 1, 0.01],
         ['heroFinisher','海克力士(0不出人/1只爆擊/2也含一般打死)', 0, 2, 1], ['heroMinLv','海克力士:一般打死最低等級(1~4)', 1, 4, 1], ['heroShortBelow','海克力士:幾級以下用短版', 1, 5, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1],
         ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1]] },
@@ -2160,6 +2160,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
             const n = Math.min(g.count, need);
             if (n <= 0) { g.hitTier = 'none'; return; }
             vTarget.pendingDmg = before + n;
+            vTarget.volleyDmg = (before > 0 ? (vTarget.volleyDmg || 0) : 0) + n;   // 這一批（同時在飛的）總共打幾格 → 最後一顆到時決定受擊幾階
             lethal = before + n >= vTarget.hp && !forceCrit;
             const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
             const stag = TF(TIMING.orbStagger || 0);
@@ -2809,13 +2810,25 @@ function applyOrbDamage(m, amt, tier, color, label = '') {
     m.badgeFlashT = TF(TIMING.badgeFlash);   // 血條屬性徽章閃：提示「這個顏色打的是牠」
     const hc = monsterArtCenter(m);
     const killed = m.hp === 0;
-    // 受擊特效三階：一階＝一般命中、二階＝連擊打到第 hitTier2At 下（一組一顆光球時＝一次扣 ≥hitTier2At 格）、三階＝打死那一下
-    const t2 = TIMING.hitTier2At === undefined ? 3 : TIMING.hitTier2At;
-    const hitsSoFar = (m.combo && m.combo.life > 0 ? m.combo.hits : 0) + 1;
-    const hitTier = killed ? 3 : (TIMING.orbPerSymbol !== 0 ? hitsSoFar : amt) >= t2 ? 2 : 1;
-    if (hitTier === 2) m.shake = Math.max(m.shake, TF(TIMING.hitReact) + 6);
-    hitBursts.push({ x: hc.x, y: hc.y, color, t: 0, life: TF(TIMING.hitBurst) * (hitTier === 1 ? 0.7 : 1), big: killed, tier: hitTier,
-                     rays: Array.from({ length: hitTier === 1 ? 6 : hitTier === 2 ? 10 : 14 }, (_, k) => ({ a: k * Math.PI * 2 / (hitTier === 1 ? 6 : hitTier === 2 ? 10 : 14) + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
+    // 受擊特效三階（美術素材每記約 0.25 秒、一次一記）：逐顆飛時中間每顆只做小火花（tier 0），這一批最後一顆到了才播受擊——
+    // 一階＝這批 5~6 格、二階＝≥hitTier2At 格、三階＝打死那一下；一組一顆光球時直接看這顆的傷害量
+    const t2 = TIMING.hitTier2At === undefined ? 7 : TIMING.hitTier2At;
+    const perSym = TIMING.orbPerSymbol !== 0;
+    const lastOfVolley = !perSym || (m.pendingDmg || 0) === 0;
+    let hitTier;
+    if (!lastOfVolley && !killed) {
+        hitTier = 0;
+        hitBursts.push({ x: hc.x + (Math.random() - 0.5) * 30, y: hc.y + (Math.random() - 0.5) * 30, color, t: 0, life: Math.round(TF(TIMING.hitBurst) * 0.45), big: false, tier: 0,
+                         rays: Array.from({ length: 4 }, (_, k) => ({ a: k * Math.PI / 2 + Math.random() * 0.8, l: 0.5 + Math.random() * 0.5 })) });
+    } else {
+        const basis = perSym ? Math.max(m.volleyDmg || 0, amt) : amt;
+        hitTier = killed ? 3 : basis >= t2 ? 2 : 1;
+        m.volleyDmg = 0;
+        if (hitTier === 2) m.shake = Math.max(m.shake, TF(TIMING.hitReact) + 6);
+        const nRays = hitTier === 1 ? 6 : hitTier === 2 ? 10 : 14;
+        hitBursts.push({ x: hc.x, y: hc.y, color, t: 0, life: TF(TIMING.hitBurst) * (hitTier === 1 ? 0.8 : 1), big: killed, tier: hitTier,
+                         rays: Array.from({ length: nRays }, (_, k) => ({ a: k * Math.PI * 2 / nRays + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
+    }
     // 傷害數字：跳在怪物身上（屬性色、往上飄）；打死那一下放大。累計總傷害（連擊感）另畫在怪物上方：drawComboLabel
     const ba = m.jackpot > 0 ? monsterAnchor(m) : monsterArtCenter(m);
     scoreTexts.push({ x: ba.x + (Math.random() - 0.5) * 44, y: ba.y - 10 + (Math.random() - 0.5) * 24, text: label + '-' + amt, color, life: killed ? 70 : 40, fontSize: killed ? 40 : 28 });
@@ -4307,7 +4320,7 @@ function drawHitBursts() {
         h.t++;
         const q = h.t / Math.max(1, h.life);
         if (q >= 1) { hitBursts.splice(i, 1); continue; }
-        const R = h.tier === 3 || h.big ? 1.6 : h.tier === 2 ? 1.1 : h.tier === 1 ? 0.65 : 1;   // 受擊三階：小／中／大
+        const R = h.tier === 3 || h.big ? 1.6 : h.tier === 2 ? 1.15 : h.tier === 1 ? 0.8 : h.tier === 0 ? 0.3 : 1;   // 受擊三階：小／中／大；tier 0 = 逐顆中間的小火花
         const out = 1 - Math.pow(1 - q, 3);
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
