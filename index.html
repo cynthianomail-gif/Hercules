@@ -900,7 +900,7 @@ const DEFAULT_TIMING = {
 const TIMING_META = [
     { group: '★ 新規則（無卡牌版，2026-10-19）', items: [
         ['noCards','移除卡牌(1=是)', 0, 1, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['minMatch','直線規則:幾顆才消(3/4)', 3, 5, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1],
-        ['perWaveHit','扣血時機(2光球到/1消完/0連爆完)', 0, 2, 1], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1],
+        ['perWaveHit','扣血時機(2=新版光球,請維持2)', 0, 2, 1], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1],
         ['hpLv1','血量 Lv1 大地', 1, 60, 1], ['hpLv2','血量 Lv2 冰霜', 1, 60, 1], ['hpLv3','血量 Lv3 烈焰', 1, 60, 1], ['hpLv4','血量 Lv4 祕法', 1, 80, 1], ['hpBoss','血量 宙斯赫拉', 5, 300, 1],
         ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05],
         ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05],
@@ -6307,7 +6307,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 12;  // v12（2026-10-19 晚）：規則大改（不補怪、無門檻、光球到就扣血、海克力士四屬性、血量 12），舊存檔作廢，避免蓋掉新預設。v11：移除卡牌、石頭預設 0。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
+const TUNE_VERSION = 13;  // v13（2026-10-21）：ned 試過「扣血時機 0」後存檔留著會讓光球回舊版（一組一顆），升版清掉；時序改用 deathAtCascadeEnd。v12（2026-10-19 晚）：規則大改（不補怪、無門檻、光球到就扣血、海克力士四屬性、血量 12），舊存檔作廢，避免蓋掉新預設。v11：移除卡牌、石頭預設 0。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
