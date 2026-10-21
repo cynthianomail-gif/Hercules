@@ -3605,12 +3605,15 @@ function injectGuaranteedMatches() {
     if (noCardsMode() && forceTwoEarth) {   // 兩組大地：第 0 列與第 4 列各一組（7 顆＝整列、5 顆＝第 1~5 欄），其他格的大地全換成烈焰，確保剛好兩組不相連
         const size = forceTwoEarth; forceTwoEarth = 0;
         if (forceChain === 1) forceChain = 2;
-        const color = elemOfLevel(1), other = elemOfLevel(3);
+        const color = elemOfLevel(1);
+        const others = [0, 1, 2, 3, 4, 5].filter(e => e !== color);
         const c0 = size >= COLS ? 0 : Math.floor((COLS - size) / 2);
-        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
-            const inRow = (r === 0 || r === ROWS - 1) && c >= c0 && c < c0 + size;
-            if (inRow) board[c][r] = { id: color, yOffset: 0, scale: 1, isMatched: false };
-            else if (board[c][r].id === color) board[c][r].id = other;
+        const inRow = (c, r) => (r === 0 || r === ROWS - 1) && c >= c0 && c < c0 + size;
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (inRow(c, r)) board[c][r] = { id: color, yOffset: 0, scale: 1, isMatched: false };
+        for (let tries = 0; tries < 80; tries++) {   // 其他格：大地換掉，而且不能另外湊出別的組（不然畫面會多一組烈焰之類的干擾）
+            for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (!inRow(c, r) && (board[c][r].id === color || tries > 0)) board[c][r].id = others[Math.floor(Math.random() * others.length)];
+            const groups = buildClusterGroups(effClusterMin() || 5);
+            if (groups.length === 2 && groups.every(g => g.elemId === color)) break;
         }
         return;
     }
