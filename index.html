@@ -728,7 +728,7 @@ const DEFAULT_TIMING = {
     maxAttackRounds:  0,     // 實驗：每局最多幾波攻擊（0 = 不限；2 = 機制生的連線只能再打一波）
     rechargeRate:     1,     // 實驗：第一波攻擊之後，連線幫卡牌充能的倍率（1 = 照常；0.5 = 減半；0 = 不充）
     respawnHpUp:      0,     // 實驗：同一局補上來的怪血量加成（每補一隻多 +N 倍，0 = 不加；1 = 第一隻 2 倍血、第二隻 3 倍）
-    noRespawnInSpin:  1,     // 1 = 怪死掉這局不補，下一局開始才換新怪（同一隻怪一局最多死一次）；2026-10-19 ned 定改成不補：Lv1→2→3→4 的階梯看得清楚、一局有上限
+    noRespawnInSpin:  0,     // 0 = 會補（2026-10-21 ned 定，原企劃書規則）：怪被打死 → 這一波機制播完、補盤前換新怪（同位置同等級滿血淡入）；同一波同色其他組只給分不飛光球。1 = 這局不補、下一局才換新（10/19~10/20 用過，重量後差別很小）
     cardElemBias:     1,     // 實驗：一般局（非旺局）卡牌屬性圖示的落圖權重（1 = 跟其他屬性一樣；0.8 = 少兩成 → 卡牌比較難充能）
     fgNoStone:        1,     // FG 不出石頭（2026-10-14 晚 ned 定案）：FG 內開盤不投石頭、補盤也不補
     fgFixedMonsters:  0,     // 實驗（FG）：1 = FG 進場時決定四隻小怪的屬性，之後 10 局不再重抽，讓「血量不重置」真的能累積打死
@@ -1542,7 +1542,7 @@ function pickKillEffect(level, fromX, fromY, canFGBG) {
         const wild = (lv) => ({ type: 1, wildCount: rnd(TIMING['wild' + lv + 'Min'], Math.max(TIMING['wild' + lv + 'Min'], TIMING['wild' + lv + 'Max'])) });
         const big = (lv) => TIMING['bigWild' + lv] > 0 ? [() => ({ type: 1, big: true, bigCount: TIMING['bigWild' + lv] })] : [];
         // 下一級的怪這局已經死了（不補怪）或致命光球已在飛 → 升級生成會白演，從池裡拿掉；WILD 最多顆數 0 = 這級不出 WILD
-        const nextAlive = (lv) => { const i = Object.keys(POS_LEVEL).find(k => POS_LEVEL[k] === lv + 1); const m = i !== undefined && monsters[i]; return !!m && !m.isDead && m.hp > (m.pendingDmg || 0); };
+        const nextAlive = (lv) => { if (!TIMING.noRespawnInSpin) return true; const i = Object.keys(POS_LEVEL).find(k => POS_LEVEL[k] === lv + 1); const m = i !== undefined && monsters[i]; return !!m && !m.isDead && m.hp > (m.pendingDmg || 0); };   // 會補模式：下一級死了也會在波末換新，升級生成照抽
         const upOn = (lv) => nextAlive(lv) ? [() => up(lv)] : [];
         const wildOn = (lv) => Math.max(TIMING['wild' + lv + 'Min'], TIMING['wild' + lv + 'Max']) > 0 ? [() => wild(lv)] : [];
         p1 = [...wildOn(1), ...upOn(1), () => ({ type: 10, multiplier: rnd(3, 7) })];
