@@ -2896,34 +2896,36 @@ function parkGroupOrbs(g) {
 }
 function fadeOrb(o) { o.parked = false; o.orbHit = false; o.fading = true; o.life = Math.min(o.life, 14); o.delay = 0; }   // 用不到的光球：原地淡出
 // 輪到這一組起飛：依怪物「當下」剩血決定飛幾顆（前面的組、爆擊都已結算完）；多的原地消散
-function launchGroupOrbs(g) {
+function launchGroupOrbs(g, offset = 0) {   // offset：接在前一組之後幾幀起飛（同屬性一起飛＝一條不斷的光球流）；回傳這組飛了幾顆
     const plan = g.orbPlan; g.orbPlan = null;
     const parked = g.parkedOrbs || []; g.parkedOrbs = null;
     const m = plan && plan.target;
     const stag0 = TF(TIMING.orbStagger || 0);
     const overkill = (o, k) => {   // 超額傷害：一樣飛去打，到了只有火花、不扣血
-        o.parked = false; o.hidden = 0; o.delay = k * stag0; o.life = TF(TIMING.energyFly) + 20 + o.delay;
+        o.parked = false; o.hidden = 0; o.delay = offset + k * stag0; o.life = TF(TIMING.energyFly) + 20 + o.delay;
         o.tx = plan.tx; o.ty = plan.ty; o.previewTarget = m; o.previewAmt = 0; o.lethal = false; o.forced = false; o.overkill = true;
     };
-    const spare = (o, k) => { if (TIMING.overkillOrbs !== 0 && m) overkill(o, k); else fadeOrb(o); };
-    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; parked.forEach(spare); return; }   // 前面的組（或爆擊）已經把牠打死：這組只給分、光球超額打或消散
+    const canOverkill = TIMING.overkillOrbs !== 0 && !!m;
+    const spare = (o, k) => { if (canOverkill) overkill(o, k); else fadeOrb(o); };
+    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; parked.forEach(spare); return canOverkill ? parked.length : 0; }   // 前面的組（或爆擊）已經把牠打死：這組只給分、光球超額打或消散
     const before = m.pendingDmg || 0;
     const need = Math.max(0, m.hp - before);
     let n = plan.perSym ? Math.min(plan.count, need) : (plan.forced ? Math.max(plan.count, m.hp) : plan.count);
     if (forceCrit && !plan.forced && need > 1) n = Math.min(n, need - 1);
-    if (n <= 0) { g.hitTier = 'none'; parked.forEach(spare); return; }
+    if (n <= 0) { g.hitTier = 'none'; parked.forEach(spare); return canOverkill ? parked.length : 0; }
     m.pendingDmg = before + n;
     m.volleyDmg = (m.volleyDmg || 0) + n;   // 這一批＝這一波排給這隻怪的全部（跨組累計），最後一顆到時決定受擊幾階
     const lethal = before + n >= m.hp && !forceCrit;
     g.hitTier = lethal ? 'kill' : 'hit';
     const stag = TF(TIMING.orbStagger || 0);
     const fly = (o, k, amt, isLethal, sx, sy) => {
-        o.parked = false; o.hidden = 0; o.delay = k * stag; o.life = TF(TIMING.energyFly) + 20 + o.delay;
+        o.parked = false; o.hidden = 0; o.delay = offset + k * stag; o.life = TF(TIMING.energyFly) + 20 + o.delay;
         if (sx !== undefined) { o.x = o.sx = sx; o.y = o.sy = sy; }
         o.tx = plan.tx; o.ty = plan.ty; o.previewTarget = m; o.previewAmt = amt; o.lethal = isLethal; o.forced = plan.forced;
     };
-    if (plan.perSym) parked.forEach((o, k) => { if (k < n) fly(o, k, 1, lethal && k === n - 1); else spare(o, k); });
-    else parked.forEach((o, k) => { if (k === 0) fly(o, 0, n, lethal, plan.cx, plan.cy); else fadeOrb(o); });   // 一組一顆：第一顆從組中心飛、帶全部傷害
+    if (plan.perSym) { parked.forEach((o, k) => { if (k < n) fly(o, k, 1, lethal && k === n - 1); else spare(o, k); }); return canOverkill ? parked.length : n; }
+    parked.forEach((o, k) => { if (k === 0) fly(o, 0, n, lethal, plan.cx, plan.cy); else fadeOrb(o); });   // 一組一顆：第一顆從組中心飛、帶全部傷害
+    return 1;
 }
 // 依組序放光球：前一組的光球到齊、爆擊演完、打死後的停頓結束，才輪到下一組
 // 例外（2026-10-21 ned）：整組都是超額的（目標已死、或前面的組已經排滿牠的血量）不用等斷點，跟前一組一起飛
@@ -2934,8 +2936,10 @@ function groupFullyOverkill(g) {
 function pumpOrbQueue() {
     while (orbQueue.length && groupFullyOverkill(orbQueue[0])) launchGroupOrbs(orbQueue.shift());
     if (!orbQueue.length || orbsInFlight() || heroHold || killSettleT > 0) return;
-    launchGroupOrbs(orbQueue.shift());
-    while (orbQueue.length && groupFullyOverkill(orbQueue[0])) launchGroupOrbs(orbQueue.shift());   // 緊接著的超額組一起飛
+    const g = orbQueue.shift();
+    let offset = launchGroupOrbs(g) * TF(TIMING.orbStagger || 0);
+    // 同屬性的組一起飛（2026-10-21 ned）：後面同色的組不等斷點，各自依當下剩血算 n，接在前一組後面成一條光球流；整組超額的也一起
+    while (orbQueue.length && (orbQueue[0].elemId === g.elemId || groupFullyOverkill(orbQueue[0]))) offset += launchGroupOrbs(orbQueue.shift(), offset) * TF(TIMING.orbStagger || 0);
 }
 // 補盤補好之後還要等的事：還有組沒放光球／光球還在飛／海克力士演出中／打死後的停頓（看死亡演出）
 function waveStillBusy() { return orbHitMode() && (orbQueue.length > 0 || orbsInFlight() || !!heroHold || killSettleT > 0); }
