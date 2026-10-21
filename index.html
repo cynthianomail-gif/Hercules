@@ -814,6 +814,7 @@ const DEFAULT_TIMING = {
     nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
     nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
     hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
+    overkillOrbs:     1,     // 用不到的光球（2026-10-21 ned）：1 = 一樣飛去打，超額傷害不扣血、只有火花（爽感）；0 = 原地縮小淡出
     refillAfterOrbs:  1,     // 1 = 光球飛完、打完才補盤（2026-10-21 ned 試）；0 = 光球起飛時同時補盤
     killSettle:       0.60,  // 打死後停頓（2026-10-21 ned）：光球打死怪之後、接機制之前停這麼久（看死亡演出）；這段期間盤面已經補好但先不判定
     heroShort:        0.45,  // 海克力士短版（Lv1/Lv2 的最後一擊）：全版圖停留秒數（全版是 critImage 1.10）
@@ -906,7 +907,7 @@ const TIMING_META = [
         ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05], ['hitTier2At','受擊二階:一批打幾格以上', 2, 15, 1],
         ['critHpLv1','爆擊:Lv1 剩血≤', 0, 10, 1], ['critHpLv2','爆擊:Lv2 剩血≤', 0, 10, 1], ['critHpLv3','爆擊:Lv3 剩血≤', 0, 15, 1], ['critHpLv4','爆擊:Lv4 剩血≤', 0, 15, 1], ['critHpBoss','爆擊:宙斯赫拉 剩血≤', 0, 20, 1], ['critRate','爆擊率', 0, 1, 0.01],
         ['heroFinisher','海克力士(0不出人/1只爆擊/2也含一般打死)', 0, 2, 1], ['heroMinLv','海克力士:一般打死最低等級(1~4)', 1, 4, 1], ['heroShortBelow','海克力士:幾級以下用短版', 1, 5, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1],
-        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1]] },
+        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1], ['overkillOrbs','用不到的光球也飛去打(1)/消散(0)', 0, 1, 1]] },
     { group: '掉落（停輪）', items: [
         ['spinClear','舊圖示清除'], ['spinDropIn','新圖示掉入'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
@@ -965,7 +966,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'overkillOrbs', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -2759,6 +2760,12 @@ function orbArriveHit(fs) {
     const m = fs.previewTarget;
     if (m) m.pendingDmg = Math.max(0, (m.pendingDmg || 0) - (fs.previewAmt || 0));   // 飛行中的量扣掉這顆
     if (m && fs.groupOrder !== undefined) m.lastGroupOrder = fs.groupOrder;   // 打到牠的最後一顆來自哪一組（死亡／機制順序用，不看抵達時間）
+    if (fs.overkill) {   // 超額傷害：只有火花，不扣血、不跳數字、不算 HIT
+        if (m) { const hc = monsterArtCenter(m); m.shake = Math.max(m.shake || 0, 4);
+                 hitBursts.push({ x: hc.x + (Math.random() - 0.5) * 36, y: hc.y + (Math.random() - 0.5) * 36, color: fs.color, t: 0, life: Math.round(TF(TIMING.hitBurst) * 0.4), big: false, tier: 0,
+                                  rays: Array.from({ length: 4 }, (_, k) => ({ a: k * Math.PI / 2 + Math.random() * 0.8, l: 0.4 + Math.random() * 0.5 })) }); }
+        return;
+    }
     if (!m || m.isDead || m.hp <= 0) return;   // 這隻已經被前一顆打死：多的傷害不轉移
     let amt = fs.previewAmt || 0;
     if (fs.forced) { amt = Math.max(amt, m.hp); forceKill = false; forceKillLv = 0; forceTargetLv4 = false; }
@@ -2893,12 +2900,18 @@ function launchGroupOrbs(g) {
     const plan = g.orbPlan; g.orbPlan = null;
     const parked = g.parkedOrbs || []; g.parkedOrbs = null;
     const m = plan && plan.target;
-    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; parked.forEach(fadeOrb); return; }   // 前面的組（或爆擊）已經把牠打死：這組只給分、光球消散
+    const stag0 = TF(TIMING.orbStagger || 0);
+    const overkill = (o, k) => {   // 超額傷害：一樣飛去打，到了只有火花、不扣血
+        o.parked = false; o.hidden = 0; o.delay = k * stag0; o.life = TF(TIMING.energyFly) + 20 + o.delay;
+        o.tx = plan.tx; o.ty = plan.ty; o.previewTarget = m; o.previewAmt = 0; o.lethal = false; o.forced = false; o.overkill = true;
+    };
+    const spare = (o, k) => { if (TIMING.overkillOrbs !== 0 && m) overkill(o, k); else fadeOrb(o); };
+    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; parked.forEach(spare); return; }   // 前面的組（或爆擊）已經把牠打死：這組只給分、光球超額打或消散
     const before = m.pendingDmg || 0;
     const need = Math.max(0, m.hp - before);
     let n = plan.perSym ? Math.min(plan.count, need) : (plan.forced ? Math.max(plan.count, m.hp) : plan.count);
     if (forceCrit && !plan.forced && need > 1) n = Math.min(n, need - 1);
-    if (n <= 0) { g.hitTier = 'none'; parked.forEach(fadeOrb); return; }
+    if (n <= 0) { g.hitTier = 'none'; parked.forEach(spare); return; }
     m.pendingDmg = before + n;
     m.volleyDmg = (m.volleyDmg || 0) + n;   // 這一批＝這一波排給這隻怪的全部（跨組累計），最後一顆到時決定受擊幾階
     const lethal = before + n >= m.hp && !forceCrit;
@@ -2909,7 +2922,7 @@ function launchGroupOrbs(g) {
         if (sx !== undefined) { o.x = o.sx = sx; o.y = o.sy = sy; }
         o.tx = plan.tx; o.ty = plan.ty; o.previewTarget = m; o.previewAmt = amt; o.lethal = isLethal; o.forced = plan.forced;
     };
-    if (plan.perSym) parked.forEach((o, k) => { if (k < n) fly(o, k, 1, lethal && k === n - 1); else fadeOrb(o); });
+    if (plan.perSym) parked.forEach((o, k) => { if (k < n) fly(o, k, 1, lethal && k === n - 1); else spare(o, k); });
     else parked.forEach((o, k) => { if (k === 0) fly(o, 0, n, lethal, plan.cx, plan.cy); else fadeOrb(o); });   // 一組一顆：第一顆從組中心飛、帶全部傷害
 }
 // 依組序放光球：前一組的光球到齊、爆擊演完、打死後的停頓結束，才輪到下一組
@@ -4905,7 +4918,7 @@ function drawEffects() {
                 ph: Math.random() * Math.PI * 2                 // 閃爍相位
             }));
             const baseA = Math.min(1, fs.life / 20);
-            const big = (fs.lethal ? 2 : 1) * ((fs.parked || fs.delay > 0) ? 0.75 : 1) * (fs.fading ? 0.3 + 0.7 * fs.life / 14 : 1);   // 致命光球兩倍大＋光環＋拖尾；停在格子上的小一點；用不到的縮小淡出
+            const big = (fs.lethal ? 2 : 1) * ((fs.parked || fs.delay > 0) ? 0.75 : 1) * (fs.overkill ? 0.6 : 1) * (fs.fading ? 0.3 + 0.7 * fs.life / 14 : 1);   // 致命光球兩倍大＋光環＋拖尾；停在格子上的小一點；用不到的縮小淡出
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             if (fs.lethal) {
