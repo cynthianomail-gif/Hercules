@@ -1,0 +1,8 @@
+# 企劃／參考資料（非 web demo 執行檔，且體積過大無法上 GitHub）
+*.xlsx
+~$*
+/海克力士/
+/gif/
+
+# 誤置於資料夾內的另一份 clone（獨立 repo，勿納入）
+/Hercules/
