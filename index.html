@@ -803,7 +803,7 @@ const DEFAULT_TIMING = {
     critHpLv3:        4,     //   Lv3 4
     critHpLv4:        5,     //   Lv4 5
     critHpBoss:       5,     //   宙斯／赫拉 5（ned 寫的「lv5」當作宙斯赫拉）；任何一個設 0 = 那一級不會爆擊
-    critRate:         0.07,  // 爆擊率（server 桿子：控分咬 0、補 ×2）。2026-10-21 ned：門檻改各級剩血後不動血量、把 10% 調低 → 7%（爆擊約每 75 局、Lv1 42／Lv2 53／Lv3 219／Lv4 411 局一隻；10% 會是每 57 局、Lv4 309）
+    critRate:         0.05,  // 爆擊率（server 桿子：控分咬 0、補 ×2）。2026-10-21 ned 流程文件定 5%（之前 7%）
     heroFinisher:     1,     // 海克力士：0 = 爆擊只閃白＋「爆擊！」字、不出人；1 = 只在爆擊時登場（2026-10-19 ned 定）；2 = 一般打死的最後一擊也登場（登場條件見 heroMinLv／heroShortBelow／heroOnJP）
     heroMinLv:        1,     // 海克力士登場的最低小怪等級：1 = 每隻小怪的最後一擊都登場（四屬性招式都用到；Lv1/Lv2 用短版，見 heroShortBelow）；3 = 只在 Lv3、Lv4（約每 140 局一次）
     heroShortBelow:   3,     // 低於這個等級的海克力士用短版（一閃而過 heroShort 秒、不停格）：Lv1 每 54 局就一隻、只拿 3 倍，演全版太長
