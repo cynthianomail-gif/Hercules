@@ -814,6 +814,7 @@ const DEFAULT_TIMING = {
     nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
     nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
     hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
+    killSettle:       0.60,  // 斷點乾淨（2026-10-21 ned）：光球到齊才消除圖示；這一波有打死怪就再停這麼久（看死亡演出），才消除、補盤、播機制
     heroShort:        0.45,  // 海克力士短版（Lv1/Lv2 的最後一擊）：全版圖停留秒數（全版是 critImage 1.10）
     symWArcane:       1,     // 圖示出現權重（無卡牌模式，2026-10-19）：祕法（Lv.4）
     symWThunder:      0.7,   // 雷霆（宙斯，高分）：2026-10-19 ned 定 0.7（高分圖示出現少一點）
@@ -938,7 +939,7 @@ const TIMING_META = [
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
         ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
-        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入'], ['hpRefill','局首血量回滿', 0, 2, 0.05], ['heroShort','海克力士短版停留', 0.2, 2, 0.05]] },
+        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入'], ['hpRefill','局首血量回滿', 0, 2, 0.05], ['heroShort','海克力士短版停留', 0.2, 2, 0.05], ['killSettle','打死後停頓(消除前)', 0, 2, 0.05]] },
     { group: 'WILD／機制', items: [
         ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
         ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
@@ -1318,6 +1319,7 @@ const FORCE_MENU_ITEMS = [
     { label: '打死Lv3',   type: 'killLv', lv: 3, color: '#3b82f6' },
     { label: '打死Lv4',   type: 'killLv', lv: 4, color: '#a855f7' },
     { label: '爆擊補刀',   type: 'crit', color: '#ff4444' },
+    { label: '兩組大地',   type: 'twoEarth', color: '#16a34a' },   // 同一盤面兩組各 7 顆大地（不相連）：看第一組打死 Lv1、第二組只給分、波末換新的流程
     { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
     { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
     { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 3, color: '#fbbf24' },   // 只有打死 Lv.3 會出（2026-10-19）
@@ -1432,6 +1434,7 @@ let tickCounter = 0;        // 全域幀計數（呼吸光等循環動畫用）
 let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
+let waveKillAt = -1;        // 這一波最後一次打死發生在 popPhaseT 幾（消除前的停頓用）；-1 = 這波沒打死
 let pendingCardUpdates = []; // 甘特圖排程：能量抵達後才更新卡牌 ATK
 let pendingRounds = []; // 待發射的攻擊輪次
 let pendingKillEffects = [];  // 怪獸死亡後待套用的盤面效果
@@ -1441,6 +1444,7 @@ let forceOverflow = false;  // 強制觸發追擊
 let forceNoFGBG = false;    // 追擊強開：不觸發 FG/BG
 let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊（保留供未來測試）
+let forceTwoEarth = false;  // 強開：同一盤面兩組各 7 顆大地（2026-10-21 ned 看流程用）
 let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣（保留供未來測試）
 let forceKillLv = 0;         // 強開（2026-10-19）：指定打死第幾級（0 = 不限）
 let forcedMech = null;       // 強開：打死後指定的機制（upGen／wild／big／direct）
@@ -2113,6 +2117,7 @@ function startPopWave(groups) {
     currentState = STATE.POPPING;
     popWaitTimer = 0;
     popPhaseT = 0;
+    waveKillAt = -1;
     popResolved = false;
     popScoreTotal = scoreF;
     popScoreTimer = scoreF;
@@ -2728,6 +2733,7 @@ function onMonsterKilled(t, tier) {
         effect.orbColor = (ELEMENTS[t.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
         effect.monIdx = monsters.indexOf(t);
         effect.killOrder = t.lastGroupOrder || 0;   // 死亡／機制順序＝打死牠的那一組的組序（爆擊補刀＝1e9+組序），不依光球抵達時間
+        if (currentState === STATE.POPPING) waveKillAt = popPhaseT;   // 消除前停頓 killSettle 從這裡起算
         // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
         effect.heavy = tier === 'heavy';
         if (perWaveMode()) deferredKillEffects.push(effect);   // 每波扣血：打死當場死，機制等補盤後再播
@@ -2873,6 +2879,13 @@ function flushWaveKills() {
     pendingKillEffects.sort((a, b) => key(a) - key(b));
 }
 function orbsInFlight() { return flyingScores.some(f => f.type === 'collect' && f.orbHit && (f.prog || 0) < 1); }
+// 斷點乾淨（2026-10-21）：光球到齊才消除；這一波有打死就再停 killSettle 秒（死亡演出）才消除→補盤→機制
+function waveCanDissolve() {
+    if (!orbHitMode()) return true;
+    if (orbsInFlight() || heroHold) return false;
+    if (waveKillAt >= 0 && popPhaseT < waveKillAt + TF(TIMING.killSettle || 0)) return false;
+    return true;
+}
 
 function finishKillEffect() {
     const finishedEffect = killEffectCurrent;
@@ -3478,6 +3491,16 @@ function fireAttackRound(round) {
 }
 
 function injectGuaranteedMatches() {
+    if (noCardsMode() && forceTwoEarth) {   // 兩組大地：第 0 列與第 4 列各整列 7 顆，中間三列的大地換成烈焰讓兩組不相連
+        forceTwoEarth = false;
+        const color = elemOfLevel(1), other = elemOfLevel(3);
+        for (let c = 0; c < COLS; c++) {
+            board[c][0] = { id: color, yOffset: 0, scale: 1, isMatched: false };
+            board[c][ROWS - 1] = { id: color, yOffset: 0, scale: 1, isMatched: false };
+            for (let r = 1; r < ROWS - 1; r++) if (board[c][r].id === color) board[c][r].id = other;
+        }
+        return;
+    }
     if (noCardsMode()) {   // 聚集規則：塞一排 5 顆指定顏色（強開打死某級＝該級顏色；JP 噴錢＝雷霆）
         const color = forceKillLv ? elemOfLevel(forceKillLv) : forceCoinBurst ? 1 : -1;
         if (color < 0) return;
@@ -5189,7 +5212,7 @@ function update() {
         }
         if (allDone) {
             spinOldBoard = null;   // 保險：舊盤面移除
-            if (forceKill || forceCrit || forceCoinBurst || forceGuaranteeMatch) injectGuaranteedMatches();
+            if (forceKill || forceCrit || forceCoinBurst || forceGuaranteeMatch || forceTwoEarth) injectGuaranteedMatches();
             if (forceCoinBurst) forceCoinBurst = false;       // 注入完畢，清除旗標
             if (forceGuaranteeMatch) forceGuaranteeMatch = false;
             currentState = STATE.CHECKING;
@@ -5275,7 +5298,7 @@ function update() {
 
         // 階段2：全亮停留後「所有組同時」開始消散（BG 亦同）＋消除紀錄（一次）
         currentMatches.forEach(g => {
-            if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
+            if (g.lit && !g.resolved && popPhaseT >= g.dissolveF && waveCanDissolve()) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
                 if (TIMING.popTier !== 0 && g.hitTier === 'kill') {   // 打死那一組：消散時每格爆屬性色光＋盤面小震（第三階）
@@ -6106,6 +6129,10 @@ function handleInput(clientX, clientY, isClick) {
                         } else if (item.type === 'thunder135') {
                             // 雷霆 1／3／5 星：本局三張卡直接換成雷霆 1、3、5 星（看新卡圖）
                             forceThunder135 = true;
+                            if (currentState === STATE.IDLE) startSpin();
+                        } else if (item.type === 'twoEarth') {
+                            if (isFG || isBG) return;
+                            forceTwoEarth = true;
                             if (currentState === STATE.IDLE) startSpin();
                         } else if (item.type === 'crit') {
                             if (isFG || isBG) return;
