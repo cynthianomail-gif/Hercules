@@ -814,6 +814,7 @@ const DEFAULT_TIMING = {
     nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
     nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
     hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
+    mechAtCascadeEnd: 1,     // 機制時機（2026-10-21 RD 封包限制）：1 = 每波光球照打、當場死，但機制與換新等這一串連爆打到不能再爆才播；0 = 打死那一波補盤後就播
     overkillOrbs:     1,     // 用不到的光球（2026-10-21 ned）：1 = 一樣飛去打，超額傷害不扣血、只有火花（爽感）；0 = 原地縮小淡出
     refillAfterOrbs:  1,     // 1 = 光球飛完、打完才補盤（2026-10-21 ned 試）；0 = 光球起飛時同時補盤
     killSettle:       0.60,  // 打死後停頓（2026-10-21 ned）：光球打死怪之後、接機制之前停這麼久（看死亡演出）；這段期間盤面已經補好但先不判定
@@ -907,7 +908,7 @@ const TIMING_META = [
         ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05], ['hitTier2At','受擊二階:一批打幾格以上', 2, 15, 1],
         ['critHpLv1','爆擊:Lv1 剩血≤', 0, 10, 1], ['critHpLv2','爆擊:Lv2 剩血≤', 0, 10, 1], ['critHpLv3','爆擊:Lv3 剩血≤', 0, 15, 1], ['critHpLv4','爆擊:Lv4 剩血≤', 0, 15, 1], ['critHpBoss','爆擊:宙斯赫拉 剩血≤', 0, 20, 1], ['critRate','爆擊率', 0, 1, 0.01],
         ['heroFinisher','海克力士(0不出人/1只爆擊/2也含一般打死)', 0, 2, 1], ['heroMinLv','海克力士:一般打死最低等級(1~4)', 1, 4, 1], ['heroShortBelow','海克力士:幾級以下用短版', 1, 5, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1],
-        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1], ['overkillOrbs','用不到的光球也飛去打(1)/消散(0)', 0, 1, 1]] },
+        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1], ['overkillOrbs','用不到的光球也飛去打(1)/消散(0)', 0, 1, 1], ['mechAtCascadeEnd','機制等連爆結束才播(1)/每波(0)', 0, 1, 1]] },
     { group: '掉落（停輪）', items: [
         ['spinClear','舊圖示清除'], ['spinDropIn','新圖示掉入'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
@@ -966,7 +967,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'overkillOrbs', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'overkillOrbs', 'mechAtCascadeEnd', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -5287,6 +5288,10 @@ function update() {
         let waveGroups = buildWaveGroups();
         if (waveGroups.length > 0) {
             startPopWave(waveGroups);
+        } else if (orbHitMode() && deferredKillEffects.length > 0) {
+            // 2026-10-21 RD：爆到不能再爆了 → 這一串連爆裡死掉的怪，現在才依序播機制、換新；機制改了盤面會再開新一輪連爆
+            flushWaveKills();
+            startKillEffect(pendingKillEffects.shift());
         } else {
             // B案（一次結算）：連鎖確定結束 → 依序觸發所有充能卡牌（B-05）
             // 攻擊後的擊殺機制若改盤形成新連線，會回到 CHECKING 開新循環（B-07）
@@ -5432,7 +5437,7 @@ function update() {
             pendingBoardShake = 0;
             refillFast = false;
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
-            if (orbHitMode() && deferredKillEffects.length > 0) flushWaveKills();
+            if (orbHitMode() && deferredKillEffects.length > 0 && !TIMING.mechAtCascadeEnd) flushWaveKills();   // 機制等連爆結束模式：留在 deferred，CHECKING 沒組時才播
             if (pendingKillEffects.length > 0) {
                 startKillEffect(pendingKillEffects.shift());
             } else {
