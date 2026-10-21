@@ -814,6 +814,8 @@ const DEFAULT_TIMING = {
     nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
     nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
     hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
+    deathAtCascadeEnd: 1,    // 死亡時機（2026-10-21 ned：要「扣血時機 0」的時序＋新版光球）：1 = 光球每波照打、血歸 0 只「倒下」，死亡演出／機制／換新都等爆到不能再爆；0 = 血歸 0 當場死（機制時機看 mechAtCascadeEnd）
+    mechAtCascadeEnd: 1,     // 機制時機（2026-10-21 RD 封包限制）：1 = 每波光球照打、當場死，但機制與換新等這一串連爆打到不能再爆才播；0 = 打死那一波補盤後就播
     overkillOrbs:     1,     // 用不到的光球（2026-10-21 ned）：1 = 一樣飛去打，超額傷害不扣血、只有火花（爽感）；0 = 原地縮小淡出
     refillAfterOrbs:  1,     // 1 = 光球飛完、打完才補盤（2026-10-21 ned 試）；0 = 光球起飛時同時補盤
     killSettle:       0.60,  // 打死後停頓（2026-10-21 ned）：光球打死怪之後、接機制之前停這麼久（看死亡演出）；這段期間盤面已經補好但先不判定
@@ -898,7 +900,7 @@ const DEFAULT_TIMING = {
 const TIMING_META = [
     { group: '★ 新規則（無卡牌版，2026-10-19）', items: [
         ['noCards','移除卡牌(1=是)', 0, 1, 1], ['clusterMin','聚在一起幾顆就消(0=直線)', 0, 8, 1], ['minMatch','直線規則:幾顆才消(3/4)', 3, 5, 1], ['anyCountMin','顆數消除:盤面湊幾顆就消(0=關)', 0, 15, 1],
-        ['perWaveHit','扣血時機(2光球到/1消完/0連爆完)', 0, 2, 1], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1],
+        ['perWaveHit','扣血時機(2=新版光球,請維持2)', 0, 2, 1], ['noRespawnInSpin','怪死掉本局不補(1=是)', 0, 1, 1], ['lv4DirectAbove','Lv4 改直接給分的門檻(倍,0=無)', 0, 100, 1],
         ['hpLv1','血量 Lv1 大地', 1, 60, 1], ['hpLv2','血量 Lv2 冰霜', 1, 60, 1], ['hpLv3','血量 Lv3 烈焰', 1, 60, 1], ['hpLv4','血量 Lv4 祕法', 1, 80, 1], ['hpBoss','血量 宙斯赫拉', 5, 300, 1],
         ['symWFlame','出現權重 烈焰', 0, 3, 0.05], ['symWEarth','出現權重 大地', 0, 3, 0.05], ['symWFrost','出現權重 冰霜', 0, 3, 0.05], ['symWArcane','出現權重 祕法', 0, 3, 0.05], ['symWThunder','出現權重 雷霆', 0, 3, 0.05], ['symWHeart','出現權重 聖心', 0, 3, 0.05],
         ['upGen1Min','升級生成 Lv1 最少', 1, 20, 1], ['upGen1Max','升級生成 Lv1 最多', 1, 20, 1], ['upGen2Min','升級生成 Lv2 最少', 1, 20, 1], ['upGen2Max','升級生成 Lv2 最多', 1, 20, 1], ['upGen3Min','升級生成 Lv3 最少', 1, 20, 1], ['upGen3Max','升級生成 Lv3 最多', 1, 20, 1], ['upGenSmartRate','升級生成成塊比例', 0, 1, 0.05],
@@ -907,7 +909,7 @@ const TIMING_META = [
         ['orbPerSymbol','每顆圖示一顆光球(1=開)', 0, 1, 1], ['orbStagger','光球逐顆起飛間隔(秒)', 0, 0.3, 0.01], ['comboHold','累計傷害停留(秒)', 0.2, 2, 0.05], ['hitTier2At','受擊二階:一批打幾格以上', 2, 15, 1],
         ['critHpLv1','爆擊:Lv1 剩血≤', 0, 10, 1], ['critHpLv2','爆擊:Lv2 剩血≤', 0, 10, 1], ['critHpLv3','爆擊:Lv3 剩血≤', 0, 15, 1], ['critHpLv4','爆擊:Lv4 剩血≤', 0, 15, 1], ['critHpBoss','爆擊:宙斯赫拉 剩血≤', 0, 20, 1], ['critRate','爆擊率', 0, 1, 0.01],
         ['heroFinisher','海克力士(0不出人/1只爆擊/2也含一般打死)', 0, 2, 1], ['heroMinLv','海克力士:一般打死最低等級(1~4)', 1, 4, 1], ['heroShortBelow','海克力士:幾級以下用短版', 1, 5, 1], ['heroOnJP','海克力士:宙斯赫拉也播', 0, 1, 1], ['heroText','海克力士:必殺字卡', 0, 1, 1], ['heroTint','海克力士:底圖染屬性色', 0, 1, 1],
-        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1], ['overkillOrbs','用不到的光球也飛去打(1)/消散(0)', 0, 1, 1]] },
+        ['nearDeathHp','快死了:血量剩幾格以下', 0, 20, 1], ['nearDeathGlow','快死了:盤面同色發光', 0, 1, 1], ['popTier','消除特效分三階(1=開)', 0, 1, 1], ['refillAfterOrbs','光球打完才補盤(1)/同時補(0)', 0, 1, 1], ['overkillOrbs','用不到的光球也飛去打(1)/消散(0)', 0, 1, 1], ['mechAtCascadeEnd','機制等連爆結束才播(1)/每波(0)', 0, 1, 1], ['deathAtCascadeEnd','死亡等連爆結束(1)/當場死(0)', 0, 1, 1]] },
     { group: '掉落（停輪）', items: [
         ['spinClear','舊圖示清除'], ['spinDropIn','新圖示掉入'], ['firstReelStop','第1輪落定'], ['reelStopInterval','每輪落定間隔'],
         ['landBounce','落定回彈'], ['skipStop','跳過齊停'],
@@ -966,7 +968,7 @@ TIMING_META.forEach(g => g.items.forEach(it => { TIMING_RANGE[it[0]] = [it[2] !=
 let TIMING = { ...DEFAULT_TIMING };
 const NON_GANTT_TIMING = new Set(['popDimAlpha', 'cardPullDist', 'hitFlashAlpha', 'hitShakeAmp', 'effectDimAlpha',
     'atkTier2Mult', 'atkTier3Mult', 'hitTiers', 'refillFastScale',
-    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'overkillOrbs', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
+    'stoneShare', 'stoneRefillScale', 'hotSpinRate', 'hotBias', 'hotNoStone', 'rtpControl', 'rtpTarget', 'rtpBand', 'rtpBiteStone', 'rtpColdBias', 'maxAttackRounds', 'rechargeRate', 'respawnHpUp', 'noRespawnInSpin', 'cardElemBias', 'fgNoStone', 'fgFixedMonsters', 'fgCardsFromMonsters', 'chargeMinLine', 'fireNeedsTarget', 'cardSame2Rate', 'cardSame3Rate', 'sameTargetRate', 'minMatch', 'clusterMin', 'noCards', 'anyCountMin', 'hpLv1', 'hpLv2', 'hpLv3', 'hpLv4', 'hpBoss', 'upGen1Min', 'upGen1Max', 'upGen2Min', 'upGen2Max', 'upGen3Min', 'upGen3Max', 'upGenSmartRate', 'orbPerSymbol', 'orbStagger', 'comboHold', 'hitTier2At', 'critHpLv1', 'critHpLv2', 'critHpLv3', 'critHpLv4', 'critHpBoss', 'critRate', 'heroFinisher', 'heroMinLv', 'heroShortBelow', 'popTier', 'heroOnJP', 'heroText', 'heroTint', 'nearDeathHp', 'nearDeathGlow', 'refillAfterOrbs', 'overkillOrbs', 'mechAtCascadeEnd', 'deathAtCascadeEnd', 'perWaveHit', 'wild1Min', 'wild1Max', 'wild2Min', 'wild2Max', 'wild3Min', 'wild3Max', 'bigWild2', 'bigWild3', 'symWArcane', 'symWThunder', 'symWHeart', 'symWFlame', 'symWFrost', 'symWEarth', 'jpStage1Min', 'jpStage1Max', 'jpStage2Min', 'jpStage2Max', 'jpStage3Min', 'jpStage3Max', 'cpLowScale', 'cpMidScale', 'cpHighScale',
     'starW1', 'starW2', 'starW3', 'starW4', 'starW5', 'lv4DirectAbove', 'lv2ConvertMin', 'lv3GenMin', 'lv3GenMax', 'lv3Gen1Count', 'lv1ClearMin', 'lv3StoneWildMin', 'lv3StoneWildWeight', 'genSmartRate', 'lv3GenColors', 'payCurve', 'pay12', 'pay14', 'pay16', 'pt3', 'pt4', 'pt5', 'pt6', 'pt8', 'pt10', 'pt12', 'pt14', 'pt16', 'placeSmart', 'wildSmartRate', 'cardTilt', 'cardFanGap', 'cardFanDrop', 'respawnAfterRound', 'payScale', 'stoneAfterMech', 'killFloorLv1', 'killFloorLv2', 'killFloorLv3']);
 const TIMING_COLORS = ['#38bdf8', '#facc15', '#fb7185', '#a78bfa', '#34d399', '#f97316', '#60a5fa'];
 function isGanttTimingKey(key) {
@@ -1323,7 +1325,8 @@ const FORCE_MENU_ITEMS = [
     { label: '爆擊補刀',   type: 'crit', color: '#ff4444' },
     { label: '兩組大地7',  type: 'twoEarth', size: 7, color: '#16a34a' },   // 兩組各 7 顆：第一組打死 Lv1、第二組只給分
     { label: '兩組大地5',  type: 'twoEarth', size: 5, color: '#15803d' },   // 兩組各 5 顆：第一組打到剩 2（不擲爆擊）、第二組飛 2 顆補刀
-    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },   // 第一組 7→2、第二組只飛 1 顆 2→1（其餘消散）→ 該色打完才擲、必跳爆擊打死
+    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },
+    { label: '大地連鎖',   type: 'earthChain', color: '#065f46' },   // 兩組大地打死 Lv1 → 補盤再一組大地（打倒下的怪）→ 爆完才死、機制 WILD → WILD 接成一組大地 → 打新 Lv1   // 第一組 7→2、第二組只飛 1 顆 2→1（其餘消散）→ 該色打完才擲、必跳爆擊打死
     { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
     { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
     { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 3, color: '#fbbf24' },   // 只有打死 Lv.3 會出（2026-10-19）
@@ -1439,6 +1442,8 @@ let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
 let killSettleT = 0;        // 打死後的停頓（看死亡演出）倒數幀：期間盤面補好也先不接機制／不判定
+let knockSeq = 0;           // 死亡等連爆結束模式：倒下的順序（第幾隻倒下），結算時照這個順序死亡→機制→換新
+let settlingKnocked = false; // 正在結算倒下的怪（連爆已結束），期間機制一隻接一隻、不插新連爆
 let pendingCardUpdates = []; // 甘特圖排程：能量抵達後才更新卡牌 ATK
 let pendingRounds = []; // 待發射的攻擊輪次
 let pendingKillEffects = [];  // 怪獸死亡後待套用的盤面效果
@@ -1450,6 +1455,7 @@ let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊（保留供未來測試）
 let forceTwoEarth = 0;      // 強開：同一盤面兩組大地，值＝每組顆數 7 或 5（2026-10-21 ned 看流程用）
 let forceNoCrit = false;    // 強開：這一局不擲爆擊（看「第一組打不死、第二組補刀」的流程用）
+let forceChain = 0;         // 強開「大地連鎖」劇本的階段：1 落盤兩組大地 → 2 第一次補盤補一排大地 → 3 第二次補盤補 3 顆大地 → 4 機制 WILD 放在那 3 顆旁邊接成一組 → 0 結束
 let orbQueue = [];          // 這一波等著放光球的組（依組序）：前一組的光球到齊（含爆擊）後，下一組才依怪物當下剩血決定飛幾顆
 let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣（保留供未來測試）
 let forceKillLv = 0;         // 強開（2026-10-19）：指定打死第幾級（0 = 不限）
@@ -1944,6 +1950,29 @@ function applyGravity() {
             board[c][i].id = STONE_ID; board[c][i + 1].id = STONE_ID;
         }
     }
+    if (forceChain === 2 || forceChain === 3) rigChainRefill();
+}
+// 強開「大地連鎖」：補盤的新圖示照劇本放——階段 2：第 0 列第 0~4 欄補大地（又一組，打倒下的怪）；階段 3：第 0 列第 0~2 欄補 3 顆大地（不成組，等 WILD 來接）；其餘新圖示避開會成組的顏色
+function rigChainRefill() {
+    const earth = elemOfLevel(1);
+    const isNew = (c, r) => board[c][r].yOffset < 0;
+    const want = forceChain === 2 ? 5 : 3;
+    forceChain = forceChain === 2 ? 3 : 4;
+    const others = [0, 1, 2, 3, 4, 5].filter(e => e !== earth);
+    for (let tries = 0; tries < 60; tries++) {
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (isNew(c, r)) {
+            board[c][r].id = (r === 0 && c < want) ? earth : others[Math.floor(Math.random() * others.length)];
+        }
+        const groups = buildClusterGroups(effClusterMin() || 5);
+        const ok = want === 5 ? (groups.length === 1 && groups[0].elemId === earth && groups[0].count === 5) : groups.length === 0;
+        if (ok) break;
+    }
+}
+// 強開「大地連鎖」階段 4：Lv1 機制的 WILD 固定放在第 0 列第 3、4 欄，跟補好的 3 顆大地接成一組
+function chainWildCells() {
+    if (forceChain !== 4) return null;
+    forceChain = 0;
+    return [{ c: 3, r: 0 }, { c: 4, r: 0 }];
 }
 
 // 連線規則（企劃 2026-07-10）：橫/直線 3 顆以上成線即得分；
@@ -2156,7 +2185,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     let cardTY = cm.baseY + (cm.isFGMode ? 58 : cm.cardH * 0.112) + AL.y;
     let vTarget = null;
     if (_c.virtual) {   // 移除卡牌：能量直接飛到同屬性的怪物身上（怪物本體中心，2026-10-19 ned）
-        vTarget = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || null;
+        vTarget = monsters.find(mm => mm.elemId === g.elemId && !mm.isDead && mm.hp > 0) || monsters.find(mm => mm.elemId === g.elemId && mm.knocked) || null;   // 倒下的怪：光球照飛（超額）
         if (!vTarget) { g.hitTier = 'none'; return; }   // 這一色的怪這局已經死了（不補怪）：只給分、不飛光球
         { const a = monsterArtCenter(vTarget); cardCX = a.x; cardTY = a.y; }
     }
@@ -2297,6 +2326,12 @@ function prepareWildEffect(effect) {
     effect.flights = [];
     // 這次 WILD 要不要「貼著放」：咬模式一律亂撒、補模式一律貼著放，其餘照 wildSmartRate 抽
     const smart = effPlaceSmart() !== 0 && (rtpMode === 'feed' || Math.random() < (TIMING.wildSmartRate === undefined ? 0.3 : TIMING.wildSmartRate));
+    const chainCells = !effect.big ? chainWildCells() : null;
+    if (chainCells) {   // 強開「大地連鎖」：WILD 放在指定格，接成一組大地
+        chainCells.forEach((cell, i) => effect.flights.push({ cells: [cell], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 }));
+        effect.wildCount = chainCells.length;
+        return;
+    }
     if (effect.big) {
         // 巨型 WILD 1~2 顆：盡量放中間（離盤面中心近的 2×2 優先，同距離挑最能連線的），兩顆不重疊
         const n = Math.max(1, effect.bigCount || 1);
@@ -2726,7 +2761,7 @@ function onMonsterKilled(t, tier) {
         }
         effect.orbColor = (ELEMENTS[t.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
         effect.monIdx = monsters.indexOf(t);
-        effect.killOrder = t.lastGroupOrder || 0;   // 死亡／機制順序＝打死牠的那一組的組序（爆擊補刀＝1e9+組序），不依光球抵達時間
+        effect.killOrder = t.knockSeq ? t.knockSeq : (t.lastGroupOrder || 0);   // 死亡／機制順序＝打死牠的那一組的組序（爆擊補刀＝1e9+組序）；死亡等連爆結束模式＝倒下順序
         if (orbHitMode()) killSettleT = TF(TIMING.killSettle || 0);   // 打死後停頓：補好的盤面先不接機制、不判定
         // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
         effect.heavy = tier === 'heavy';
@@ -2864,11 +2899,30 @@ function applyOrbDamage(m, amt, tier, color, label = '') {
     m.combo.hits++; m.combo.total += amt; m.combo.life = holdF; m.combo.pop = 8;
     if (m.jackpot > 0) checkBossMilestones(monsters.indexOf(m), prevHp, m.hp);
     if (killed && !m.isDead) {
+        if (orbHitMode() && TIMING.deathAtCascadeEnd) {   // 倒下：血條 0、受傷姿勢，死亡演出等爆完（settleKnocked）
+            if (!m.knocked) { m.knocked = true; m.knockSeq = ++knockSeq; m.knockTier = tier; m.hurtT = TF(TIMING.hitReact) * 2; m.shake = Math.max(m.shake, TF(TIMING.hitReact) + 6); }
+            return;
+        }
         if (tier === 'heavy') { heavyAim = null; hitStopT = TF(TIMING.heavyHitStop); screenShakeT = TF(TIMING.heavyShake); screenFlashT = TF(TIMING.heavyFlash); }
         else hitStopT = TF(TIMING.killHitStop === undefined ? 0.12 : TIMING.killHitStop);
         lastAttackTier = tier;
         onMonsterKilled(m, tier);
     }
+}
+// 死亡等連爆結束：爆到沒組了，倒下的怪依倒下順序一隻一隻——死亡演出（停格、KILL、三階受擊）→ 機制 → 換新（startKillEffect 的 'pre' 階段就是死亡停留）
+function nextKnocked() { return monsters.filter(m => m.knocked && !m.isDead).sort((a, b) => a.knockSeq - b.knockSeq)[0]; }
+function settleKnocked(m) {
+    m.knocked = false;
+    const tier = m.knockTier || 'kill';
+    const hc = monsterArtCenter(m), color = (ELEMENTS[m.elemId] || WILD_ELEM).color;
+    hitBursts.push({ x: hc.x, y: hc.y, color, t: 0, life: TF(TIMING.hitBurst), big: true, tier: 3,
+                     rays: Array.from({ length: 14 }, (_, k) => ({ a: k * Math.PI * 2 / 14 + Math.random() * 0.4, l: 0.6 + Math.random() * 0.6 })) });
+    if (tier === 'heavy') { heavyAim = null; hitStopT = TF(TIMING.heavyHitStop); screenShakeT = TF(TIMING.heavyShake); screenFlashT = TF(TIMING.heavyFlash); }
+    else hitStopT = TF(TIMING.killHitStop === undefined ? 0.12 : TIMING.killHitStop);
+    lastAttackTier = tier;
+    onMonsterKilled(m, tier);
+    flushWaveKills();
+    if (pendingKillEffects.length > 0) startKillEffect(pendingKillEffects.shift());
 }
 // 這一波打死的怪 → 機制排進正式隊列（FG/BG 排最後），補盤後依序播
 function flushWaveKills() {
@@ -3550,12 +3604,16 @@ function fireAttackRound(round) {
 function injectGuaranteedMatches() {
     if (noCardsMode() && forceTwoEarth) {   // 兩組大地：第 0 列與第 4 列各一組（7 顆＝整列、5 顆＝第 1~5 欄），其他格的大地全換成烈焰，確保剛好兩組不相連
         const size = forceTwoEarth; forceTwoEarth = 0;
-        const color = elemOfLevel(1), other = elemOfLevel(3);
+        if (forceChain === 1) forceChain = 2;
+        const color = elemOfLevel(1);
+        const others = [0, 1, 2, 3, 4, 5].filter(e => e !== color);
         const c0 = size >= COLS ? 0 : Math.floor((COLS - size) / 2);
-        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
-            const inRow = (r === 0 || r === ROWS - 1) && c >= c0 && c < c0 + size;
-            if (inRow) board[c][r] = { id: color, yOffset: 0, scale: 1, isMatched: false };
-            else if (board[c][r].id === color) board[c][r].id = other;
+        const inRow = (c, r) => (r === 0 || r === ROWS - 1) && c >= c0 && c < c0 + size;
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (inRow(c, r)) board[c][r] = { id: color, yOffset: 0, scale: 1, isMatched: false };
+        for (let tries = 0; tries < 80; tries++) {   // 其他格：大地換掉，而且不能另外湊出別的組（不然畫面會多一組烈焰之類的干擾）
+            for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (!inRow(c, r) && (board[c][r].id === color || tries > 0)) board[c][r].id = others[Math.floor(Math.random() * others.length)];
+            const groups = buildClusterGroups(effClusterMin() || 5);
+            if (groups.length === 2 && groups.every(g => g.elemId === color)) break;
         }
         return;
     }
@@ -3596,7 +3654,8 @@ function startSpin() {
     stats.spins++;
     if (!isFG && !isBG) rtpBetSum += betAmount;
     attackRoundsThisSpin = 0; respawnsThisSpin = 0; lastTargetByElem = {};
-    monsters.forEach(m => { m.previewDmg = 0; m.pendingDmg = 0; m._forceMarked = false; m.combo = null; });
+    monsters.forEach(m => { m.previewDmg = 0; m.pendingDmg = 0; m._forceMarked = false; m.combo = null; m.knocked = false; m.knockSeq = 0; });
+    knockSeq = 0; settlingKnocked = false;
     heroHold = null;
     hasHitThisSpin = false;
     coinBursts = [];
@@ -3924,7 +3983,7 @@ function drawBigArt(key, o, m) {
             deathFade = m.deathT > 0 ? Math.max(0, m.deathT / TF(TIMING.deathSwitch)) : 1;
         } else if (m.isDead) {
             return;   // 已淡出消散完畢，等待換怪淡入
-        } else if (m.hurtT > 0 || (m.maxHp > 0 && m.hp > 0 && m.hp < m.maxHp * 0.5)) {
+        } else if (m.knocked || m.hurtT > 0 || (m.maxHp > 0 && m.hp > 0 && m.hp < m.maxHp * 0.5)) {   // 倒下（血 0 等結算）維持受傷姿勢
             // 受擊瞬間，或攻擊後血量 < 50% → 持續維持受擊狀態圖；≥ 50% 則恢復待機圖
             img = (IMG.monArtHurt && IMG.monArtHurt[key]) || IMG.monArt[key];
         }
@@ -4713,6 +4772,18 @@ function drawGroupWinFrames() {
     }
 }
 
+// 強開選單版面（2026-10-21：項目多了會超出畫面 → 自動分欄，塞得進按鈕上方的高度）
+function forceMenuLayout(useArt, ux, uy, bottomY) {
+    const itemH = 34, gap = 4, colW = 112, colGap = 6, mx0 = 35 + ux;
+    const menuBase = useArt ? uy + 13 : bottomY;
+    const avail = menuBase - 12;
+    const perCol = Math.max(1, Math.floor((avail - 8) / (itemH + gap)));
+    const n = FORCE_MENU_ITEMS.length, cols = Math.ceil(n / perCol), rows = Math.ceil(n / cols);
+    const totalH = rows * (itemH + gap) - gap, totalW = cols * colW + (cols - 1) * colGap;
+    const my0 = menuBase - totalH - 8;
+    const rects = FORCE_MENU_ITEMS.map((item, i) => ({ item, x: mx0 + Math.floor(i / rows) * (colW + colGap), y: my0 + (i % rows) * (itemH + gap), w: colW, h: itemH }));
+    return { x: mx0, y: my0, w: totalW, h: totalH, rects };
+}
 function drawUI() {
     const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列整列位移
     const useArt = imgReady(IMG.publicUI);                  // 公版 UI 條素材（1280×126 貼齊畫面底部）
@@ -4790,16 +4861,12 @@ function drawUI() {
 
     // 上拉選單（共用；錨點依 UI 模式：素材模式從強開小按鈕上方展開）
     if (forceMenuOpen) {
-        const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
-        const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-        const menuBase = useArt ? uy + 13 : bottomY;
-        const my0 = menuBase - totalH - 4;
-        drawRoundedRect(mx0 - 5, my0 - 4, mw + 10, totalH + 4, 8, 'rgba(8,14,26,0.96)', '#334155');
-        FORCE_MENU_ITEMS.forEach((item, i) => {
-            const iy = my0 + i * (itemH + gap);
-            drawRoundedRect(mx0, iy, mw, itemH, 6, '#1e293b', item.color, 1.5);
-            ctx.fillStyle = item.color; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText(item.label, mx0 + mw / 2, iy + itemH / 2);
+        const L = forceMenuLayout(useArt, ux, uy, bottomY);
+        drawRoundedRect(L.x - 5, L.y - 4, L.w + 10, L.h + 8, 8, 'rgba(8,14,26,0.96)', '#334155');
+        L.rects.forEach(({ item, x, y, w, h }) => {
+            drawRoundedRect(x, y, w, h, 6, '#1e293b', item.color, 1.5);
+            ctx.fillStyle = item.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(item.label, x + w / 2, y + h / 2);
         });
     }
     ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
@@ -5287,6 +5354,13 @@ function update() {
         let waveGroups = buildWaveGroups();
         if (waveGroups.length > 0) {
             startPopWave(waveGroups);
+        } else if (orbHitMode() && nextKnocked()) {
+            settlingKnocked = true;   // 爆到不能再爆：倒下的怪現在才死、播機制、換新，一隻接一隻（機制改的盤面等全部結算完再連爆）
+            settleKnocked(nextKnocked());
+        } else if (orbHitMode() && deferredKillEffects.length > 0) {
+            // 2026-10-21 RD：爆到不能再爆了 → 這一串連爆裡死掉的怪，現在才依序播機制、換新；機制改了盤面會再開新一輪連爆
+            flushWaveKills();
+            startKillEffect(pendingKillEffects.shift());
         } else {
             // B案（一次結算）：連鎖確定結束 → 依序觸發所有充能卡牌（B-05）
             // 攻擊後的擊殺機制若改盤形成新連線，會回到 CHECKING 開新循環（B-07）
@@ -5305,7 +5379,7 @@ function update() {
             // 盤面無法繼續連爆：若有收集中的 FG/BG，此時才觸發轉場
             if (pendingFGBG !== null) {
                 applyKillFloor();
-                forcedEffectType = 0; forcedMech = null; forcedMechLv = 0; forceKillLv = 0; forceKill = false; forceCrit = false; forceNoCrit = false; forceTargetLv4 = false;   // 強開旗標在這條收尾也要清，不然會漏進 FG
+                forcedEffectType = 0; forcedMech = null; forcedMechLv = 0; forceKillLv = 0; forceKill = false; forceCrit = false; forceNoCrit = false; forceTargetLv4 = false; forceChain = 0;   // 強開旗標在這條收尾也要清，不然會漏進 FG
                 savedBoard = board.map(col => col.map(cell => ({ ...cell })));
                 matchHistory = [];
                 if (pendingFGBG === 'FG') {
@@ -5317,7 +5391,7 @@ function update() {
             } else {
                 applyKillFloor();
                 forcedEffectType = 0;    // 局末清除殘留強制效果
-                forcedMech = null; forceKillLv = 0; forceKill = false; forcedMechLv = 0; forceCrit = false; forceNoCrit = false;
+                forcedMech = null; forceKillLv = 0; forceKill = false; forcedMechLv = 0; forceCrit = false; forceNoCrit = false; forceChain = 0;
                 // BG 倍數遞增（改版 2026-10-13）：本局有消除 → 局末倍數 ×2（最高 ×1024）；沒消除不變
                 if (isBG && hasHitThisSpin && getBGMultiplier() < 1024) {
                     bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0;
@@ -5432,10 +5506,13 @@ function update() {
             pendingBoardShake = 0;
             refillFast = false;
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
-            if (orbHitMode() && deferredKillEffects.length > 0) flushWaveKills();
-            if (pendingKillEffects.length > 0) {
+            if (orbHitMode() && deferredKillEffects.length > 0 && !TIMING.mechAtCascadeEnd) flushWaveKills();   // 機制等連爆結束模式：留在 deferred，CHECKING 沒組時才播
+            if (orbHitMode() && settlingKnocked && nextKnocked() && pendingKillEffects.length === 0) {
+                settleKnocked(nextKnocked());   // 下一隻倒下的：死亡 → 機制 → 換新
+            } else if (pendingKillEffects.length > 0) {
                 startKillEffect(pendingKillEffects.shift());
             } else {
+                settlingKnocked = false;
                 // 無論 pendingFGBG 是否有值，都先繼續 CHECKING 讓連爆打完
                 // 機制觸發完的那一次改用 mechCheckPause（機制後連線停頓），一般連鎖用 interBoardPause
                 checkPauseTimer = TF(afterMechPause ? TIMING.mechCheckPause : TIMING.interBoardPause);
@@ -6146,14 +6223,10 @@ function handleInput(clientX, clientY, isClick) {
         if (forceBtnHit) {
             forceMenuOpen = !forceMenuOpen;
         } else if (forceMenuOpen) {
-            // 點選選單項目（錨點與 drawUI 的上拉選單一致）
-            const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
-            const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-            const my0 = (useArt ? uy + 13 : uy + 20) - totalH - 4;
-            if (mx >= mx0 && mx <= mx0 + mw) {
-                FORCE_MENU_ITEMS.forEach((item, i) => {
-                    const iy = my0 + i * (itemH + gap);
-                    if (my >= iy && my <= iy + itemH) {
+            // 點選選單項目（版面與 drawUI 共用 forceMenuLayout）
+            {
+                forceMenuLayout(useArt, ux, uy, uy + 20).rects.forEach(({ item, x, y, w, h }) => {
+                    if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
                         forceMenuOpen = false;
                         if (item.type === 'forceFG') {
                             // 強開FG：立即觸發 Free Game 轉場
@@ -6199,6 +6272,11 @@ function handleInput(clientX, clientY, isClick) {
                         } else if (item.type === 'thunder135') {
                             // 雷霆 1／3／5 星：本局三張卡直接換成雷霆 1、3、5 星（看新卡圖）
                             forceThunder135 = true;
+                            if (currentState === STATE.IDLE) startSpin();
+                        } else if (item.type === 'earthChain') {
+                            if (isFG || isBG) return;
+                            forceTwoEarth = 7; forceNoCrit = true; forceChain = 1;
+                            forcedMech = 'wild'; forcedMechLv = 1;   // Lv1 的機制固定送 WILD
                             if (currentState === STATE.IDLE) startSpin();
                         } else if (item.type === 'twoEarth') {
                             if (isFG || isBG) return;
@@ -6273,7 +6351,7 @@ canvas.addEventListener('touchstart', (e) => {
 // === 調校面板：節奏滑桿 + 佈局拖曳編輯 + localStorage 保存 ===
 // ============================================================
 const TUNE_KEY = 'hercules_tuning';
-const TUNE_VERSION = 12;  // v12（2026-10-19 晚）：規則大改（不補怪、無門檻、光球到就扣血、海克力士四屬性、血量 12），舊存檔作廢，避免蓋掉新預設。v11：移除卡牌、石頭預設 0。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
+const TUNE_VERSION = 13;  // v13（2026-10-21）：ned 試過「扣血時機 0」後存檔留著會讓光球回舊版（一組一顆），升版清掉；時序改用 deathAtCascadeEnd。v12（2026-10-19 晚）：規則大改（不補怪、無門檻、光球到就扣血、海克力士四屬性、血量 12），舊存檔作廢，避免蓋掉新預設。v11：移除卡牌、石頭預設 0。v10: 套用企劃 2026-07-09 匯出節奏值；spinClear/spinDropIn 分拆；新增 mechCheckPause。
 let tunePanelOpen = false;
 let tuneTab = 'timing';          // 'timing' | 'layout'
 let layoutEditMode = false;      // 佈局分頁開啟中 = 編輯模式（攔截畫布輸入）
