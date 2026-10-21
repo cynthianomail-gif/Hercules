@@ -1325,7 +1325,8 @@ const FORCE_MENU_ITEMS = [
     { label: '爆擊補刀',   type: 'crit', color: '#ff4444' },
     { label: '兩組大地7',  type: 'twoEarth', size: 7, color: '#16a34a' },   // 兩組各 7 顆：第一組打死 Lv1、第二組只給分
     { label: '兩組大地5',  type: 'twoEarth', size: 5, color: '#15803d' },   // 兩組各 5 顆：第一組打到剩 2（不擲爆擊）、第二組飛 2 顆補刀
-    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },   // 第一組 7→2、第二組只飛 1 顆 2→1（其餘消散）→ 該色打完才擲、必跳爆擊打死
+    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },
+    { label: '大地連鎖',   type: 'earthChain', color: '#065f46' },   // 兩組大地打死 Lv1 → 補盤再一組大地（打倒下的怪）→ 爆完才死、機制 WILD → WILD 接成一組大地 → 打新 Lv1   // 第一組 7→2、第二組只飛 1 顆 2→1（其餘消散）→ 該色打完才擲、必跳爆擊打死
     { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
     { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
     { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 3, color: '#fbbf24' },   // 只有打死 Lv.3 會出（2026-10-19）
@@ -1454,6 +1455,7 @@ let forceTargetLv4 = false; // 強制 FG/BG 時只對 Lv.4 怪生效
 let forceCrit = false;      // 強制下一次攻擊觸發爆擊（保留供未來測試）
 let forceTwoEarth = 0;      // 強開：同一盤面兩組大地，值＝每組顆數 7 或 5（2026-10-21 ned 看流程用）
 let forceNoCrit = false;    // 強開：這一局不擲爆擊（看「第一組打不死、第二組補刀」的流程用）
+let forceChain = 0;         // 強開「大地連鎖」劇本的階段：1 落盤兩組大地 → 2 第一次補盤補一排大地 → 3 第二次補盤補 3 顆大地 → 4 機制 WILD 放在那 3 顆旁邊接成一組 → 0 結束
 let orbQueue = [];          // 這一波等著放光球的組（依組序）：前一組的光球到齊（含爆擊）後，下一組才依怪物當下剩血決定飛幾顆
 let forceCoinBurst = false; // 強制下一局宙斯血量跨里程碑噴金幣（保留供未來測試）
 let forceKillLv = 0;         // 強開（2026-10-19）：指定打死第幾級（0 = 不限）
@@ -1948,6 +1950,29 @@ function applyGravity() {
             board[c][i].id = STONE_ID; board[c][i + 1].id = STONE_ID;
         }
     }
+    if (forceChain === 2 || forceChain === 3) rigChainRefill();
+}
+// 強開「大地連鎖」：補盤的新圖示照劇本放——階段 2：第 0 列第 0~4 欄補大地（又一組，打倒下的怪）；階段 3：第 0 列第 0~2 欄補 3 顆大地（不成組，等 WILD 來接）；其餘新圖示避開會成組的顏色
+function rigChainRefill() {
+    const earth = elemOfLevel(1);
+    const isNew = (c, r) => board[c][r].yOffset < 0;
+    const want = forceChain === 2 ? 5 : 3;
+    forceChain = forceChain === 2 ? 3 : 4;
+    const others = [0, 1, 2, 3, 4, 5].filter(e => e !== earth);
+    for (let tries = 0; tries < 60; tries++) {
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (isNew(c, r)) {
+            board[c][r].id = (r === 0 && c < want) ? earth : others[Math.floor(Math.random() * others.length)];
+        }
+        const groups = buildClusterGroups(effClusterMin() || 5);
+        const ok = want === 5 ? (groups.length === 1 && groups[0].elemId === earth && groups[0].count === 5) : groups.length === 0;
+        if (ok) break;
+    }
+}
+// 強開「大地連鎖」階段 4：Lv1 機制的 WILD 固定放在第 0 列第 3、4 欄，跟補好的 3 顆大地接成一組
+function chainWildCells() {
+    if (forceChain !== 4) return null;
+    forceChain = 0;
+    return [{ c: 3, r: 0 }, { c: 4, r: 0 }];
 }
 
 // 連線規則（企劃 2026-07-10）：橫/直線 3 顆以上成線即得分；
@@ -2301,6 +2326,12 @@ function prepareWildEffect(effect) {
     effect.flights = [];
     // 這次 WILD 要不要「貼著放」：咬模式一律亂撒、補模式一律貼著放，其餘照 wildSmartRate 抽
     const smart = effPlaceSmart() !== 0 && (rtpMode === 'feed' || Math.random() < (TIMING.wildSmartRate === undefined ? 0.3 : TIMING.wildSmartRate));
+    const chainCells = !effect.big ? chainWildCells() : null;
+    if (chainCells) {   // 強開「大地連鎖」：WILD 放在指定格，接成一組大地
+        chainCells.forEach((cell, i) => effect.flights.push({ cells: [cell], delay: i * TF(TIMING.wildStagger), landed: false, size: 1 }));
+        effect.wildCount = chainCells.length;
+        return;
+    }
     if (effect.big) {
         // 巨型 WILD 1~2 顆：盡量放中間（離盤面中心近的 2×2 優先，同距離挑最能連線的），兩顆不重疊
         const n = Math.max(1, effect.bigCount || 1);
@@ -3573,6 +3604,7 @@ function fireAttackRound(round) {
 function injectGuaranteedMatches() {
     if (noCardsMode() && forceTwoEarth) {   // 兩組大地：第 0 列與第 4 列各一組（7 顆＝整列、5 顆＝第 1~5 欄），其他格的大地全換成烈焰，確保剛好兩組不相連
         const size = forceTwoEarth; forceTwoEarth = 0;
+        if (forceChain === 1) forceChain = 2;
         const color = elemOfLevel(1), other = elemOfLevel(3);
         const c0 = size >= COLS ? 0 : Math.floor((COLS - size) / 2);
         for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
@@ -5336,7 +5368,7 @@ function update() {
             // 盤面無法繼續連爆：若有收集中的 FG/BG，此時才觸發轉場
             if (pendingFGBG !== null) {
                 applyKillFloor();
-                forcedEffectType = 0; forcedMech = null; forcedMechLv = 0; forceKillLv = 0; forceKill = false; forceCrit = false; forceNoCrit = false; forceTargetLv4 = false;   // 強開旗標在這條收尾也要清，不然會漏進 FG
+                forcedEffectType = 0; forcedMech = null; forcedMechLv = 0; forceKillLv = 0; forceKill = false; forceCrit = false; forceNoCrit = false; forceTargetLv4 = false; forceChain = 0;   // 強開旗標在這條收尾也要清，不然會漏進 FG
                 savedBoard = board.map(col => col.map(cell => ({ ...cell })));
                 matchHistory = [];
                 if (pendingFGBG === 'FG') {
@@ -5348,7 +5380,7 @@ function update() {
             } else {
                 applyKillFloor();
                 forcedEffectType = 0;    // 局末清除殘留強制效果
-                forcedMech = null; forceKillLv = 0; forceKill = false; forcedMechLv = 0; forceCrit = false; forceNoCrit = false;
+                forcedMech = null; forceKillLv = 0; forceKill = false; forcedMechLv = 0; forceCrit = false; forceNoCrit = false; forceChain = 0;
                 // BG 倍數遞增（改版 2026-10-13）：本局有消除 → 局末倍數 ×2（最高 ×1024）；沒消除不變
                 if (isBG && hasHitThisSpin && getBGMultiplier() < 1024) {
                     bgMultPrev = getBGMultiplier(); bgMultiplierIndex++; bgMultAnimT = 0;
@@ -6233,6 +6265,11 @@ function handleInput(clientX, clientY, isClick) {
                         } else if (item.type === 'thunder135') {
                             // 雷霆 1／3／5 星：本局三張卡直接換成雷霆 1、3、5 星（看新卡圖）
                             forceThunder135 = true;
+                            if (currentState === STATE.IDLE) startSpin();
+                        } else if (item.type === 'earthChain') {
+                            if (isFG || isBG) return;
+                            forceTwoEarth = 7; forceNoCrit = true; forceChain = 1;
+                            forcedMech = 'wild'; forcedMechLv = 1;   // Lv1 的機制固定送 WILD
                             if (currentState === STATE.IDLE) startSpin();
                         } else if (item.type === 'twoEarth') {
                             if (isFG || isBG) return;
