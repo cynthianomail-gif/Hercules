@@ -4772,6 +4772,18 @@ function drawGroupWinFrames() {
     }
 }
 
+// 強開選單版面（2026-10-21：項目多了會超出畫面 → 自動分欄，塞得進按鈕上方的高度）
+function forceMenuLayout(useArt, ux, uy, bottomY) {
+    const itemH = 34, gap = 4, colW = 112, colGap = 6, mx0 = 35 + ux;
+    const menuBase = useArt ? uy + 13 : bottomY;
+    const avail = menuBase - 12;
+    const perCol = Math.max(1, Math.floor((avail - 8) / (itemH + gap)));
+    const n = FORCE_MENU_ITEMS.length, cols = Math.ceil(n / perCol), rows = Math.ceil(n / cols);
+    const totalH = rows * (itemH + gap) - gap, totalW = cols * colW + (cols - 1) * colGap;
+    const my0 = menuBase - totalH - 8;
+    const rects = FORCE_MENU_ITEMS.map((item, i) => ({ item, x: mx0 + Math.floor(i / rows) * (colW + colGap), y: my0 + (i % rows) * (itemH + gap), w: colW, h: itemH }));
+    return { x: mx0, y: my0, w: totalW, h: totalH, rects };
+}
 function drawUI() {
     const ux = LAYOUT.bottomUI.x, uy = LAYOUT.bottomUI.y;   // 下方 UI 列整列位移
     const useArt = imgReady(IMG.publicUI);                  // 公版 UI 條素材（1280×126 貼齊畫面底部）
@@ -4849,16 +4861,12 @@ function drawUI() {
 
     // 上拉選單（共用；錨點依 UI 模式：素材模式從強開小按鈕上方展開）
     if (forceMenuOpen) {
-        const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
-        const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-        const menuBase = useArt ? uy + 13 : bottomY;
-        const my0 = menuBase - totalH - 4;
-        drawRoundedRect(mx0 - 5, my0 - 4, mw + 10, totalH + 4, 8, 'rgba(8,14,26,0.96)', '#334155');
-        FORCE_MENU_ITEMS.forEach((item, i) => {
-            const iy = my0 + i * (itemH + gap);
-            drawRoundedRect(mx0, iy, mw, itemH, 6, '#1e293b', item.color, 1.5);
-            ctx.fillStyle = item.color; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText(item.label, mx0 + mw / 2, iy + itemH / 2);
+        const L = forceMenuLayout(useArt, ux, uy, bottomY);
+        drawRoundedRect(L.x - 5, L.y - 4, L.w + 10, L.h + 8, 8, 'rgba(8,14,26,0.96)', '#334155');
+        L.rects.forEach(({ item, x, y, w, h }) => {
+            drawRoundedRect(x, y, w, h, 6, '#1e293b', item.color, 1.5);
+            ctx.fillStyle = item.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(item.label, x + w / 2, y + h / 2);
         });
     }
     ctx.textBaseline = 'alphabetic';   // 還原，FG/BG 面板沿用原基線
@@ -6215,14 +6223,10 @@ function handleInput(clientX, clientY, isClick) {
         if (forceBtnHit) {
             forceMenuOpen = !forceMenuOpen;
         } else if (forceMenuOpen) {
-            // 點選選單項目（錨點與 drawUI 的上拉選單一致）
-            const itemH = 38, gap = 4, mw = 110, mx0 = 35 + ux;
-            const totalH = FORCE_MENU_ITEMS.length * (itemH + gap) + 6;
-            const my0 = (useArt ? uy + 13 : uy + 20) - totalH - 4;
-            if (mx >= mx0 && mx <= mx0 + mw) {
-                FORCE_MENU_ITEMS.forEach((item, i) => {
-                    const iy = my0 + i * (itemH + gap);
-                    if (my >= iy && my <= iy + itemH) {
+            // 點選選單項目（版面與 drawUI 共用 forceMenuLayout）
+            {
+                forceMenuLayout(useArt, ux, uy, uy + 20).rects.forEach(({ item, x, y, w, h }) => {
+                    if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
                         forceMenuOpen = false;
                         if (item.type === 'forceFG') {
                             // 強開FG：立即觸發 Free Game 轉場
