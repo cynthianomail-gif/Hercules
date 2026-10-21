@@ -2926,9 +2926,16 @@ function launchGroupOrbs(g) {
     else parked.forEach((o, k) => { if (k === 0) fly(o, 0, n, lethal, plan.cx, plan.cy); else fadeOrb(o); });   // 一組一顆：第一顆從組中心飛、帶全部傷害
 }
 // 依組序放光球：前一組的光球到齊、爆擊演完、打死後的停頓結束，才輪到下一組
+// 例外（2026-10-21 ned）：整組都是超額的（目標已死、或前面的組已經排滿牠的血量）不用等斷點，跟前一組一起飛
+function groupFullyOverkill(g) {
+    const m = g.orbPlan && g.orbPlan.target;
+    return !m || m.isDead || (m.hp - (m.pendingDmg || 0)) <= 0;
+}
 function pumpOrbQueue() {
+    while (orbQueue.length && groupFullyOverkill(orbQueue[0])) launchGroupOrbs(orbQueue.shift());
     if (!orbQueue.length || orbsInFlight() || heroHold || killSettleT > 0) return;
     launchGroupOrbs(orbQueue.shift());
+    while (orbQueue.length && groupFullyOverkill(orbQueue[0])) launchGroupOrbs(orbQueue.shift());   // 緊接著的超額組一起飛
 }
 // 補盤補好之後還要等的事：還有組沒放光球／光球還在飛／海克力士演出中／打死後的停頓（看死亡演出）
 function waveStillBusy() { return orbHitMode() && (orbQueue.length > 0 || orbsInFlight() || !!heroHold || killSettleT > 0); }
