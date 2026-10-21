@@ -2077,9 +2077,12 @@ function traceGroupOutline(cells, inset = 2) {
 
 // 開始一波消除：所有組依序亮起（亮起即收集攻擊力）→ 全亮停留 → 所有組同時消散（改版 2026-08-19）
 function startPopWave(groups) {
-    // 依組首位置排序（左到右、上到下）
-    groups.forEach(g => { g.order = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
-    groups.sort((a, b) => a.order - b.order);
+    // 組序（2026-10-21 ned）：顏色由低到高（大地→冰霜→烈焰→祕法→雷霆→聖心），同色再依位置（組內最上格、同列取最左）；卡牌版維持純位置序
+    const colorOrder = noCardsMode() ? [elemOfLevel(1), elemOfLevel(2), elemOfLevel(3), elemOfLevel(4), 1, 2] : [];
+    const colorRank = e => { const i = colorOrder.indexOf(e); return i < 0 ? 99 : i; };
+    groups.forEach(g => { g.pos = Math.min(...g.cells.map(c => c.r * COLS + c.c)); });
+    groups.sort((a, b) => (colorRank(a.elemId) - colorRank(b.elemId)) || (a.pos - b.pos));
+    groups.forEach((g, i) => { g.order = i; });   // 亮起、光球、死亡／機制順序都用這個組序
     const scoreF = TF(TIMING.scorePerIcon);   // 全亮後的得分演繹停留
     const gapF   = TF(TIMING.groupGap);        // 組與組亮起的錯落間隔（消散已改為同時，不再用此值）
     // 逐格歸屬：WILD 可同時屬多組，記錄其「參與的最後一組」→ 只在最後一組時才真正消散（WILD 保留）
