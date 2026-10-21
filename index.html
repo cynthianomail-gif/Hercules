@@ -1322,7 +1322,7 @@ const FORCE_MENU_ITEMS = [
     { label: '爆擊補刀',   type: 'crit', color: '#ff4444' },
     { label: '兩組大地7',  type: 'twoEarth', size: 7, color: '#16a34a' },   // 兩組各 7 顆：第一組打死 Lv1、第二組只給分
     { label: '兩組大地5',  type: 'twoEarth', size: 5, color: '#15803d' },   // 兩組各 5 顆：第一組打到剩 2（不擲爆擊）、第二組飛 2 顆補刀
-    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },   // 第一組打到剩 2 → 必跳爆擊打死 → 第二組只給分
+    { label: '兩組大地5+爆擊', type: 'twoEarth', size: 5, crit: true, color: '#b91c1c' },   // 第一組 7→2、第二組只飛 1 顆 2→1（其餘消散）→ 該色打完才擲、必跳爆擊打死
     { label: '升級生成',   type: 'mech', mech: 'upGen', lv: 1, color: '#38bdf8' },
     { label: '生成WILD',  type: 'mech', mech: 'wild', lv: 1, color: '#ffd700' },
     { label: '巨型WILD',  type: 'mech', mech: 'big', lv: 3, color: '#fbbf24' },   // 只有打死 Lv.3 會出（2026-10-19）
@@ -2124,7 +2124,7 @@ function startPopWave(groups) {
     popPhaseT = 0;
     popResolved = false;
     orbQueue = []; orbQueue.firstLaunch = true;
-    monsters.forEach(m => { m.planDmg = 0; });
+    monsters.forEach(m => { m.planDmg = 0; m.volleyDmg = 0; });
     popScoreTotal = scoreF;
     popScoreTimer = scoreF;
 }
@@ -2166,7 +2166,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
     const startCX = g.cells.reduce((s, c) => s + GRID_X + c.c * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
     const startCY = g.cells.reduce((s, c) => s + GRID_Y + c.r * GEM_SIZE + GEM_SIZE / 2, 0) / g.cells.length;
     // 光球到就扣血：出發時就知道這顆會不會打死（同一隻怪這一波已經飛出去的量＋這顆 ≥ 血量）→ 致命光球畫大一號
-    let orbHit = false, lethal = false, forced = false, pushed = false;
+    let orbHit = false, lethal = false, forced = false, pushed = false, noneNow = false;
     if (vTarget && orbHitMode()) {
         orbHit = true;
         const before = vTarget.pendingDmg || 0;
@@ -2177,15 +2177,15 @@ function collectGroupAttackToCard(g, atkCardIdx) {
         const need = Math.max(0, vTarget.hp - planned);
         let n = (TIMING.orbPerSymbol !== 0 && !forced) ? Math.min(g.count, need) : (forced ? Math.max(g.count, vTarget.hp) : g.count);
         if (forceCrit && !forced && need > 1) n = Math.min(n, need - 1);   // 強開爆擊補刀：這一批故意不打死，留 1 格給爆擊
-        if (n <= 0) { g.hitTier = 'none'; return; }
-        vTarget.planDmg = planned + n;
-        lethal = planned + n >= vTarget.hp && !forceCrit;
+        noneNow = n <= 0;   // 這一波前面的組預計就會打死牠：這組的光球到時原地消散（launchGroupOrbs 再確認）
+        vTarget.planDmg = planned + Math.max(0, n);
+        lethal = !noneNow && planned + n >= vTarget.hp && !forceCrit;
         const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
         g.orbPlan = { target: vTarget, tx: cardCX, ty: cardTY, color: elemColor, count: g.count, forced, perSym: TIMING.orbPerSymbol !== 0 && !forced,
                       cells: cells.map(cell => ({ sx: GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2, sy: GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2 })), cx: startCX, cy: startCY };
         pushed = true;
     }
-    g.hitTier = vTarget ? (lethal ? 'kill' : 'hit') : 'none';   // 消除特效分階：沒打到／打到／打死（亮起時的預估）
+    g.hitTier = (vTarget && !noneNow) ? (lethal ? 'kill' : 'hit') : 'none';   // 消除特效分階：沒打到／打到／打死（亮起時的預估）
     if (!pushed) flyingScores.push({
         type: 'collect', x: startCX, y: startCY, sx: startCX, sy: startCY, prog: 0,
         tx: cardCX, ty: cardTY,
@@ -2752,8 +2752,8 @@ function onMonsterKilled(t, tier) {
 // 2 打死的那一下：致命光球（出發就放大）命中 → 命中停格＋大打擊光＋當場死；Lv.4／JP 先播海克力士再扣血
 let heroHold = null;   // 海克力士終結演出期間暫停遊戲邏輯，播完才扣血打死
 // 這一波同色還有沒亮起的組（它的光球還沒排進來）：有的話「這一批」還沒結束，爆擊與受擊特效都先不結算（規則不依演出時間）
-function sameColorGroupPending(m) {
-    return currentState === STATE.POPPING && !!currentMatches && currentMatches.some(g => !g.lit && g.elemId === m.elemId);
+function sameColorGroupPending(m) {   // 2026-10-21 ned：爆擊只在「該屬性這一波所有攻擊都打完」才擲 → 同色還有組排隊就不算打完
+    return orbQueue.some(g => g.elemId === m.elemId) || (currentState === STATE.POPPING && !!currentMatches && currentMatches.some(g => !g.lit && g.elemId === m.elemId));
 }
 function orbArriveHit(fs) {
     const m = fs.previewTarget;
@@ -2871,42 +2871,51 @@ function flushWaveKills() {
     const key = e => ((e.type === 5 || e.type === 6) ? 2e9 : 0) + (e.killOrder || 0);
     pendingKillEffects.sort((a, b) => key(a) - key(b));
 }
-function orbsInFlight() { return flyingScores.some(f => f.type === 'collect' && f.orbHit && (f.prog || 0) < 1); }
+function orbsInFlight() { return flyingScores.some(f => f.type === 'collect' && f.orbHit && !f.parked && (f.prog || 0) < 1); }
 // 波內順序（2026-10-21 ned，對齊正式特效）：亮起算分 → 消除動畫 → 圖示消失處留下光球 → 光球飛去打怪、同時補盤（補好先不判定）→ 打死停頓 killSettle → 機制 → 換新 → 判定下一波
-// 輪到這一組起飛：依怪物「當下」剩血決定飛幾顆（前面的組、爆擊都已結算完）；appear = 幾幀後光球才出現（第一組等消除動畫跑完）
-function launchGroupOrbs(g, appear) {
+// 消除動畫一開始就在每顆圖示的格子上留一顆光球（圖示縮到 0 時才看得到）；輪到這組時才決定哪幾顆飛、哪幾顆原地消散（2026-10-21 ned）
+function parkGroupOrbs(g) {
     const plan = g.orbPlan;
-    if (!plan) return;
-    g.orbPlan = null;
-    const m = plan.target;
-    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; return; }   // 前面的組（或爆擊）已經把牠打死：這組只給分
+    const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
+    const color = ELEMENTS[g.elemId] ? ELEMENTS[g.elemId].color : WILD_ELEM.color;
+    const appear = TF(TIMING.popDissolve);
+    g.parkedOrbs = cells.map(cell => {
+        const sx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2, sy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
+        const o = { type: 'collect', parked: true, x: sx, y: sy, sx, sy, prog: 0, tx: plan ? plan.tx : sx, ty: plan ? plan.ty : sy, color,
+                    life: 1e9, delay: 0, hidden: appear, orbHit: true, groupOrder: g.order, previewTarget: plan ? plan.target : null, previewAmt: 0 };
+        flyingScores.push(o);
+        return o;
+    });
+}
+function fadeOrb(o) { o.parked = false; o.orbHit = false; o.fading = true; o.life = Math.min(o.life, 14); o.delay = 0; }   // 用不到的光球：原地淡出
+// 輪到這一組起飛：依怪物「當下」剩血決定飛幾顆（前面的組、爆擊都已結算完）；多的原地消散
+function launchGroupOrbs(g) {
+    const plan = g.orbPlan; g.orbPlan = null;
+    const parked = g.parkedOrbs || []; g.parkedOrbs = null;
+    const m = plan && plan.target;
+    if (!m || m.isDead || m.hp <= 0) { g.hitTier = 'none'; parked.forEach(fadeOrb); return; }   // 前面的組（或爆擊）已經把牠打死：這組只給分、光球消散
     const before = m.pendingDmg || 0;
     const need = Math.max(0, m.hp - before);
     let n = plan.perSym ? Math.min(plan.count, need) : (plan.forced ? Math.max(plan.count, m.hp) : plan.count);
     if (forceCrit && !plan.forced && need > 1) n = Math.min(n, need - 1);
-    if (n <= 0) { g.hitTier = 'none'; return; }
+    if (n <= 0) { g.hitTier = 'none'; parked.forEach(fadeOrb); return; }
     m.pendingDmg = before + n;
-    m.volleyDmg = n;   // 這一批＝這一組
+    m.volleyDmg = (m.volleyDmg || 0) + n;   // 這一批＝這一波排給這隻怪的全部（跨組累計），最後一顆到時決定受擊幾階
     const lethal = before + n >= m.hp && !forceCrit;
     g.hitTier = lethal ? 'kill' : 'hit';
     const stag = TF(TIMING.orbStagger || 0);
-    const orbs = plan.perSym
-        ? Array.from({ length: n }, (_, k) => ({ ...plan.cells[k % plan.cells.length], delay: k * stag, amt: 1, lethal: lethal && k === n - 1, forced: false }))
-        : [{ sx: plan.cx, sy: plan.cy, delay: 0, amt: n, lethal, forced: plan.forced }];
-    orbs.forEach(o => {
-        flyingScores.push({
-            type: 'collect', x: o.sx, y: o.sy, sx: o.sx, sy: o.sy, prog: 0, tx: plan.tx, ty: plan.ty, color: plan.color,
-            life: TF(TIMING.energyFly) + 20 + appear + o.delay, delay: appear + o.delay, hidden: appear,
-            previewTarget: m, previewAmt: o.amt, orbHit: true, lethal: o.lethal, forced: o.forced, groupOrder: g.order
-        });
-    });
+    const fly = (o, k, amt, isLethal, sx, sy) => {
+        o.parked = false; o.hidden = 0; o.delay = k * stag; o.life = TF(TIMING.energyFly) + 20 + o.delay;
+        if (sx !== undefined) { o.x = o.sx = sx; o.y = o.sy = sy; }
+        o.tx = plan.tx; o.ty = plan.ty; o.previewTarget = m; o.previewAmt = amt; o.lethal = isLethal; o.forced = plan.forced;
+    };
+    if (plan.perSym) parked.forEach((o, k) => { if (k < n) fly(o, k, 1, lethal && k === n - 1); else fadeOrb(o); });
+    else parked.forEach((o, k) => { if (k === 0) fly(o, 0, n, lethal, plan.cx, plan.cy); else fadeOrb(o); });   // 一組一顆：第一顆從組中心飛、帶全部傷害
 }
-// 依組序放光球：前一組的光球到齊、爆擊演完，才輪到下一組（第一組等消除動畫跑完才出現）
+// 依組序放光球：前一組的光球到齊、爆擊演完、打死後的停頓結束，才輪到下一組
 function pumpOrbQueue() {
-    if (!orbQueue.length || orbsInFlight() || heroHold) return;
-    const first = orbQueue.firstLaunch !== false;
-    orbQueue.firstLaunch = false;
-    launchGroupOrbs(orbQueue.shift(), first ? TF(TIMING.popDissolve) : 0);
+    if (!orbQueue.length || orbsInFlight() || heroHold || killSettleT > 0) return;
+    launchGroupOrbs(orbQueue.shift());
 }
 // 補盤補好之後還要等的事：還有組沒放光球／光球還在飛／海克力士演出中／打死後的停頓（看死亡演出）
 function waveStillBusy() { return orbHitMode() && (orbQueue.length > 0 || orbsInFlight() || !!heroHold || killSettleT > 0); }
@@ -4896,7 +4905,7 @@ function drawEffects() {
                 ph: Math.random() * Math.PI * 2                 // 閃爍相位
             }));
             const baseA = Math.min(1, fs.life / 20);
-            const big = (fs.lethal ? 2 : 1) * (fs.delay > 0 ? 0.75 : 1);   // 致命光球（這顆會打死）：光核兩倍大＋外圈光環＋拖尾；還在格子上等起飛的畫小一點
+            const big = (fs.lethal ? 2 : 1) * ((fs.parked || fs.delay > 0) ? 0.75 : 1) * (fs.fading ? 0.3 + 0.7 * fs.life / 14 : 1);   // 致命光球兩倍大＋光環＋拖尾；停在格子上的小一點；用不到的縮小淡出
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             if (fs.lethal) {
@@ -4997,6 +5006,8 @@ function updateFlyingScores() {
     for (let i = flyingScores.length - 1; i >= 0; i--) {
         let fs = flyingScores[i];
         if (fs.hidden > 0) fs.hidden--;   // 圖示消除動畫還沒跑完：光球先不畫
+        if (fs.parked) continue;          // 停在格子上等輪到這組
+        if (fs.fading) { fs.life--; if (fs.life <= 0) flyingScores.splice(i, 1); continue; }   // 用不到的光球原地淡出
         if (fs.awardDelay !== undefined && !fs.awarded) {
             fs.awardDelay--;
             if (fs.awardDelay <= 0) {
@@ -5329,7 +5340,7 @@ function update() {
             if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
-                if (orbHitMode() && g.orbPlan) orbQueue.push(g);   // 排進光球佇列（依組序）；消除動畫跑完後由 pumpOrbQueue 逐組放
+                if (orbHitMode()) { parkGroupOrbs(g); orbQueue.push(g); }   // 每格留一顆光球；排進佇列（依組序），消除動畫跑完後由 pumpOrbQueue 逐組放
                 if (TIMING.popTier !== 0 && g.hitTier === 'kill') {   // 打死那一組：消散時每格爆屬性色光＋盤面小震（第三階）
                     g.dissolveCells.forEach(cell => spawnCellFlash(cell.c, cell.r, ELEMENTS[g.elemId].color, 16, 1.3));
                     startBoardShake(8, 3);
@@ -5359,7 +5370,7 @@ function update() {
         if (allDone && pendingCardUpdates.length === 0) {
             if (orbHitMode()) {
                 pumpOrbQueue();   // 圖示消失處留下光球、逐組起飛
-                if (TIMING.refillAfterOrbs !== 0 && (orbQueue.length || orbsInFlight() || heroHold)) {
+                if (TIMING.refillAfterOrbs !== 0 && (orbQueue.length || orbsInFlight() || heroHold || killSettleT > 0)) {
                     // 飛完、打完才補盤（2026-10-21 ned）：盤面留著洞等光球
                 } else {
                     matchHistory = [];
