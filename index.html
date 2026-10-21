@@ -814,7 +814,7 @@ const DEFAULT_TIMING = {
     nearDeathHp:      5,     // 快死了（視覺引導 3）：血量剩 ≤ 這麼多（一塊聚集就打得死）→ 血條閃紅、怪物發抖、盤面上同色圖示發光；0 = 關
     nearDeathGlow:    1,     // 快死了時盤面上同色圖示發光（1 = 開）
     hpRefill:         0.35,  // 每局開始血量回滿的動畫（視覺引導 5）：血條從上局剩的量漲回滿，秒；0 = 直接跳滿
-    killSettle:       0.60,  // 斷點乾淨（2026-10-21 ned）：光球到齊才消除圖示；這一波有打死怪就再停這麼久（看死亡演出），才消除、補盤、播機制
+    killSettle:       0.60,  // 打死後停頓（2026-10-21 ned）：光球打死怪之後、接機制之前停這麼久（看死亡演出）；這段期間盤面已經補好但先不判定
     heroShort:        0.45,  // 海克力士短版（Lv1/Lv2 的最後一擊）：全版圖停留秒數（全版是 critImage 1.10）
     symWArcane:       1,     // 圖示出現權重（無卡牌模式，2026-10-19）：祕法（Lv.4）
     symWThunder:      0.7,   // 雷霆（宙斯，高分）：2026-10-19 ned 定 0.7（高分圖示出現少一點）
@@ -939,7 +939,7 @@ const TIMING_META = [
     { group: '受擊／擊殺', items: [
         ['hitReact','受擊+血量'], ['hitFlash','受擊閃紅'], ['hitFlashAlpha','閃紅濃度(0~1)', 0, 1, 0.05],
         ['hitShakeAmp','震動幅度(px)', 0, 20, 1], ['hitTiers','受擊分級階數', 1, 5, 1], ['deathSwitch','死亡切換'], ['effectFly','淡出+光效飛行'],
-        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入'], ['hpRefill','局首血量回滿', 0, 2, 0.05], ['heroShort','海克力士短版停留', 0.2, 2, 0.05], ['killSettle','打死後停頓(消除前)', 0, 2, 0.05]] },
+        ['effectShow','機制展示'], ['effectDimAlpha','機制遮罩(0~1)', 0, 1, 0.05], ['respawnFade','換怪淡入'], ['fgbgCollect','LV4獎勵飛入'], ['hpRefill','局首血量回滿', 0, 2, 0.05], ['heroShort','海克力士短版停留', 0.2, 2, 0.05], ['killSettle','打死後停頓(機制前)', 0, 2, 0.05]] },
     { group: 'WILD／機制', items: [
         ['wildSpawn','WILD 生成'], ['wildFlyIn','WILD 飛入'], ['wildStagger','每+1顆錯落'], ['wildShake','著陸震動'],
         ['bigWildSpawn','巨型WILD生成'], ['bigWildFly','巨型WILD飛入'], ['bigWildShake','巨型著陸震動'],
@@ -1434,7 +1434,7 @@ let tickCounter = 0;        // 全域幀計數（呼吸光等循環動畫用）
 let matchQueue = [];
 let currentMatches = []; // 當前批次（可能含多組，例如 L 形）
 let popWaitTimer = 0;
-let waveKillAt = -1;        // 這一波最後一次打死發生在 popPhaseT 幾（消除前的停頓用）；-1 = 這波沒打死
+let killSettleT = 0;        // 打死後的停頓（看死亡演出）倒數幀：期間盤面補好也先不接機制／不判定
 let pendingCardUpdates = []; // 甘特圖排程：能量抵達後才更新卡牌 ATK
 let pendingRounds = []; // 待發射的攻擊輪次
 let pendingKillEffects = [];  // 怪獸死亡後待套用的盤面效果
@@ -2117,7 +2117,6 @@ function startPopWave(groups) {
     currentState = STATE.POPPING;
     popWaitTimer = 0;
     popPhaseT = 0;
-    waveKillAt = -1;
     popResolved = false;
     popScoreTotal = scoreF;
     popScoreTimer = scoreF;
@@ -2177,19 +2176,18 @@ function collectGroupAttackToCard(g, atkCardIdx) {
             lethal = before + n >= vTarget.hp && !forceCrit;
             const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
             const stag = TF(TIMING.orbStagger || 0);
+            // 先規劃、不起飛：消除動畫跑完、圖示消失的那一格留下光球再飛（launchGroupOrbs，2026-10-21 ned 對齊正式特效）
+            g.orbPlan = { target: vTarget, tx: cardCX, ty: cardTY, color: elemColor, orbs: [] };
             for (let k = 0; k < n; k++) {
                 const cell = cells[k % cells.length];
-                const sx = GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2, sy = GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2;
-                flyingScores.push({
-                    type: 'collect', x: sx, y: sy, sx, sy, prog: 0, tx: cardCX, ty: cardTY, color: elemColor,
-                    life: energyLife + k * stag, delay: k * stag,
-                    previewTarget: vTarget, previewAmt: 1, orbHit: true, lethal: lethal && k === n - 1, forced: false, groupOrder: g.order
-                });
+                g.orbPlan.orbs.push({ sx: GRID_X + cell.c * GEM_SIZE + GEM_SIZE / 2, sy: GRID_Y + cell.r * GEM_SIZE + GEM_SIZE / 2, delay: k * stag, amt: 1, lethal: lethal && k === n - 1, forced: false });
             }
             pushed = true;
         } else {
             vTarget.pendingDmg = before + g.count;
             lethal = !vTarget.isDead && before < vTarget.hp && (forced || before + g.count >= vTarget.hp) && !forceCrit;
+            g.orbPlan = { target: vTarget, tx: cardCX, ty: cardTY, color: elemColor, orbs: [{ sx: startCX, sy: startCY, delay: 0, amt: g.count, lethal, forced }] };
+            pushed = true;
         }
     }
     g.hitTier = vTarget ? (lethal ? 'kill' : 'hit') : 'none';   // 消除特效分階：沒打到／打到／打死
@@ -2733,7 +2731,7 @@ function onMonsterKilled(t, tier) {
         effect.orbColor = (ELEMENTS[t.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
         effect.monIdx = monsters.indexOf(t);
         effect.killOrder = t.lastGroupOrder || 0;   // 死亡／機制順序＝打死牠的那一組的組序（爆擊補刀＝1e9+組序），不依光球抵達時間
-        if (currentState === STATE.POPPING) waveKillAt = popPhaseT;   // 消除前停頓 killSettle 從這裡起算
+        if (orbHitMode()) killSettleT = TF(TIMING.killSettle || 0);   // 打死後停頓：補好的盤面先不接機制、不判定
         // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
         effect.heavy = tier === 'heavy';
         if (perWaveMode()) deferredKillEffects.push(effect);   // 每波扣血：打死當場死，機制等補盤後再播
@@ -2879,13 +2877,22 @@ function flushWaveKills() {
     pendingKillEffects.sort((a, b) => key(a) - key(b));
 }
 function orbsInFlight() { return flyingScores.some(f => f.type === 'collect' && f.orbHit && (f.prog || 0) < 1); }
-// 斷點乾淨（2026-10-21）：光球到齊才消除；這一波有打死就再停 killSettle 秒（死亡演出）才消除→補盤→機制
-function waveCanDissolve() {
-    if (!orbHitMode()) return true;
-    if (orbsInFlight() || heroHold) return false;
-    if (waveKillAt >= 0 && popPhaseT < waveKillAt + TF(TIMING.killSettle || 0)) return false;
-    return true;
+// 波內順序（2026-10-21 ned，對齊正式特效）：亮起算分 → 消除動畫 → 圖示消失處留下光球 → 光球飛去打怪、同時補盤（補好先不判定）→ 打死停頓 killSettle → 機制 → 換新 → 判定下一波
+function launchGroupOrbs(g) {
+    const plan = g.orbPlan;
+    if (!plan) return;
+    g.orbPlan = null;
+    const appear = TF(TIMING.popDissolve);   // 消除動畫跑完（圖示縮到 0）那一刻光球才出現
+    plan.orbs.forEach(o => {
+        flyingScores.push({
+            type: 'collect', x: o.sx, y: o.sy, sx: o.sx, sy: o.sy, prog: 0, tx: plan.tx, ty: plan.ty, color: plan.color,
+            life: TF(TIMING.energyFly) + 20 + appear + o.delay, delay: appear + o.delay, hidden: appear,
+            previewTarget: plan.target, previewAmt: o.amt, orbHit: true, lethal: o.lethal, forced: o.forced, groupOrder: g.order
+        });
+    });
 }
+// 補盤補好之後還要等的事：光球還在飛／海克力士演出中／打死後的停頓（看死亡演出）
+function waveStillBusy() { return orbHitMode() && (orbsInFlight() || !!heroHold || killSettleT > 0); }
 
 function finishKillEffect() {
     const finishedEffect = killEffectCurrent;
@@ -4861,6 +4868,7 @@ function drawEffects() {
     flyingScores.forEach(fs => {
         ctx.textAlign = 'center';
         if (fs.type === 'collect') {
+            if (fs.hidden > 0) return;   // 圖示還在消除動畫裡，光球還沒出現
             // 能量本體粒子化（設計 2026-07-09）：中心光核＋環繞明滅光點，沿原拋物線飛行
             if (!fs.orbs) fs.orbs = Array.from({ length: ENERGY_FX.orbiters }, () => ({
                 ang: Math.random() * Math.PI * 2,               // 環繞角度
@@ -4970,6 +4978,7 @@ function updatePendingCardUpdates() {
 function updateFlyingScores() {
     for (let i = flyingScores.length - 1; i >= 0; i--) {
         let fs = flyingScores[i];
+        if (fs.hidden > 0) fs.hidden--;   // 圖示消除動畫還沒跑完：光球先不畫
         if (fs.awardDelay !== undefined && !fs.awarded) {
             fs.awardDelay--;
             if (fs.awardDelay <= 0) {
@@ -5064,7 +5073,8 @@ function update() {
         if (cellFlashes[i].life <= 0) cellFlashes.splice(i, 1);
     }
     bgMultAnimT++;                                                                     // BG 倍數動畫
-    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; if (m.hpAnim && m.hpAnim.t > 0) m.hpAnim.t--; if (m.combo) { if (m.combo.life > 0) m.combo.life--; if (m.combo.pop > 0) m.combo.pop--; } }); // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出／連擊總計
+    monsters.forEach(m => { if (m.flashT > 0) m.flashT--; if (m.fadeIn > 0) m.fadeIn--; if (m.badgeFlashT > 0) m.badgeFlashT--; if (m.hurtT > 0) m.hurtT--; if (m.deathT > 0) m.deathT--; if (m.hpAnim && m.hpAnim.t > 0) m.hpAnim.t--; if (m.combo) { if (m.combo.life > 0) m.combo.life--; if (m.combo.pop > 0) m.combo.pop--; } });
+    if (killSettleT > 0) killSettleT--; // 閃紅／換怪淡入／徽章閃爍／受擊圖／死亡淡出／連擊總計
     cards.forEach(c => { if (c.badgeFlashT > 0) c.badgeFlashT--; });
     // 卡牌觸發時盤面壓暗（漸變）：攻擊期間暗、結束漸亮
     {
@@ -5298,9 +5308,10 @@ function update() {
 
         // 階段2：全亮停留後「所有組同時」開始消散（BG 亦同）＋消除紀錄（一次）
         currentMatches.forEach(g => {
-            if (g.lit && !g.resolved && popPhaseT >= g.dissolveF && waveCanDissolve()) {
+            if (g.lit && !g.resolved && popPhaseT >= g.dissolveF) {
                 g.resolved = true;
                 matchHistory.push({ elemId: g.elemId, count: g.count });
+                if (orbHitMode()) launchGroupOrbs(g);   // 消除動畫開始；動畫跑完圖示消失處留下光球再飛
                 if (TIMING.popTier !== 0 && g.hitTier === 'kill') {   // 打死那一組：消散時每格爆屬性色光＋盤面小震（第三階）
                     g.dissolveCells.forEach(cell => spawnCellFlash(cell.c, cell.r, ELEMENTS[g.elemId].color, 16, 1.3));
                     startBoardShake(8, 3);
@@ -5327,11 +5338,10 @@ function update() {
         });
 
         // 全部組亮起→消散完畢＋卡牌數字更新排空 → 進入攻擊（A）或補盤（B/BG）
-        if (allDone && pendingCardUpdates.length === 0 && !(orbHitMode() && orbsInFlight())) {
+        if (allDone && pendingCardUpdates.length === 0) {
             if (orbHitMode()) {
-                // 光球到就扣血：傷害／打死都已在光球抵達時處理 → 直接補盤，打死的機制補盤後播
+                // 圖示消失、光球起飛 → 同時補盤；補好之後在 GRAVITY 等光球到齊、死亡停頓，才接機制／判定
                 matchHistory = [];
-                flushWaveKills();
                 applyGravity(); currentState = STATE.GRAVITY;
             } else if (isBG || (flowMode === 'B' && !perWaveMode())) {
                 // 改版 2026-10-13：本波消除沒有任何一組對到卡牌（沒累積 ATK）→ 補盤加快（BG 無卡牌，不適用）
@@ -5358,7 +5368,9 @@ function update() {
                 }
             }
         }
-        if (gravityDone) {
+        if (gravityDone && waveStillBusy()) {
+            // 盤面補好了，但光球還在飛／死亡停頓中：先等，不判定（2026-10-21 ned：打 與 補盤 同時，但不消除）
+        } else if (gravityDone) {
             pendingBoardShake = 0;
             refillFast = false;
             // 優先處理待播放的擊殺效果，全部播完後才繼續消除判斷
