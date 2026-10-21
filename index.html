@@ -772,14 +772,14 @@ const DEFAULT_TIMING = {
     // 抽卡牌型（改版 2026-10-14，非時間值）：提高同屬性機率
     cardSame2Rate:    0.60,  // 剛好 2 張同屬性
     cardSame3Rate:    0.12,  // 3 張同屬性
-    hpLv1:            7,     // 移除卡牌模式的血量（2026-10-19 雷聖出現權重 0.7 後重抓，不控分 7 萬局）：Lv.1 烈焰 → 每萬局打死約 199 隻（50 局一隻）
-    hpLv2:            8,     // Lv.2 大地 → 約 144 隻（69 局一隻）
-    hpLv3:            12,    // Lv.3 冰霜 → 約 55 隻（180 局一隻）   // 2026-10-19 爆擊補刀後 11→12（Lv3 回到約 280 局一隻）
+    hpLv1:            7,     // 移除卡牌模式的血量（2026-10-19 雷聖出現權重 0.7 後重抓，不控分 7 萬局）：Lv.1 大地 → 每萬局打死約 199 隻（50 局一隻）
+    hpLv2:            8,     // Lv.2 冰霜 → 約 144 隻（69 局一隻）
+    hpLv3:            12,    // Lv.3 烈焰 → 約 55 隻（180 局一隻）   // 2026-10-19 爆擊補刀後 11→12（Lv3 回到約 280 局一隻）
     hpLv4:            13,    // Lv.4 祕法（打死開 FG／BG）：2026-10-21 ned：血量不動、用爆擊率調 → 13（爆擊 7% 時約每 411 局一隻）
     hpBoss:           35,    // 宙斯／赫拉（JP）：2026-10-19 ned 覺得 70 跟小怪差太多 → 35（約 Lv.4 的 2.5 倍）；JP 打死約 6700 局一次；階段照比例 25%／50%／75%
-    upGen1Min:        5,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（大地），最少幾顆；30% 成塊時約 53% 接著打死 Lv.2
+    upGen1Min:        5,     // 升級鏈（2026-10-19 ned 定）：打死 Lv.1 → 生成 Lv.2 顏色（冰霜），最少幾顆；30% 成塊時約 53% 接著打死 Lv.2
     upGen1Max:        6,     // 打死 Lv.1 最多幾顆
-    upGen2Min:        6,     // 打死 Lv.2 → 生成 Lv.3 顏色（冰霜）；約 44% 接著打死 Lv.3
+    upGen2Min:        6,     // 打死 Lv.2 → 生成 Lv.3 顏色（烈焰）；約 44% 接著打死 Lv.3
     upGen2Max:        8,     // 打死 Lv.2 最多幾顆
     upGen3Min:        8,     // 打死 Lv.3 → 生成 Lv.4 顏色（祕法）；約 63% 接著打死 Lv.4
     upGen3Max:        10,    // 打死 Lv.3 最多幾顆
@@ -827,8 +827,8 @@ const DEFAULT_TIMING = {
     jpStage2Max:      8,
     jpStage3Min:      15,    //   扣到 75%（原 90~100）
     jpStage3Max:      25,
-    cpLowScale:       1,     // 聚集消除賠率表（2026-10-19，參考競品聚集 5 連線表）整體倍率：低級＝烈焰、大地（Lv.1、Lv.2）
-    cpMidScale:       1,     //   中級＝冰霜、祕法（Lv.3、Lv.4）
+    cpLowScale:       1,     // 聚集消除賠率表（2026-10-19，參考競品聚集 5 連線表）整體倍率：低級＝大地、冰霜（Lv.1、Lv.2）
+    cpMidScale:       1,     //   中級＝烈焰、祕法（Lv.3、Lv.4）
     cpHighScale:      1,     //   高級＝雷霆、聖心（宙斯、赫拉）   // 升級生成成塊比例（2026-10-19 ned：要亂撒一點）：此機率貼著同色成塊，其餘亂撒     // 
     anyCountMin:      0,     // 顆數消除（實驗）：同色＋WILD 在盤面任何位置湊到 N 顆以上就消，不用相連；0 = 關（優先於聚集消除），2026-10-19
     noCards:          1,     // 移除卡牌（2026-10-19 老闆）：消除幾顆 → 直接扣同屬性怪物幾格血；怪物屬性固定在位置上；0 = 回到卡牌版
@@ -2165,7 +2165,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
             if (forceCrit && need > 1) n = Math.min(n, need - 1);   // 強開爆擊補刀：這一批故意不打死，留 1 格給爆擊
             if (n <= 0) { g.hitTier = 'none'; return; }
             vTarget.pendingDmg = before + n;
-            vTarget.volleyDmg = (before > 0 ? (vTarget.volleyDmg || 0) : 0) + n;   // 這一批（同時在飛的）總共打幾格 → 最後一顆到時決定受擊幾階
+            vTarget.volleyDmg = (vTarget.volleyDmg || 0) + n;   // 這一批＝這一波排給這隻怪的全部光球（可跨組）總共打幾格 → 最後一顆到時決定受擊幾階；最後一顆到時歸零
             lethal = before + n >= vTarget.hp && !forceCrit;
             const cells = g.cells.slice().sort((a, b) => (a.r * COLS + a.c) - (b.r * COLS + b.c));
             const stag = TF(TIMING.orbStagger || 0);
@@ -2175,7 +2175,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
                 flyingScores.push({
                     type: 'collect', x: sx, y: sy, sx, sy, prog: 0, tx: cardCX, ty: cardTY, color: elemColor,
                     life: energyLife + k * stag, delay: k * stag,
-                    previewTarget: vTarget, previewAmt: 1, orbHit: true, lethal: lethal && k === n - 1, forced: false
+                    previewTarget: vTarget, previewAmt: 1, orbHit: true, lethal: lethal && k === n - 1, forced: false, groupOrder: g.order
                 });
             }
             pushed = true;
@@ -2191,7 +2191,7 @@ function collectGroupAttackToCard(g, atkCardIdx) {
         color: elemColor,
         life: energyLife, delay: energyDelay,
         previewTarget: vTarget, previewAmt: vTarget ? g.count : 0,   // 抵達時血條先扣這麼多
-        orbHit, lethal, forced
+        orbHit, lethal, forced, groupOrder: g.order
     });
     // WILD 保留：本組內尚未輪到「最後一組」的 WILD，原地各射 1 顆該組色能量（本體不消）
     g.emitWildCells.forEach(cell => {
@@ -2724,6 +2724,7 @@ function onMonsterKilled(t, tier) {
         }
         effect.orbColor = (ELEMENTS[t.elemId] || WILD_ELEM).color;   // 死亡光球屬性色（留在怪獸位置）
         effect.monIdx = monsters.indexOf(t);
+        effect.killOrder = t.lastGroupOrder || 0;   // 死亡／機制順序＝打死牠的那一組的組序（爆擊補刀＝1e9+組序），不依光球抵達時間
         // 改版 2026-10-13：打死當下就播擊殺機制（播完才換下一張卡），不再等所有卡打完
         effect.heavy = tier === 'heavy';
         if (perWaveMode()) deferredKillEffects.push(effect);   // 每波扣血：打死當場死，機制等補盤後再播
@@ -2748,9 +2749,14 @@ function onMonsterKilled(t, tier) {
 // 1 這塊打誰：光球命中當下 受擊閃紅＋震動＋跳傷害數字（屬性色）＋血條屬性徽章閃
 // 2 打死的那一下：致命光球（出發就放大）命中 → 命中停格＋大打擊光＋當場死；Lv.4／JP 先播海克力士再扣血
 let heroHold = null;   // 海克力士終結演出期間暫停遊戲邏輯，播完才扣血打死
+// 這一波同色還有沒亮起的組（它的光球還沒排進來）：有的話「這一批」還沒結束，爆擊與受擊特效都先不結算（規則不依演出時間）
+function sameColorGroupPending(m) {
+    return currentState === STATE.POPPING && !!currentMatches && currentMatches.some(g => !g.lit && g.elemId === m.elemId);
+}
 function orbArriveHit(fs) {
     const m = fs.previewTarget;
     if (m) m.pendingDmg = Math.max(0, (m.pendingDmg || 0) - (fs.previewAmt || 0));   // 飛行中的量扣掉這顆
+    if (m && fs.groupOrder !== undefined) m.lastGroupOrder = fs.groupOrder;   // 打到牠的最後一顆來自哪一組（死亡／機制順序用，不看抵達時間）
     if (!m || m.isDead || m.hp <= 0) return;   // 這隻已經被前一顆打死：多的傷害不轉移
     let amt = fs.previewAmt || 0;
     if (fs.forced) { amt = Math.max(amt, m.hp); forceKill = false; forceKillLv = 0; forceTargetLv4 = false; }
@@ -2771,13 +2777,13 @@ function orbArriveHit(fs) {
         const rem = m.hp;
         const thr = critHpThreshold(m);
         const rate = rtpMode === 'bite' ? 0 : rtpMode === 'feed' ? Math.min(1, (TIMING.critRate || 0) * 2) : (TIMING.critRate || 0);
-        const inWindow = thr > 0 && rem <= thr && (m.pendingDmg || 0) === 0;   // 這隻還有光球在飛（逐顆）就先不擲，等整批打完
-        if ((forceCrit && (m.pendingDmg || 0) === 0) || (inWindow && Math.random() < rate)) {
+        const inWindow = thr > 0 && rem <= thr && (m.pendingDmg || 0) === 0 && !sameColorGroupPending(m);   // 這隻還有光球在飛、或同色還有組沒亮起 → 先不擲，等這一波排給牠的全部打完
+        if ((forceCrit && (m.pendingDmg || 0) === 0 && !sameColorGroupPending(m)) || (inWindow && Math.random() < rate)) {
             forceCrit = false;
             stats.crits = (stats.crits || 0) + 1;
             const lv = getMonsterLevel(m);
             const imgF = TF(TIMING.critImage);
-            heroHold = { frames: TF(TIMING.critFlash) + imgF, imgF, m, amt: rem, tier: (m.jackpot > 0 || lv === 4) ? 'heavy' : 'kill', color: fs.color, crit: true, noHero: (TIMING.heroFinisher | 0) === 0 };
+            heroHold = { frames: TF(TIMING.critFlash) + imgF, imgF, m, amt: rem, tier: (m.jackpot > 0 || lv === 4) ? 'heavy' : 'kill', color: fs.color, crit: true, noHero: (TIMING.heroFinisher | 0) === 0, groupOrder: 1e9 + (m.lastGroupOrder || 0) };   // 爆擊打死的排在這一波光球打死的之後
         }
     }
 }
@@ -2796,7 +2802,7 @@ function launchCritOrb(h) {
     const a = monsterArtCenter(m);
     const sx = GRID_X + GRID_W / 2, sy = GRID_Y + GRID_H / 2;
     flyingScores.push({ type: 'collect', x: sx, y: sy, sx, sy, prog: 0, tx: a.x, ty: a.y, color: h.color, life: TF(TIMING.energyFly) + 20, delay: 0,
-                        previewTarget: m, previewAmt: amt, orbHit: true, lethal: true, isCrit: true, forced: false });
+                        previewTarget: m, previewAmt: amt, orbHit: true, lethal: true, isCrit: true, forced: false, groupOrder: h.groupOrder });
     spawnEnergyBurst(sx, sy, h.color, ENERGY_FX.burstCount, ENERGY_FX.burstSpeed, ENERGY_FX.burstLife);
 }
 function drawCritLabel() {   // 爆擊時盤面上方大字「爆擊！」（海克力士演出期間）
@@ -2826,7 +2832,7 @@ function applyOrbDamage(m, amt, tier, color, label = '') {
     // 一階＝這批 5~6 格、二階＝≥hitTier2At 格、三階＝打死那一下；一組一顆光球時直接看這顆的傷害量
     const t2 = TIMING.hitTier2At === undefined ? 7 : TIMING.hitTier2At;
     const perSym = TIMING.orbPerSymbol !== 0;
-    const lastOfVolley = !perSym || (m.pendingDmg || 0) === 0;
+    const lastOfVolley = !perSym || ((m.pendingDmg || 0) === 0 && !sameColorGroupPending(m));
     let hitTier;
     if (!lastOfVolley && !killed) {
         hitTier = 0;
@@ -2859,7 +2865,9 @@ function applyOrbDamage(m, amt, tier, color, label = '') {
 function flushWaveKills() {
     pendingKillEffects.push(...deferredKillEffects);
     deferredKillEffects = [];
-    pendingKillEffects.sort((a, b) => ((a.type === 5 || a.type === 6) ? 1 : 0) - ((b.type === 5 || b.type === 6) ? 1 : 0));
+    // 播放順序：依打死牠的那一組的組序（規則可由 server 算，不看 client 光球抵達時間）；FG/BG 的收集固定排最後
+    const key = e => ((e.type === 5 || e.type === 6) ? 2e9 : 0) + (e.killOrder || 0);
+    pendingKillEffects.sort((a, b) => key(a) - key(b));
 }
 function orbsInFlight() { return flyingScores.some(f => f.type === 'collect' && f.orbHit && (f.prog || 0) < 1); }
 
@@ -5208,6 +5216,7 @@ function update() {
             // 盤面無法繼續連爆：若有收集中的 FG/BG，此時才觸發轉場
             if (pendingFGBG !== null) {
                 applyKillFloor();
+                forcedEffectType = 0; forcedMech = null; forcedMechLv = 0; forceKillLv = 0; forceKill = false; forceCrit = false; forceTargetLv4 = false;   // 強開旗標在這條收尾也要清，不然會漏進 FG
                 savedBoard = board.map(col => col.map(cell => ({ ...cell })));
                 matchHistory = [];
                 if (pendingFGBG === 'FG') {
